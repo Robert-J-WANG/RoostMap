@@ -57,20 +57,21 @@ this is a learning project.
 
 ## 3. Current project status
 
-The repository has completed the initial React and TypeScript application baseline. Step 02 project foundation work is the current development stage.
+The repository has completed the initial React and TypeScript application and project foundation. Step 03 test foundation work is the current development stage.
 
 Currently complete:
 
 - the Vite React and TypeScript application created in Step 01;
 - the initial local and remote Git baseline on `main`;
+- the project structure, TypeScript path aliases, environment boundary and minimal application established in Step 02;
 - `docs/PROJECT_DESIGN.md`;
 - `docs/TECHNICAL_SPEC.md`;
 - `docs/DEVELOPMENT_OUTLINE.md`;
 - `docs/steps.md` as the single continuing learning record;
 - this repository guidance file.
 
-The project foundation, product pages, data pipeline, tests, cloud resources
-and deployment are not complete yet. Do not claim that any roadmap page, API,
+The test foundation, product pages, data pipeline, cloud resources and
+deployment are not complete yet. Do not claim that any roadmap page, API,
 database table, data workflow or production service exists until its
 development step and validation have actually completed.
 

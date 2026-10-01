@@ -4,9 +4,9 @@ RoostMap is a New Zealand rental-area affordability and commute analysis platfor
 
 ## Current status
 
-The React and TypeScript project foundation is in place.
+The React, TypeScript and automated test foundations are in place.
 
-The application currently contains a minimal page, project directory structure, TypeScript configuration, ESLint and environment variable conventions. Product features, data pipelines, tests, external services and deployment have not been implemented yet.
+The application currently contains a minimal page, an established source directory structure, TypeScript configuration, ESLint and environment variable conventions, a Vitest component test and a Playwright Chromium smoke test.
 
 ## Planned product capabilities
 
@@ -64,4 +64,28 @@ Preview the production build:
 
 ```bash
 npm run preview
+```
+
+Run component tests once:
+
+```bash
+npm run test
+```
+
+Run component tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+Run the browser smoke test:
+
+```bash
+npm run test:e2e
+```
+
+Run the complete local quality check:
+
+```bash
+npm run check
 ```
