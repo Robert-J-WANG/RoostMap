@@ -2,6 +2,7 @@
 
 > 文档状态：开发基线  
 > 文档职责：定义从空项目到公开发布的实施顺序、阶段成果和验收边界  
+> 文档边界：不展开逐条命令和完整代码，也不把计划中的 Step 表述为已完成
 > 产品依据：`docs/PROJECT_DESIGN.md`  
 > 技术依据：`docs/TECHNICAL_SPEC.md`  
 > 实践记录：`docs/steps.md`
@@ -159,23 +160,23 @@ TypeScript 编译边界、路径别名的编译与运行时解析、环境变量
 
 **产出**
 
-具备路由、全局布局、错误边界、设计 token 和可访问基础组件的最小产品外壳。
+具备路由、共享布局、页面错误边界、设计 token 和基础 UI 组件的最小产品外壳。
 
 **主要内容**
 
-- 引入 React Router，建立当前需要的首页、方法说明占位路由和 404。
-- 建立 header、main、footer 与全局错误边界。
-- 配置 Tailwind CSS 并初始化 shadcn/ui，在同一步建立基础颜色、排版、间距和响应式设计 token。
-- 只加入当前应用外壳需要的 Button、Field、Status/Alert 等组件，不批量生成组件。
-- 为 loading、empty 和 error 状态确定统一可访问表达。
+- 引入 React Router，建立当前需要的首页、方法说明路由和 404。
+- 建立 Header、Main、Footer，以及位于共享布局内部的页面错误边界。
+- 配置 Tailwind CSS 并初始化 shadcn/ui，在同一步建立基础颜色、间距和响应式设计 token。
+- 只加入当前应用外壳实际使用的 Button 组件，不批量生成组件。
+- 为 Home、Methodology、Not Found 和 Route Error 页面建立清晰的页面边界与 title。
 
 **知识点**
 
-SPA 路由、布局与页面边界、design token、shadcn/ui 源码组件的维护边界、语义 HTML、键盘与 focus 管理。
+SPA 路由、嵌套路由与 Outlet、布局和页面边界、design token、shadcn/ui 源码组件的维护边界、语义 HTML。
 
 **测试与验收**
 
-路由、404 和错误边界通过组件或浏览器测试；桌面与移动布局可用；键盘焦点清楚可见。
+路由、404 和页面错误边界通过组件或浏览器测试；共享布局在页面错误时保持存在；桌面与移动布局可用。
 
 **Git 边界**
 
@@ -563,7 +564,7 @@ token 不进入数据库明文、path、query、referrer 或 telemetry；过期�
 
 - 完成全局回归、移动端和支持浏览器检查。
 - 根据测量优化 bundle、数据加载、地图交互和 Core Web Vitals。
-- 完成 WCAG 2.2 AA 检查、图表替代、键盘和 screen reader 流程。
+- 检查页面语义、颜色对比、图表文本或表格替代，以及 screen reader 关键流程。
 - 检查 headers、RLS、配额、secret、日志脱敏和依赖风险。
 - 完善 managed Functions 的 Application Insights、告警、版本信息和 runbook；评估浏览器遥测的实际价值，只在确有需要且隐私过滤验证通过时启用 Web SDK。
 
