@@ -2,7 +2,7 @@
 
 RoostMap 是一个面向新西兰租客的区域选择与负担能力分析项目。项目以 MBIE Rental Bond Data 和 Stats NZ SA2 2019 为核心数据，通过地图、历史趋势、区域比较和通勤估算帮助用户理解居住成本差异。
 
-本文件只展开当前正在实践的 Step。后续内容在前一步完成并核查后继续追加。
+本文件按实际开发顺序记录各 Step 的思路、操作、代码、验证和修正。它以开发纲要为顺序依据，不重新定义产品范围和技术基线；项目当前行为仍以源码、配置和测试为准。后续内容在前一步完成并核查后继续追加。
 
 ## Step 01 · 创建 React + TypeScript 项目
 
@@ -1013,4 +1013,1043 @@ git branch -D test/foundation
 ⬜ npm run check 依次通过 lint、test、build 和 E2E
 ⬜ 测试报告和结果目录没有进入 Git
 ⬜ 测试基础已通过 Pull Request 合并到 main
+```
+
+---
+
+## Step 04 · 建立应用外壳与基础 UI
+
+### 这一步做什么
+
+目前项目已经具备 React、TypeScript、代码检查和测试基础，但仍然只有一个最小页面。它还缺少真正应用需要的基本结构：
+
+```text
+不同 URL 对应不同页面
+所有页面共享的 Header、Main 和 Footer
+统一的颜色、间距和页面宽度
+未知地址和运行时错误处理
+桌面与移动端布局
+```
+
+这一步建立后续功能共同依赖的应用外壳：
+
+```text
+Tailwind CSS 与设计 token
+→ shadcn/ui 基础组件
+→ 全局布局
+→ 基础页面
+→ React Router
+→ 404 与页面错误边界
+→ 测试与验证
+```
+
+本步不会实现数据、地图、业务表单或用户账户。
+
+### 1. 建立开发分支
+
+创建短期功能分支：
+
+```bash
+git checkout main
+git pull --ff-only
+git checkout -b feat/app-shell
+```
+
+这个分支只承载本步的 UI 基础、布局、路由和相关测试。
+
+### 2. 配置 Tailwind CSS 与 shadcn/ui
+
+Tailwind CSS 和 shadcn/ui 解决不同层次的问题：
+
+- Tailwind CSS 负责布局、响应式、颜色、间距、字体、边框和阴影；
+- shadcn/ui 提供 Button 等基础组件源码。生成的组件会进入 `src/components/ui`，成为项目代码的一部分。
+
+两者之间的关系是：
+
+```text
+CSS variables 定义设计 token
+→ Tailwind 把 token 转换成 utility class
+→ shadcn/ui 使用这些 class 组成基础组件
+→ 页面使用基础组件和 utility class
+```
+
+当前 Tailwind 推荐在 Vite 项目中使用专用插件，不需要创建旧版教程中的 `tailwind.config.js` 或 PostCSS 配置。
+
+先安装 Tailwind 和 Vite 插件：
+
+```bash
+npm install -D tailwindcss @tailwindcss/vite
+```
+
+Tailwind 必须进入 Vite 的编译过程。现有 `vite.config.ts` 已经包含 React、路径别名和 Vitest，因此只增加 Tailwind 插件，其他配置保持不变：
+
+```ts
+/// <reference types="vitest/config" />
+
+import { fileURLToPath, URL } from "node:url";
+
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.{ts,tsx}", "src/**/*.spec.{ts,tsx}"],
+    setupFiles: ["./src/test/setup.ts"],
+  },
+});
+```
+
+Vite 已经能够处理 Tailwind 后，还需要建立全局 CSS 入口。暂时把 `src/styles/index.css` 清理为：
+
+```css
+@import "tailwindcss";
+```
+
+`main.tsx` 已经导入这个文件，因此 Tailwind 样式会随应用一起进入浏览器。
+
+接下来初始化 shadcn/ui：
+
+```bash
+npx shadcn@latest init
+```
+
+初始化时让生成路径与现有项目结构保持一致：
+
+```text
+component library   Radix UI
+preset              Nova
+global CSS          src/styles/index.css
+components          @/components
+UI components       @/components/ui
+utilities           @/lib/utils
+hooks               @/hooks
+base colour         neutral
+CSS variables       enabled
+icon library        Lucide
+```
+
+初始化过程会建立或更新：
+
+```text
+components.json
+src/lib/utils.ts
+src/styles/index.css
+package.json
+package-lock.json
+```
+
+此时 `index.css` 已经包含 shadcn/ui 的主题结构，不能再用前面的单行 Tailwind import 覆盖。
+
+当前应用外壳实际会使用 Button，因此只添加这个组件：
+
+```bash
+npx shadcn@latest add button
+```
+
+本步没有真实表单，所以不添加 Field、Input 或表单库。
+
+> shadcn/ui 生成的 Button 文件会同时导出 `Button` 和 `buttonVariants`：
+>
+> ```tsx
+> export { Button, buttonVariants };
+> ```
+>
+> `react-refresh/only-export-components` 默认要求组件文件只导出组件，因此会标记 `buttonVariants`。应用代码仍应保留这项检查，只在 `eslint.config.js` 的 `defineConfig` 数组中为 shadcn/ui 源码目录增加独立例外：
+>
+> ```js
+> {
+>   files: ['src/components/ui/**/*.{ts,tsx}'],
+>   rules: {
+>     'react-refresh/only-export-components': 'off',
+>   },
+> },
+> ```
+
+现在需要把 shadcn/ui 默认的中性色调整为 RoostMap 的蓝绿色视觉方向，同时建立统一的页面宽度和边距。在生成的 `:root` 中调整对应变量，并加入布局变量：
+
+```css
+:root {
+  --background: #f8fafc;
+  --foreground: #17222a;
+
+  --card: #ffffff;
+  --card-foreground: #17222a;
+
+  --popover: #ffffff;
+  --popover-foreground: #17222a;
+
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+
+  --secondary: #e6f4f1;
+  --secondary-foreground: #134e4a;
+
+  --muted: #edf2f4;
+  --muted-foreground: #52606d;
+
+  --accent: #ccfbf1;
+  --accent-foreground: #134e4a;
+
+  --border: #d8e2e5;
+  --input: #cbd8dc;
+  --ring: #0f766e;
+
+  --radius: 0.75rem;
+
+  --content-max-width: 72rem;
+  --page-gutter: clamp(1rem, 4vw, 2rem);
+  --section-space: clamp(3rem, 8vw, 6rem);
+  --surface-shadow: 0 18px 45px rgb(15 118 110 / 0.08);
+}
+```
+
+保留 shadcn/ui 生成的其他变量和 `@theme inline` 映射。以后组件使用 `bg-primary`、`text-muted-foreground` 和 `border-border` 等语义名称，不直接重复具体颜色。
+
+来源：[Tailwind Vite 配置](https://tailwindcss.com/docs/installation/using-vite)、[shadcn/ui Vite 配置](https://ui.shadcn.com/docs/installation/vite)
+
+### 3. 建立全局布局
+
+Home、Methodology 以及后续页面都会共享品牌入口、主导航、页面宽度和 Footer。如果每个页面分别编写这些内容，会产生重复代码，而且不同页面可能出现不同的宽度和间距。
+
+因此建立一个 `AppShell`：
+
+```text
+AppShell
+├── Header
+│   ├── Brand
+│   └── Navigation
+├── Main
+│   └── 当前页面内容
+└── Footer
+```
+
+`AppShell` 只负责共享布局，不负责判断当前显示哪个页面。具体页面通过 `children` 进入 Main。
+
+Header 中的品牌和导航都需要进行页面跳转，因此在建立布局前安装 React Router：
+
+```bash
+npm install react-router
+```
+
+当前只有 Home 和 Methodology 两个导航入口，用一个简单数组集中保存名称和地址：
+
+```tsx
+const navigationItems = [
+  { label: "Home", to: "/" },
+  { label: "Methodology", to: "/methodology" },
+];
+```
+
+`NavLink` 会根据当前 URL 提供 `isActive`，从而显示当前页面状态。
+
+创建 `src/components/layout/AppShell.tsx`：
+
+```tsx
+import type { ReactNode } from "react";
+import { Link, NavLink } from "react-router";
+
+import { cn } from "@/lib/utils";
+
+const navigationItems = [
+  { label: "Home", to: "/" },
+  { label: "Methodology", to: "/methodology" },
+];
+
+type AppShellProps = {
+  children: ReactNode;
+};
+
+export function AppShell({ children }: AppShellProps) {
+  return (
+    <div className="flex min-h-svh flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-50 border-b bg-background">
+        <div className="mx-auto flex w-full max-w-[var(--content-max-width)] flex-col gap-4 px-[var(--page-gutter)] py-4 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            aria-label="RoostMap home"
+            className="text-xl font-semibold tracking-tight"
+            to="/"
+          >
+            RoostMap
+          </Link>
+
+          <nav aria-label="Primary navigation">
+            <ul className="flex flex-wrap items-center gap-2">
+              {navigationItems.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    className={({ isActive }) =>
+                      cn(
+                        "inline-flex rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                        isActive &&
+                          "bg-accent text-accent-foreground",
+                      )
+                    }
+                    to={item.to}
+                  >
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-[var(--content-max-width)] flex-1 px-[var(--page-gutter)] py-[var(--section-space)]">
+        {children}
+      </main>
+
+      <footer className="border-t bg-card">
+        <div className="mx-auto w-full max-w-[var(--content-max-width)] px-[var(--page-gutter)] py-6 text-sm text-muted-foreground">
+          RoostMap · New Zealand rental-area decision support
+        </div>
+      </footer>
+    </div>
+  );
+}
+```
+
+这里使用 `min-h-svh` 让页面至少占满当前屏幕高度；`main` 使用 `flex-1` 占据剩余空间；Header、Main 和 Footer 使用同一套最大宽度与页面边距。
+
+移动端 Header 默认纵向排列，达到 `sm` 断点后改为横向排列。当前导航很少，不需要引入汉堡菜单或 Drawer。
+
+### 4. 建立基础页面
+
+当前先建立三个页面，用于验证应用外壳和路由结构：
+
+```text
+Home             表达产品定位
+Methodology      展示已经确定的数据来源
+Not Found        处理未知 URL
+```
+
+这些页面只包含本阶段真实存在的信息，不加入搜索框、地图或其他尚未实现的操作。
+
+给这些页面格外添加 <title>标签， 用于跳转不同页面时标题的区分。
+
+> 关于 <title>标签：
+>
+> - 页面 title 会显示在浏览器标签页、浏览历史和书签中。
+>
+> - 只有直接对应 URL 的页面需要声明 `<title>`，普通组件不需要。
+> - React 19 可以直接在页面组件中渲染 `<title>`，不需要额外安装 title 管理库，也不需要编写修改 `document.title` 的 effect。
+
+Home 页面需要表达产品价值，并提供一个已经可以使用的 Methodology 入口。这个入口执行页面导航，因此保持 Link 语义，再用 `buttonVariants()` 获得统一的按钮视觉。
+
+创建 `src/pages/HomePage.tsx`：
+
+```tsx
+import { ArrowRightIcon } from "lucide-react";
+import { Link } from "react-router";
+
+import { buttonVariants } from "@/components/ui/button";
+
+const productPrinciples = [
+  "Compare rental areas on a consistent SA2 geography.",
+  "Understand rent observations with clear periods and sources.",
+  "Consider housing cost together with commuting requirements.",
+];
+
+export function HomePage() {
+  return (
+    <>
+      <title>Home | RoostMap</title>
+
+      <section className="grid items-center gap-12 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="max-w-3xl">
+          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+            New Zealand rental-area planning
+          </p>
+
+          <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+            Make clearer rental decisions with area-level evidence.
+          </h1>
+
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+            RoostMap brings rental affordability, historical rent context and
+            commuting requirements into one decision-making experience.
+          </p>
+
+          <Link
+            className={buttonVariants({
+              className: "mt-8",
+              size: "lg",
+              variant: "outline",
+            })}
+            to="/methodology"
+          >
+            View the methodology
+            <ArrowRightIcon aria-hidden="true" data-icon="inline-end" />
+          </Link>
+        </div>
+
+        <aside
+          aria-label="Product principles"
+          className="rounded-2xl border bg-card p-6 shadow-[var(--surface-shadow)]"
+        >
+          <h2 className="text-lg font-semibold">
+            Designed for clear comparison
+          </h2>
+
+          <ul className="mt-5 space-y-4 text-sm leading-6 text-muted-foreground">
+            {productPrinciples.map((principle) => (
+              <li className="border-l-2 border-primary pl-4" key={principle}>
+                {principle}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </section>
+    </>
+  );
+}
+```
+
+Methodology 页面此时只展示已经固定的两个核心数据源和 SA2 地理口径，不描述尚未验证的数据处理结果。
+
+创建 `src/pages/MethodologyPage.tsx`：
+
+```tsx
+export function MethodologyPage() {
+  return (
+    <>
+      <title>Methodology | RoostMap</title>
+
+      <article className="mx-auto max-w-3xl">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Data methodology
+        </p>
+
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+          How RoostMap interprets rental areas
+        </h1>
+
+        <p className="mt-6 text-lg leading-8 text-muted-foreground">
+          RoostMap uses official rental observations and statistical geography
+          so that area comparisons retain a consistent geographic meaning.
+        </p>
+
+        <section className="mt-10 border-t pt-8">
+          <h2 className="text-2xl font-semibold">Core data sources</h2>
+
+          <ul className="mt-4 list-disc space-y-3 pl-6 text-muted-foreground">
+            <li>MBIE Rental Bond Data</li>
+            <li>Stats NZ Statistical Area 2 Higher Geographies 2019</li>
+          </ul>
+        </section>
+      </article>
+    </>
+  );
+}
+```
+
+Not Found 页面负责处理没有对应页面的 URL。它明确告诉用户当前地址无效，并提供返回首页的入口。
+
+创建 `src/pages/NotFoundPage.tsx`：
+
+```tsx
+import { Link } from "react-router";
+
+import { buttonVariants } from "@/components/ui/button";
+
+export function NotFoundPage() {
+  return (
+    <>
+      <title>Page not found | RoostMap</title>
+
+      <section className="mx-auto max-w-xl text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          404
+        </p>
+
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+          Page not found
+        </h1>
+
+        <p className="mt-4 text-muted-foreground">
+          The address may be incorrect, or the page may have moved.
+        </p>
+
+        <Link
+          className={buttonVariants({ className: "mt-8" })}
+          to="/"
+        >
+          Return home
+        </Link>
+      </section>
+    </>
+  );
+}
+```
+
+三个普通页面已经准备好。建立路由表之前，还需要准备页面发生异常时显示的内容。
+
+### 5. 建立路由错误页面
+
+Not Found 和 Route Error 处理的是不同问题：
+
+```text
+URL 没有匹配到页面
+→ NotFoundPage
+
+页面已经匹配，但渲染或路由数据处理发生异常
+→ RouteErrorPage
+```
+
+`RouteErrorPage` 会作为内部页面路由的 `ErrorBoundary`。当子页面发生异常时，React Router 会在 `RootLayout` 的 `Outlet` 位置渲染这个错误页面，因此它只负责错误内容，不再重复创建 `AppShell`。错误信息也不直接显示原始 Error message 或 stack trace，避免向用户暴露内部实现。
+
+创建 `src/pages/RouteErrorPage.tsx`：
+
+```tsx
+import { Link, isRouteErrorResponse, useRouteError } from "react-router";
+
+import { buttonVariants } from "@/components/ui/button";
+
+export function RouteErrorPage() {
+  const error = useRouteError();
+
+  const description = isRouteErrorResponse(error)
+    ? `The page failed with status ${error.status}.`
+    : "An unexpected error prevented this page from being displayed.";
+
+  return (
+    <>
+      <title>Something went wrong | RoostMap</title>
+
+      <section className="mx-auto max-w-xl text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-destructive">
+          Error
+        </p>
+
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+          Something went wrong
+        </h1>
+
+        <p className="mt-4 text-muted-foreground">{description}</p>
+
+        <Link className={buttonVariants({ className: "mt-8" })} to="/">
+          Return home
+        </Link>
+      </section>
+    </>
+  );
+}
+```
+
+### 6. 建立应用路由
+
+共享布局需要先与子页面建立连接，先创建组件`RootLayout` 负责渲染公共组件 `AppShell` 和子页面组件，React Router提供的`Outlet` 则能标记匹配到的子路由内容应该出现的位置。
+
+创建 `src/components/layout/RootLayout.tsx`：
+
+```tsx
+import { Outlet } from "react-router";
+
+import { AppShell } from "@/components/layout/AppShell";
+
+export function RootLayout() {
+  return (
+    <AppShell>
+      <Outlet />
+    </AppShell>
+  );
+}
+```
+
+应用的路由层级可以确定为：
+
+```text
+无路径布局路由：RootLayout
+└── path="/"
+    ├── ErrorBoundary：RouteErrorPage
+    └── children
+        ├── index：HomePage
+        ├── methodology：MethodologyPage
+        └── *：NotFoundPage
+```
+
+外层无路径路由负责共享布局。内部的 `/` 路由没有自己的页面组件，它负责组织子页面并提供错误边界。正常情况下，匹配到的子页面会继续传递到 `RootLayout` 的 `Outlet`；发生异常时，`RouteErrorPage` 只替换这个 Outlet 中的页面内容，外层 `AppShell` 继续保留。
+
+各个地址的匹配结果是：
+
+```text
+/
+→ HomePage
+
+/methodology
+→ MethodologyPage
+
+其他地址
+→ NotFoundPage
+
+上述页面发生异常
+→ RouteErrorPage
+```
+
+React Router 需要一张路由表。路由表不是导航菜单，而是应用内部的 URL 匹配规则：
+
+```text
+浏览器 URL
+→ 路由表寻找匹配项
+→ 选择页面组件
+→ 把页面放入共享布局
+```
+
+创建路由表 `src/app/router/routes.tsx`：
+
+```ts
+import type { RouteObject } from "react-router";
+import { RootLayout } from "@/components/layout/RootLayout";
+import { HomePage } from "@/pages/HomePage";
+import { MethodologyPage } from "@/pages/MethodologyPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
+import { RouteErrorPage } from "@/pages/RouteErrorPage";
+
+export const routes = [
+  {
+    Component: RootLayout,
+    children: [
+      {
+        path: "/",
+        ErrorBoundary: RouteErrorPage,
+        children: [
+          {
+            index: true,
+            Component: HomePage,
+          },
+          {
+            path: "methodology",
+            Component: MethodologyPage,
+          },
+          {
+            path: "*",
+            Component: NotFoundPage,
+          },
+        ],
+      },
+    ],
+  },
+] satisfies RouteObject[];
+
+```
+
+路由表只描述匹配关系，还需要创建 Browser Router，把这些规则连接到浏览器 History API。Router 在 React 组件外创建一次，避免组件重新渲染时重复创建实例。
+
+创建 `src/app/router/router.ts`：
+
+```ts
+import { createBrowserRouter } from "react-router";
+
+import { routes } from "@/app/router/routes";
+
+export const router = createBrowserRouter(routes);
+```
+
+最后让 `App` 使用 `RouterProvider`。浏览器地址变化时，Provider 会重新匹配路由表并渲染对应页面。
+
+更新 `src/app/App.tsx`：
+
+```tsx
+import { RouterProvider } from "react-router/dom";
+
+import { router } from "@/app/router/router";
+
+function App() {
+  return <RouterProvider router={router} />;
+}
+
+export default App;
+```
+
+`src/main.tsx` 仍然只负责创建 React root 和加载全局 CSS：
+
+```tsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+
+import App from "@/app/App";
+import "@/styles/index.css";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+现在应用入口形成完整链路：
+
+```text
+index.html
+→ main.tsx
+→ App
+→ RouterProvider
+→ routes
+→ RootLayout
+→ AppShell
+→ Outlet
+→ 当前页面或 RouteErrorPage
+```
+
+### 7. 完成响应式与页面语义基础
+
+应用外壳使用移动优先的 Tailwind class：
+
+```text
+默认状态        小屏幕纵向布局
+sm 及以上       Header 横向排列
+lg 及以上       Home 页面变为两列
+```
+
+项目界面使用 `en-NZ`。浏览器和辅助工具可以根据文档语言使用正确的语言规则，因此将 `index.html` 更新为：
+
+```html
+<html lang="en-NZ">
+```
+
+完成后在浏览器中检查：
+
+- 每个页面只有一个主要 `h1`；
+- Heading 层级连续；
+- Header、Navigation、Main 和 Footer 结构正确；
+- 当前导航项有清楚的状态；
+- 390px、768px 和桌面宽度下没有水平滚动；
+- 页面内容没有重叠或被截断；
+- 文字和背景具有清楚的对比度。
+
+当前导航项目较少，移动端保持可换行导航，不引入汉堡菜单或 Drawer。
+
+### 8. 更新测试
+
+路由建立后，需要分别更新路由组件测试和端到端测试。两类测试关注不同层次：
+
+```text
+路由组件测试
+→ 在 jsdom 中验证路由匹配、共享布局和错误边界
+
+端到端测试
+→ 在真实浏览器中验证页面加载、用户导航和 URL 变化
+```
+
+#### 8.1 路由组件测试
+
+Vitest 和 React Testing Library 使用 `createMemoryRouter` 在内存中模拟 URL，不需要启动开发服务器。当前测试会同时渲染路由、布局和页面，因此验证的是这些组件协作后的可见结果。
+
+设计思路：组件测试使用 `renderRoute()` 为每个测试创建独立的 Memory Router。错误边界测试故意建立一个会抛出异常的页面，并使用与生产代码相同的嵌套路由。它同时检查错误内容和 Header，证明错误只替换页面区域，没有替换 AppShell。`BrokenPage` 不会正常返回页面内容，因此显式使用 `never` 作为返回类型。
+
+先删除已经失效的旧测试：
+
+```bash
+rm src/app/App.test.tsx
+```
+
+创建新的路由组件测试 `src/app/router/routes.test.tsx`：
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { createMemoryRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import { describe, expect, it, vi } from "vitest";
+
+import { routes } from "@/app/router/routes";
+import { RootLayout } from "@/components/layout/RootLayout";
+import { RouteErrorPage } from "@/pages/RouteErrorPage";
+
+/* --------- 测试辅助方法 -------- */
+// Create an isolated Memory Router for each test case.
+function renderRoute(pathname: string) {
+  const router = createMemoryRouter(routes, {
+    initialEntries: [pathname],
+  });
+
+  render(<RouterProvider router={router} />);
+}
+
+/* --------- 路由测试场景 -------- */
+describe("application routes", () => {
+  /* --------- 测试 1：首页路由与共享外壳 -------- */
+  it("renders the shared application shell", async () => {
+    renderRoute("/");
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: /make clearer rental decisions/i,
+      }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+  });
+
+  /* --------- 测试 2：方法说明页面路由匹配 -------- */
+  it("renders the methodology route", async () => {
+    renderRoute("/methodology");
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "How RoostMap interprets rental areas",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  /* --------- 测试 3：通配路由与未找到页面 -------- */
+  it("renders the not-found page for an unknown route", async () => {
+    renderRoute("/unknown-page");
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Page not found",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  /* --------- 测试 4：错误边界保留应用外壳 -------- */
+  it("renders the route error inside the application shell", async () => {
+    /* --------- 错误场景组件 -------- */
+    // This component always throws to exercise the route error boundary.
+    function BrokenPage(): never {
+      throw new Error("Expected test error");
+    }
+
+    /* --------- 与生产结构一致的测试路由 -------- */
+    const router = createMemoryRouter(
+      [
+        {
+          Component: RootLayout,
+          children: [
+            {
+              path: "/",
+              ErrorBoundary: RouteErrorPage,
+              children: [
+                {
+                  index: true,
+                  Component: BrokenPage,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      {
+        initialEntries: ["/"],
+      },
+    );
+
+    /* --------- 预期控制台错误 -------- */
+    // Suppress the error log produced while the boundary handles the test error.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      render(<RouterProvider router={router} />);
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "Something went wrong",
+        }),
+      ).toBeInTheDocument();
+
+      expect(screen.getByRole("banner")).toBeInTheDocument();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
+
+```
+
+这组测试分别确认首页和 Methodology 页面能够正确匹配、未知地址进入 Not Found 页面，以及页面异常只替换 `AppShell` 内的页面区域。完成后单独运行组件测试：
+
+```bash
+npm run test
+```
+
+预期 `routes.test.tsx` 中的四个测试全部通过。
+
+#### 8.2 端到端测试
+
+组件测试可以快速验证路由结构，但不会启动真实浏览器。Playwright 从用户使用应用的角度检查完整页面，因此继续验证首页加载、导航链接和未知 URL。
+
+浏览器测试不再只针对首页，删除旧的只针对首页的测试文件：
+
+```bash
+rm tests/e2e/home.spec.ts
+```
+
+新建浏览器测试 `tests/e2e/app-shell.spec.ts`。
+
+新的 E2E 测试覆盖三个真实页面行为：打开首页、通过导航进入 Methodology，以及直接访问未知 URL。根据这些行为，写入：
+
+```ts
+import { expect, test } from "@playwright/test";
+
+/* --------- 浏览器测试场景 -------- */
+
+/* --------- 测试 1：首页元数据与可见内容 -------- */
+test("loads the application shell", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page).toHaveTitle("Home | RoostMap");
+
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: /make clearer rental decisions/i,
+    }),
+  ).toBeVisible();
+});
+
+/* --------- 测试 2：导航更新地址与页面 -------- */
+test("navigates to the methodology page", async ({ page }) => {
+  await page.goto("/");
+
+  // Target the exact link inside the primary navigation.
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Methodology", exact: true })
+    .click();
+
+  await expect(page).toHaveURL(/\/methodology$/);
+
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "How RoostMap interprets rental areas",
+    }),
+  ).toBeVisible();
+});
+
+/* --------- 测试 3：直接访问未知地址显示未找到页面 -------- */
+test("shows the not-found page for an unknown URL", async ({ page }) => {
+  await page.goto("/unknown-page");
+
+  await expect(page).toHaveTitle("Page not found | RoostMap");
+
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Page not found",
+    }),
+  ).toBeVisible();
+});
+
+```
+
+这些测试只验证页面行为，不检查 Tailwind class、像素位置或具体颜色，避免正常调整视觉样式时产生无意义的测试失败。
+
+完成后单独运行端到端测试：
+
+```bash
+npm run test:e2e
+```
+
+预期 Playwright 启动 Chromium，三个浏览器测试全部通过，并在结束后自动停止开发服务器。
+
+### 9. 验证应用外壳
+
+现在 UI、路由、错误处理和测试已经形成完整链路，可以执行统一质量检查：
+
+```bash
+npm run check
+```
+
+预期依次通过：
+
+```text
+ESLint
+Vitest route tests
+TypeScript + production build
+Playwright browser tests
+```
+
+自动检查通过后，启动开发服务器：
+
+```bash
+npm run dev
+```
+
+依次访问：
+
+```text
+/
+→ Home 页面和共享布局
+
+/methodology
+→ Methodology 页面和共享布局
+
+/unknown-page
+→ Not Found 页面
+```
+
+使用浏览器开发工具检查 390px、768px 和桌面宽度，确认 Header、内容区域和 Footer 没有重叠、截断或水平滚动。
+
+### 10. 更新 README 项目状态
+
+验证全部通过后，README 应直接记录 Step 04 已经实现的结果。将 `Current status` 更新为：
+
+```markdown
+## Current status
+
+The React application foundation, automated test foundation and responsive product shell are in place.
+
+The application currently includes client-side routing for Home and Methodology, shared Header, Main and Footer structure, unknown-route and route-error handling, Tailwind CSS design tokens, and project-owned shadcn/ui components. The complete local quality check covers linting, component tests, the production build and Playwright browser tests.
+```
+
+README 的其他内容继续保留。
+
+### 11. Git 提交
+
+代码、测试、浏览器检查和 README 状态一致后，提交本步成果：
+
+```bash
+git add .
+git commit -m "feat: establish application shell"
+git push -u origin feat/app-shell
+```
+
+Pull Request 记录：
+
+- Tailwind CSS 和 shadcn/ui 已配置；
+- 设计 token 和响应式应用外壳已建立；
+- Home、Methodology、404 和页面错误边界已建立；
+- 路由组件测试和浏览器测试已加入；
+- `npm run check` 已通过。
+
+完成检查后 squash merge，并同步本地 `main`：
+
+```bash
+git checkout main
+git pull --ff-only
+git branch -D feat/app-shell
+```
+
+### Step 04 完成状态
+
+```text
+⬜ 已从 main 创建 feat/app-shell 分支
+⬜ Tailwind CSS Vite 插件已经配置
+⬜ shadcn/ui 已初始化并加入当前需要的组件
+⬜ 基础视觉 token 和页面布局规则已经建立
+⬜ AppShell 和 RootLayout 已建立
+⬜ Home、Methodology 和 Not Found 页面已建立
+⬜ React Router 和页面标题已经配置
+⬜ 404 与页面错误边界已经建立
+⬜ 桌面与移动端布局可用
+⬜ 路由组件测试和 Playwright 测试已更新
+⬜ npm run check 通过
+⬜ README 已记录 Step 04 完成后的状态
+⬜ 应用外壳已通过 Pull Request 合并到 main
 ```

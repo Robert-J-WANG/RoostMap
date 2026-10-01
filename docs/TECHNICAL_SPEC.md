@@ -2,6 +2,7 @@
 
 > 文档状态：开发基线  
 > 文档职责：定义系统架构、数据 contract、前端边界、API、身份与数据库、安全、测试和交付约束  
+> 文档边界：不重新定义产品范围，不展开逐步操作，也不记录当前完成状态
 > 产品范围与业务含义：见 `docs/PROJECT_DESIGN.md`  
 > 实施顺序：见 `docs/DEVELOPMENT_OUTLINE.md`  
 > 基线日期：2026-10-01
@@ -964,7 +965,7 @@ Supabase：
 - 验收标准明确，正常、加载、空数据、部分数据和错误状态已处理；
 - 对业务计算、数据 contract、组件行为或 API 边界增加了必要测试；
 - 已建立的关键用户流程同步更新 Playwright 测试；
-- 键盘、移动端、隐私和日志行为通过检查；
+- 桌面与移动端、隐私和日志行为通过检查；
 - 当前 `check`、production build 和 CI 通过；
 - Pull Request Preview 与自审通过；
 - 合并 `main` 后部署和 smoke test 通过；
@@ -985,7 +986,7 @@ Supabase：
 - 关键计算具有单元测试，数据 pipeline 具有 contract 与质量测试。
 - RLS 与跨用户拒绝在数据库功能出现时通过 pgTAP。
 - 关键用户流程通过 Playwright；桌面和移动核心流程正常。
-- 页面、地图与图表以 WCAG 2.2 AA 为目标，并提供非视觉替代。
+- 页面、地图与图表具有清晰语义、足够的文字对比度和非视觉替代。
 - 性能预算、API 认证、限流、secret 和日志脱敏通过对应门禁。
 - Local、Preview 和 Production 环境可重复建立并能回滚。
 

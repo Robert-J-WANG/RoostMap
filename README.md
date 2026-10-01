@@ -4,9 +4,9 @@ RoostMap is a New Zealand rental-area affordability and commute analysis platfor
 
 ## Current status
 
-The React, TypeScript and automated test foundations are in place.
+The React application foundation, automated test foundation and responsive product shell are in place.
 
-The application currently contains a minimal page, an established source directory structure, TypeScript configuration, ESLint and environment variable conventions, a Vitest component test and a Playwright Chromium smoke test.
+The application currently includes client-side routing for Home and Methodology, shared Header, Main and Footer structure, unknown-route and route-error handling, Tailwind CSS design tokens, and project-owned shadcn/ui components. The complete local quality check covers linting, component tests, the production build and Playwright browser tests.
 
 ## Planned product capabilities
 
@@ -29,10 +29,12 @@ Publishable geographic coverage will be determined by successfully joining valid
 
 ## Project documentation
 
-- [Project design](docs/PROJECT_DESIGN.md)
-- [Technical specification](docs/TECHNICAL_SPEC.md)
-- [Development outline](docs/DEVELOPMENT_OUTLINE.md)
-- [Development learning notes](docs/steps.md)
+This README records the public summary of the project's implemented state. The detailed documents have separate responsibilities:
+
+- [Project design](docs/PROJECT_DESIGN.md) — intended product scope, data meaning and user experience
+- [Technical specification](docs/TECHNICAL_SPEC.md) — architecture, contracts and delivery constraints
+- [Development outline](docs/DEVELOPMENT_OUTLINE.md) — implementation order and stage acceptance
+- [Development learning notes](docs/steps.md) — chronological reasoning, operations and verification
 
 ## Development
 
@@ -78,7 +80,7 @@ Run component tests in watch mode:
 npm run test:watch
 ```
 
-Run the browser smoke test:
+Run the browser tests:
 
 ```bash
 npm run test:e2e

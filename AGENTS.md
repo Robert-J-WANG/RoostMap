@@ -55,28 +55,25 @@ explicitly changes the approved design.
 Security, privacy, data integrity and accessibility are never optional because
 this is a learning project.
 
-## 3. Current project status
+## 3. Current-state discovery
 
-The repository has completed the initial React and TypeScript application and project foundation. Step 03 test foundation work is the current development stage.
+This file contains stable repository-wide working rules. It does not record the
+current development Step, completed features, active branch or next task.
 
-Currently complete:
+Before describing or changing the current project state, inspect the relevant
+evidence in this order:
 
-- the Vite React and TypeScript application created in Step 01;
-- the initial local and remote Git baseline on `main`;
-- the project structure, TypeScript path aliases, environment boundary and minimal application established in Step 02;
-- `docs/PROJECT_DESIGN.md`;
-- `docs/TECHNICAL_SPEC.md`;
-- `docs/DEVELOPMENT_OUTLINE.md`;
-- `docs/steps.md` as the single continuing learning record;
-- this repository guidance file.
+1. current source code and runtime configuration;
+2. data contracts, migrations and generated manifests, when present;
+3. current automated tests and verified results supplied by the owner;
+4. `README.md` for the public summary of implemented capabilities;
+5. the latest relevant completed section in `docs/steps.md` for development
+   context;
+6. `docs/DEVELOPMENT_OUTLINE.md` only for the planned implementation order.
 
-The test foundation, product pages, data pipeline, cloud resources and
-deployment are not complete yet. Do not claim that any roadmap page, API,
-database table, data workflow or production service exists until its
-development step and validation have actually completed.
-
-Update status claims only after checking the repository, tests, deployment
-evidence and the relevant learning note.
+Do not infer that a planned feature exists from a design or planning document.
+Record changing project status in `README.md` and the learning history in
+`docs/steps.md`, not in this file.
 
 ## 4. Language and communication
 
@@ -104,34 +101,44 @@ visualisation
 Do not rename an established API contract or identifier only to change spelling.
 Chinese learning notes may retain standard English technical terms.
 
-## 5. Source-of-truth rules
+## 5. Document responsibilities and sources of truth
 
-Different files answer different questions.
+Each repository document has one primary responsibility:
 
-For intended scope and approved decisions:
+- `AGENTS.md` defines stable collaboration, authority, quality and repository
+  working rules. It does not track development progress or define product
+  features.
+- `docs/PROJECT_DESIGN.md` defines the intended product, users, scope, data
+  meaning, business metrics, page experience and product acceptance. It does
+  not define implementation details or report current completion.
+- `docs/TECHNICAL_SPEC.md` defines approved architecture, contracts, system
+  boundaries, security, testing and delivery constraints. It does not redefine
+  product scope, prescribe the learning sequence or report current completion.
+- `docs/DEVELOPMENT_OUTLINE.md` defines the implementation sequence, stage
+  outcomes and acceptance boundaries. It does not contain the detailed commands
+  and code used during a Step or prove that a Step is complete.
+- `docs/steps.md` is the chronological learning and implementation record. It
+  explains the reasoning, operations, code, verification and corrections for
+  each practised Step; it does not override the approved product or technical
+  baselines.
+- `README.md` is the public project entry point. It summarises implemented
+  capabilities and basic project usage; it is not a detailed specification or
+  development diary.
+- source code, runtime configuration, contracts, migrations, generated
+  manifests and tests define the actual implemented behaviour.
+
+For intended scope and approved decisions, use this priority:
 
 ```text
 1. The owner's latest explicit instruction
-2. docs/PROJECT_DESIGN.md for product, data meaning and user experience
-3. docs/TECHNICAL_SPEC.md for architecture, contracts and delivery constraints
+2. docs/PROJECT_DESIGN.md for product and data meaning
+3. docs/TECHNICAL_SPEC.md for technical constraints
 4. docs/DEVELOPMENT_OUTLINE.md for implementation order
 ```
 
-For actual implemented behaviour:
-
-```text
-1. Current source code and runtime configuration
-2. Data contracts, database migrations and generated manifests
-3. Current automated tests
-4. Current-step learning notes
-5. README.md
-6. Planning documents
-```
-
-`docs/PROJECT_DESIGN.md` defines what the finished product is intended to do.
-`docs/TECHNICAL_SPEC.md` defines how the approved system is constrained.
-`docs/DEVELOPMENT_OUTLINE.md` defines when and in what order it is learned and
-implemented. None of these documents proves that a feature currently exists.
+For claims about what currently exists, inspect the implementation evidence
+listed in Section 3. A design, technical or planning document does not prove
+that a feature has been implemented.
 
 When sources disagree:
 
@@ -346,7 +353,7 @@ Before adding or replacing a dependency:
 - Keep unsaved sensitive drafts in memory.
 - Write plans to local storage only after an explicit Save locally action.
 - Treat loading, empty, partial-data and error states as part of the feature.
-- Use semantic HTML, labelled controls, keyboard support and visible focus.
+- Use semantic HTML, labelled controls and clear validation or error text.
 - Provide accessible tabular or textual alternatives for data visualisations.
 - Check desktop and mobile behaviour as part of each relevant slice.
 
