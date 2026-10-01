@@ -140,7 +140,7 @@ TypeScript 编译边界、路径别名的编译与运行时解析、环境变量
 
 - 配置 Vitest 与 React Testing Library。
 - 为最小页面编写一个验证用户可见行为的组件测试。
-- 配置 Playwright，覆盖首页加载和未知路由的最小浏览器流程。
+- 配置 Playwright，覆盖首页加载的最小浏览器 smoke test；未知路由在 Step 04 建立路由和 404 后测试。
 - 将测试加入统一 `check`，避免重复验证实现细节。
 
 **知识点**
@@ -149,7 +149,7 @@ TypeScript 编译边界、路径别名的编译与运行时解析、环境变量
 
 **测试与验收**
 
-所有测试可重复运行；失败信息能够定位问题；production build 继续通过。
+`npm run check` 可重复通过 lint、组件测试、production build 和首页浏览器 smoke test；失败信息能够定位到对应测试层。
 
 **Git 边界**
 

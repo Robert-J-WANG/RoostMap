@@ -625,3 +625,392 @@ git branch -D chore/project-foundation
 ⬜ dev 和 preview 均能显示最小页面
 ⬜ 基础配置已通过 Pull Request 合并到 main
 ```
+
+---
+
+## Step 03 · 建立测试基础
+
+### 这一步做什么
+
+Step 02 已经建立了干净的工程结构，但项目目前只能通过 lint、TypeScript 和生产构建验证，还不能自动验证用户可见行为。
+
+这一步建立三层测试能力：
+
+```text
+Vitest                         执行快速单元和组件测试
+React Testing Library         从用户视角验证 React 组件
+Playwright                     在真实浏览器中验证完整页面
+```
+
+当前没有值得单独测试的业务计算，因此不为了展示 unit test 而创建无意义的工具函数。Vitest 的单元测试能力会在后续出现真实数据转换和业务计算时使用。
+
+### 1. 建立开发分支
+
+从已经完成 Step 02 的最新 `main` 创建测试基础分支：
+
+```bash
+git checkout main
+git pull --ff-only
+git status
+git checkout -b test/foundation
+```
+
+### 2. 安装测试依赖
+
+安装 Vitest、jsdom、React Testing Library 和 Playwright：
+
+```bash
+npm install -D vitest jsdom @testing-library/react @testing-library/dom @testing-library/jest-dom @playwright/test
+```
+
+各依赖的职责：
+
+```text
+vitest                         测试执行器和断言
+jsdom                          在 Node.js 中模拟浏览器 DOM
+@testing-library/react         渲染和查询 React 组件
+@testing-library/dom           Testing Library 的 DOM 基础能力
+@testing-library/jest-dom      提供可读的 DOM 断言
+@playwright/test               浏览器测试执行器和断言
+```
+
+Playwright 的 npm 包不包含浏览器程序，需要单独安装本阶段使用的 Chromium：
+
+```bash
+npx playwright install chromium
+```
+
+当前只建立 Chromium smoke test。Firefox、WebKit 和移动设备覆盖在发布前质量加固阶段根据需要加入。
+
+### 3. 配置组件测试
+
+Vitest 可以直接读取现有的 `vite.config.ts`，因此可以继续使用已经配置好的 React 插件和 `@/` 路径别名，不需要再创建一套重复的 Vite 配置。
+
+在 `vite.config.ts` 顶部加入 Vitest 配置类型，并增加 `test` 配置：
+
+```ts
+/// <reference types="vitest/config" />
+
+import { fileURLToPath, URL } from "node:url";
+
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.{ts,tsx}", "src/**/*.spec.{ts,tsx}"],
+    setupFiles: ["./src/test/setup.ts"],
+  },
+});
+```
+
+这里的配置职责是：
+
+- `environment` 使用 jsdom 提供 DOM 环境；
+- `include` 只让 Vitest 查找 `src/` 中的单元和组件测试，避免执行 `tests/e2e` 中的 Playwright 文件；
+- `setupFiles` 在每个测试文件运行前加载公共测试配置。
+
+创建公共测试配置文件`src/test/setup.ts`，配置 DOM 断言和测试清理：
+
+```ts
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
+```
+
+`setup.ts` 做了两件事：
+
+- 导入 `@testing-library/jest-dom/vitest`，可以让组件测试使用一些方法，比如：
+
+    ```
+    toBeInTheDocument()
+    toBeVisible()
+    toHaveAccessibleName()
+    ```
+
+- 注册 `cleanup()`，在每个测试结束后清理 jsdom 中渲染的内容。
+
+### 4. 编写第一个组件测试
+
+创建 `src/app/App.test.tsx` 测试组件，测试当前页面能够向用户显示产品名称：
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+
+import App from "@/app/App";
+
+describe("App", () => {
+  it("shows the product name", () => {
+    render(<App />);
+
+    expect(
+      screen.getByRole("heading", { name: "RoostMap" }),
+    ).toBeInTheDocument();
+  });
+});
+```
+
+这个测试通过 heading 的语义角色和可见名称查询页面，验证用户能够感知的结果，不检查组件内部状态、CSS class 或具体 DOM 层级。
+
+当前组件很简单，这个测试的主要意义是验证以下链路已经打通：
+
+```text
+Vitest
+→ jsdom
+→ React Testing Library
+→ jest-dom
+→ TypeScript
+→ @/ 路径别名
+```
+
+### 5. 配置浏览器测试
+
+建立 Playwright 测试目录：
+
+```bash
+mkdir -p tests/e2e
+```
+
+在项目根目录创建 `playwright.config.ts`：
+
+```ts
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  fullyParallel: true,
+  reporter: [
+    ["list"],
+    ["html", { open: "never" }],
+  ],
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+    trace: "retain-on-failure",
+  },
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+    },
+  ],
+  webServer: {
+    command: "npm run dev -- --host 127.0.0.1",
+    url: "http://127.0.0.1:5173",
+    reuseExistingServer: true,
+  },
+});
+```
+
+配置职责：
+
+- `testDir` 只从 `tests/e2e` 查找浏览器测试；
+- `baseURL` 让测试使用 `/` 等相对地址；
+- `webServer` 在运行测试前自动启动 Vite；
+- `reuseExistingServer` 在本地已有开发服务器时直接复用；
+- `trace` 在测试失败时保存浏览器执行过程；
+- `projects` 当前只运行 Chromium；
+- `reporter` 在终端显示结果，同时生成不会自动打开的 HTML 报告。
+
+让生产构建同时检查 Playwright 配置和浏览器测试的 TypeScript 类型。将 `tsconfig.node.json` 的 `include` 更新为：
+
+```json
+"include": [
+  "vite.config.ts",
+  "playwright.config.ts",
+  "tests/e2e"
+]
+```
+
+### 6. 编写首页 smoke test
+
+创建`tests/e2e/home.spec.ts` ，编写第一个浏览器测试：
+
+```ts
+import { expect, test } from "@playwright/test";
+
+test("loads the application", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page).toHaveTitle("RoostMap");
+  await expect(
+    page.getByRole("heading", { name: "RoostMap" }),
+  ).toBeVisible();
+});
+```
+
+这个测试验证：
+
+```text
+Vite 开发服务器能够启动
+→ 浏览器能够访问应用
+→ index.html 正确加载
+→ React 成功挂载
+→ 用户能够看到页面标题
+```
+
+当前还没有路由系统，因此不测试未知路径。
+
+### 7. 建立测试脚本
+
+在 `package.json` 的 `scripts` 中增加：
+
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm run test && npm run build && npm run test:e2e",
+    "preview": "vite preview"
+  }
+}
+```
+
+脚本职责：
+
+```text
+npm run test          执行一次组件和单元测试
+npm run test:watch    开发过程中监听文件并重新执行相关测试
+npm run test:e2e      执行 Chromium 浏览器测试
+npm run check         按项目质量门禁顺序执行全部检查
+```
+
+`check` 按以下顺序运行：
+
+```text
+ESLint
+→ Vitest
+→ TypeScript + production build
+→ Playwright
+```
+
+任何一项失败，命令都会停止，不会把失败的工程视为可以提交。
+
+### 8. 验证测试基础
+
+执行统一质量检查：
+
+```bash
+npm run check
+```
+
+预期结果：
+
+- ESLint 通过；
+- Vitest 只找到并通过 `App.test.tsx`；
+- TypeScript 和 Vite 生产构建通过；
+- Playwright 自动启动 Vite；
+- Chromium 通过首页 smoke test；
+- 测试结束后开发服务器自动停止。
+
+如果某一层失败，可以单独运行对应命令定位问题：
+
+```bash
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+```
+
+`coverage/`、`playwright-report/` 和 `test-results/` 已经由 `.gitignore` 排除，不应进入 Git。
+
+### 9. 更新 README 项目状态
+
+测试基础验证通过后，更新 `README.md`，让项目说明反映 Step 03 完成后的真实状态。
+
+将 `Current status` 更新为：
+
+```markdown
+## Current status
+
+The React, TypeScript and automated test foundations are in place.
+
+The application currently contains a minimal page, an established source directory structure, TypeScript configuration, ESLint and environment variable conventions, a Vitest component test and a Playwright Chromium smoke test.
+```
+
+在 `Development` 中补充测试和统一检查命令：
+
+````markdown
+Run component tests once:
+
+```bash
+npm run test
+```
+
+Run component tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+Run the browser smoke test:
+
+```bash
+npm run test:e2e
+```
+
+Run the complete local quality check:
+
+```bash
+npm run check
+```
+````
+
+README 中的其他内容保持不变。
+
+### 10. Git 提交
+
+确认测试基础全部通过后提交：
+
+```bash
+git add .
+git commit -m "test: establish frontend test foundation"
+git push -u origin test/foundation
+```
+
+在 GitHub 创建 Pull Request，记录：
+
+- Vitest 和 React Testing Library 已建立；
+- Playwright Chromium smoke test 已建立；
+- `npm run check` 已通过；
+- 未知路由测试将在 Step 04 路由实现后加入。
+
+Pull Request 检查完成后 squash merge，然后同步本地仓库：
+
+```bash
+git checkout main
+git pull --ff-only
+git branch -D test/foundation
+```
+
+### Step 03 完成状态
+
+```text
+⬜ 已从 main 创建 test/foundation 分支
+⬜ Vitest、jsdom 和 React Testing Library 已安装
+⬜ jest-dom 和测试清理已经配置
+⬜ App 组件测试通过
+⬜ Playwright 和 Chromium 已安装
+⬜ 首页浏览器 smoke test 通过
+⬜ 测试配置和测试文件参与 TypeScript 检查
+⬜ npm run check 依次通过 lint、test、build 和 E2E
+⬜ 测试报告和结果目录没有进入 Git
+⬜ 测试基础已通过 Pull Request 合并到 main
+```
