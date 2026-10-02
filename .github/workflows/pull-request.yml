@@ -1,0 +1,50 @@
+# workflow 在 GitHub Actions 页面和 Pull Request 中显示的名称
+name: Pull Request Delivery
+
+# 当目标分支为 main 的 Pull Request 被创建或更新时启动
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      # 第一次创建 Pull Request
+      - opened
+      # Pull Request 打开期间，功能分支收到新的提交
+      - synchronize
+      # 已关闭的 Pull Request 被重新打开
+      - reopened
+
+# Quality job 只需要读取仓库代码
+permissions:
+  contents: read
+
+jobs:
+  # 在独立 runner 中重复项目的完整质量检查
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    # runner 按照从上到下的顺序执行这些步骤
+    steps:
+      # 把当前 Pull Request 接受检查的代码放入 runner
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      # 配置项目使用的 Node.js，并启用 npm 下载缓存
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # 按照 package-lock.json 安装项目依赖
+      - name: Install dependencies
+        run: npm ci
+
+      # 安装 Playwright E2E 测试所需的浏览器和系统依赖
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # 执行 lint、组件测试、build 和 E2E 测试
+      - name: Run complete quality check
+        run: npm run check
