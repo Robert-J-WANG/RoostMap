@@ -48,3 +48,22 @@ jobs:
       # 执行 lint、组件测试、build 和 E2E 测试
       - name: Run complete quality check
         run: npm run check
+
+      # 保存通过检查的 dist，供后续 Deploy job 下载
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+      # 检查失败时保存 Playwright 报告，供开发者排查
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-quality-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
