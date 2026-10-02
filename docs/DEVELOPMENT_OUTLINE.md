@@ -202,7 +202,7 @@ CI 与 CD 的职责、环境变量与 secret、Preview 环境、branch protectio
 
 **测试与验收**
 
-故意失败的门禁能阻止合并；Preview 和 Production URL 可访问；SPA 刷新、404、基础 headers 和 smoke test 正常。
+Required checks 处于等待或失败状态时阻止合并；Preview 和 Production URL 可访问；SPA 刷新、404、基础 headers 和 smoke test 正常。
 
 **Git 边界**
 

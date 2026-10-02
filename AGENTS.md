@@ -239,6 +239,31 @@ Understand the problem
 → owner performs the Git action
 ```
 
+### Learning-note organisation
+
+Every section added to `docs/steps.md` must be a learning note that follows a
+real development thought process along one coherent engineering through-line.
+It must not read like an operation manual, a collection of independent setup
+instructions or a checklist assembled from configuration tasks.
+
+Before expanding a Step:
+
+1. identify the Step's single development carrier, such as one feature slice,
+   data flow, Pull Request or delivery pipeline;
+2. state the real starting point, the problem being solved and the completed
+   outcome;
+3. order the work by actual technical and product dependencies;
+4. make each section follow causally from the result of the previous section;
+5. explain why a concept, decision, command or code change is needed before
+   presenting its implementation;
+6. include only operations that advance the current through-line and move
+   unrelated work to the Step where it becomes necessary.
+
+When reviewing a draft, check the whole Step's development logic and causal
+order before checking wording, commands, code or individual configuration
+details. If the Step has no clear through-line, reorganise it from the overall
+development process instead of repairing isolated subsections.
+
 Rules:
 
 - expand only the current step;

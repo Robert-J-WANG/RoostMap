@@ -790,7 +790,7 @@ SHARE_TOKEN_SECRET
 MAINTENANCE_JOB_SECRET
 ```
 
-Preview 和 Production 分别使用 GitHub Environment 与 Azure application settings。secret 不进入浏览器构建、日志或 PR artifact。
+部署流程明确区分 Preview 与 Production。Azure Static Web Apps Deployment Token 在首次静态前端部署阶段保存在 repository secret；后续出现 Supabase、MapTiler、TravelTime 或 Functions 等环境专属配置时，再使用 GitHub Environment 与 Azure application settings 隔离。secret 不进入浏览器构建、日志或 PR artifact。
 
 ### 4.2 Git 策略
 
@@ -817,7 +817,7 @@ data/2026-04-refresh
 
 ### 4.3 持续集成
 
-`ci.yml` 从项目基础阶段建立，并随着能力增长持续增加门禁：
+`pull-request.yml` 在首次交付步骤建立，并随着项目能力增长持续增加 PR 门禁；`production.yml` 负责 `main` 的正式部署和部署后 smoke test：
 
 | 引入能力 | 在对应 Step 加入 CI |
 |---|---|
@@ -843,7 +843,7 @@ Build
 → Generate fixture assets
 → Deploy temporary Preview
 → Run Preview smoke tests
-→ Publish URL to PR
+→ Expose Preview URL from deployment output
 → Remove environment when PR closes
 ```
 

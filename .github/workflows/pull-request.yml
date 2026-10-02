@@ -1,0 +1,162 @@
+# workflow 在 GitHub Actions 页面和 Pull Request 中显示的名称
+name: Pull Request Delivery
+
+# 当目标分支为 main 的 Pull Request 被创建或更新时启动
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      # 第一次创建 Pull Request
+      - opened
+      # Pull Request 打开期间，功能分支收到新的提交
+      - synchronize
+      # 已关闭的 Pull Request 被重新打开
+      - reopened
+      # 关闭 Pull Request
+      - closed
+
+# 当前 workflow 只需要读取仓库代码
+permissions:
+  contents: read
+
+jobs:
+  # --------------- job 1 -------------- #
+  # 先在独立 runner 中执行完整质量检查
+  quality:
+    if: github.event.action != 'closed'
+    name: Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run complete quality check
+        run: npm run check
+
+      # 保存通过检查的 dist，供 Deploy job 下载
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+      # 检查失败时保存 Playwright 报告
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-quality-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # --------------- job 2 -------------- #
+  # Quality 成功后，把同一份 dist 部署成 Azure Preview
+  deploy:
+    if: github.event.action != 'closed'
+    name: Deploy
+    needs:
+      - quality
+    runs-on: ubuntu-latest
+
+    # 把 Azure 返回的地址提供给后续远程测试 job
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.static_web_app_url }}
+
+    steps:
+      # 从当前 workflow 下载 Quality 保存的构建产物
+      - name: Download frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: dist
+
+      # 使用 Deployment Token 把已有 dist 上传到 Azure
+      - name: Deploy preview
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+
+  # --------------- job 3 -------------- #
+  # Deploy 成功后，从 GitHub runner 访问真实的 Azure Preview
+  deployed-smoke-test:
+    if: github.event.action != 'closed'
+    name: Deployed smoke test
+    needs:
+      - deploy
+    runs-on: ubuntu-latest
+
+    # Deploy job 的输出成为 Playwright 测试地址
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.preview_url }}
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # URL 缺失时立即失败，避免 Playwright 错误地测试本地 Vite
+      - name: Require deployed URL
+        run: |
+          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "PLAYWRIGHT_BASE_URL is required"
+            exit 1
+          fi
+
+      - name: Test deployed preview
+        run: npm run test:e2e
+
+      # 远程测试失败时保存报告，便于定位失败页面和步骤
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-deployed-smoke-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # --------------- job 4 -------------- #
+  # Pull Request 结束后删除对应的 Azure Preview
+  close-preview:
+    if: github.event.action == 'closed'
+    name: Close Preview
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Remove preview environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
