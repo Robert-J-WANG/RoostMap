@@ -2053,3 +2053,1815 @@ git branch -D feat/app-shell
 ⬜ README 已记录 Step 04 完成后的状态
 ⬜ 应用外壳已通过 Pull Request 合并到 main
 ```
+
+## Step 05 · 建立 CI/CD 与首次公网部署
+
+### 这一步做什么
+
+Step 04 完成后，RoostMap 已经可以在本地执行完整质量检查：
+
+```text
+ESLint
+→ 组件测试
+→ Production build
+→ Playwright 浏览器测试
+```
+
+但是，本地环境通过的质量检查并不能保证真实产品的质量。因此，需要把这套本地检查逐步扩展成真实交付流程， 即CI/CD。
+
+完整的流程如下：
+
+```text
+本地质量检查（已完成）
+→ 推送功能分支
+→ Pull Request 自动检查
+→ 保存通过检查的构建产物
+→ 部署 Azure Preview
+→ 测试真实 Preview
+→ 建立合并门禁
+→ 合并 main
+→ 部署并测试 Production
+→ 清理分支
+```
+
+整个流程包含手动操作和自动执行部分。所有自动执行的 GitHub Actions 流程都以 workflow YAML 为入口，但完整 CI/CD 还共同依赖项目脚本、测试代码、Playwright 配置、Azure 配置、GitHub 设置和手动操作。
+
+这个流程包含四个不同角色：
+
+| 角色 | 职责 |
+|---|---|
+| 开发者 | 本地开发、运行检查、推送代码、创建 PR、查看结果并决定是否合并 |
+| GitHub 平台 | 保存仓库、Pull Request、检查状态和合并记录 |
+| GitHub-hosted runner | 在临时远程电脑中安装依赖、运行测试、构建和上传产物 |
+| Azure Static Web Apps | 接收构建产物并托管 Preview 与 Production |
+
+Pull Request 和 GitHub Actions 是 GitHub 中的流程和记录。真正执行命令的是 GitHub Actions 创建的临时 runner。每个 job 通常使用一台新的 runner，job 结束后运行环境会被销毁。
+
+### 1. 建立交付分支与本地起点
+
+`main` 保存 Step 04 已经通过检查的稳定状态。CI workflow、Azure 配置和远程测试会在验证完成前持续变化，因此本步使用独立的 `ci/initial-delivery` 分支承载这些修改。
+
+从最新的 `main` 创建分支：
+
+```bash
+git checkout main
+git pull --ff-only
+git checkout -b ci/initial-delivery
+```
+
+GitHub 后面会在远程 runner 中重复项目现有的质量检查。先在本地执行同一条命令，可以确认代码本身处于稳定状态，也为排查远程环境问题提供对照。
+
+运行：
+
+```bash
+npm run check
+```
+
+检查应依次完成：
+
+```text
+npm run lint
+→ npm run test
+→ npm run build
+→ npm run test:e2e
+```
+
+四项检查全部通过后，当前分支具备建立远程自动化的可靠起点。
+
+### 2. 让 GitHub 接收 Pull Request 事件
+
+功能分支完成开发并通过本地检查后，下一步是把它合并到 `main`。`main` 保存稳定的产品代码，新代码在进入 `main` 之前必须再次经过质量检查，避免未经验证的修改影响后续部署。
+
+Pull Request 为这次合并提供了一个独立的审查阶段。分支代码此时还没有进入 `main`，但 GitHub 可以在 PR 中展示代码差异、运行自动检查，并根据检查结果决定是否允许合并。
+
+那么GitHub怎么知道PR 创建后应该执行什么自动化操作？？
+
+这就需要GitHub Actions workflow， 这些workflow用来制定自动化规则，比如：当目标分支为 `main` 的 Pull Request 被创建或更新时，启动 Quality job，对准备合并的代码执行质量检查......
+
+完整的流程是：
+
+```text
+准备把功能分支合并到 main
+→ 合并前需要质量检查
+→ 使用 Pull Request 建立合并前的审查阶段
+→ 编写 workflow 定义自动检查规则
+→ PR 创建或更新时启动 Quality job
+→ 检查结果显示在 Pull Request
+```
+
+GitHub Actions 会读取 `.github/workflows` 目录中的 YAML 文件。每个 YAML 文件定义一个 workflow，其中可以包含触发条件、需要执行的 job、job 之间的依赖关系，以及 job 内依次执行的 step。
+
+一个GitHub Actions workflow 的基本结构如下：
+
+```yaml
+# workflow 的显示名称
+name: <workflow 名称>
+
+# workflow 的触发事件
+on:
+  <pull_request 或 push>:
+    branches:
+      - <目标分支>
+    types:
+      - <事件类型>
+
+# workflow 访问仓库的权限
+permissions:
+  contents: read
+
+# workflow 触发后执行的任务
+jobs:
+  <job 标识>:
+
+    # ==================== Job 层 ====================
+    name: <job 名称>
+    if: <运行条件>
+    needs:
+      - <前置 job 标识>
+    # job 使用的 GitHub runner
+    runs-on: ubuntu-latest
+    # 向后续 job 提供执行结果
+    outputs:
+      <输出名称>: <输出表达式>
+    # 当前 job 使用的环境变量
+    env:
+      <变量名称>: <变量值>
+      
+    # ==================== step 层 ====================  
+    # job 中按顺序执行的步骤
+    steps:
+      - name: <步骤名称>
+        # step 标识，用于读取它产生的输出
+        id: <step 标识>
+        if: <运行条件>
+        # 调用现成的 GitHub Action
+        uses: <Action 名称和版本>
+        # 向 Action 传递参数
+        with:
+          <参数名称>: <参数值>
+
+      - name: <执行项目命令>
+        # 直接在 runner 中执行命令
+        run: <Shell 命令>
+```
+
+它可以按三层理解：
+
+```
+Workflow
+├── name：整个 workflow 的显示名称
+│
+├── on：workflow 的触发条件
+│   └── pull_request 或 push：触发事件
+│       ├── branches：限制目标分支
+│       └── types：限制事件的具体类型
+│
+├── permissions：workflow 访问 GitHub 资源的权限
+│   └── contents: read：只允许读取仓库代码
+│
+└── jobs：workflow 触发后需要执行的任务
+    └── Job
+        ├── job 标识：job 在 YAML 中的唯一名称
+        ├── name：job 的显示名称
+        ├── if：满足什么条件才执行
+        ├── needs：等待哪些前置 job 成功完成
+        ├── runs-on：使用哪种 GitHub runner
+        ├── outputs：向后续 job 提供什么结果
+        ├── env：当前 job 使用的环境变量
+        
+        └── steps：按照顺序执行的步骤
+            ├── Step：调用现成的 GitHub Action
+            │   ├── name：step 的显示名称
+            │   ├── id：step 的唯一标识
+            │   ├── if：满足什么条件才执行
+            │   ├── uses：调用哪个 Action
+            │   └── with：向 Action 传递哪些参数
+            │
+            └── Step：直接执行项目命令
+                ├── name：step 的显示名称
+                └── run：在 runner 中执行 Shell 命令
+```
+
+先创建 workflow 目录：
+
+```bash
+mkdir -p .github/workflows
+```
+
+创建Pull Request事件的workflow `.github/workflows/pull-request.yml`，先定义 workflow 的名称、触发条件和权限：
+
+```yaml
+name: Pull Request Delivery
+
+# 当目标分支为 main 的 Pull Request 发生指定事件时启动 workflow
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      # 第一次创建 Pull Request
+      - opened
+      # Pull Request 打开期间，功能分支收到新的提交
+      - synchronize
+      # 已关闭的 Pull Request 被重新打开
+      - reopened
+
+# 当前 workflow 只需要读取仓库代码
+permissions:
+  contents: read
+
+# 实际执行质量检查的 job 
+jobs:
+  ...
+```
+
+其中字段`pull_request` 是把 PR 设为 workflow 的触发入口，`branches: main` 将范围限制为准备合并到 `main` 的 PR。三种事件分别覆盖：首次创建 PR、继续向 PR 分支推送提交，以及重新打开 PR。
+
+字段`permissions` 控制 workflow 获得的仓库权限。当前阶段只需要读取代码，因此只授予 `contents: read`，不增加写入权限。
+
+此时只是建立了 workflow 的入口可以执行的任务在`jobs` 里
+
+### 3. 加入 Quality job 并运行第一次 CI
+
+上面通过 `on` 确定了 workflow 在什么时候启动，但当前 `jobs` 还是空的，GitHub 还不知道触发后需要执行什么任务。现在需要把本地已经能够运行的质量检查交给 GitHub，让每次准备合并到 `main` 的代码都在独立环境中重新验证。
+
+这里的 CI 并不是增加另一套检查，而是让 GitHub runner 自动重复项目现有的 `npm run check`：
+
+```text
+Pull Request 触发 workflow
+→ GitHub 创建 Quality job
+→ GitHub 为 job 分配临时 runner
+→ runner 按照 steps 的顺序准备环境并执行 npm run check
+→ 检查结果显示在 Pull Request
+```
+
+`Quality` job 代表一次完整的质量检查任务。`runs-on` 决定它使用哪种 runner，`steps` 则记录 runner 从取得代码到完成检查的操作顺序。这里选择 GitHub 提供的临时 Ubuntu runner；每次运行都会从干净环境开始，任务结束后该环境也会被释放。
+
+先在 `jobs` 下建立 `quality` job，并为它指定运行环境：
+
+```yaml
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    steps:
+```
+
+新 runner 中还没有项目代码，也没有项目要求的 Node.js 环境。因此，前两个 step 先把当前 Pull Request 接受检查的代码放入 runner，再配置 Node.js 24：
+
+```yaml
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+```
+
+`uses` 表示调用现成的 GitHub Action。`checkout` 负责取得仓库代码，`setup-node` 负责安装并启用指定的 Node.js 版本。`with` 用于向 Action 传递参数，这里同时启用 npm 下载缓存，以减少后续运行重复下载依赖所需的时间。
+
+有了代码和 Node.js，runner 仍然缺少项目依赖以及 Playwright 实际使用的浏览器。接下来的两个 step 按照 `package-lock.json` 安装依赖，再安装 Chromium 和它在 Ubuntu 中需要的系统依赖：
+
+```yaml
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+```
+
+`run` 表示直接在 runner 中执行 Shell 命令。CI 使用 `npm ci`，可以根据已经提交的 lockfile 重建确定的依赖环境。Playwright npm 包和浏览器程序相互独立，所以 Chromium 需要单独安装。
+
+此时 runner 已经具备与项目检查相符的运行条件。最后执行 `npm run check`，依次完成 lint、组件测试、build，以及针对 runner 中启动的应用执行的 E2E 测试：
+
+```yaml
+      - name: Run complete quality check
+        run: npm run check
+```
+
+完成后的 `.github/workflows/pull-request.yml` 如下：
+
+```yaml
+# workflow 在 GitHub Actions 页面和 Pull Request 中显示的名称
+name: Pull Request Delivery
+
+# 当目标分支为 main 的 Pull Request 被创建或更新时启动
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      # 第一次创建 Pull Request
+      - opened
+      # Pull Request 打开期间，功能分支收到新的提交
+      - synchronize
+      # 已关闭的 Pull Request 被重新打开
+      - reopened
+
+# Quality job 只需要读取仓库代码
+permissions:
+  contents: read
+
+jobs:
+  # 在独立 runner 中重复项目的完整质量检查
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    # runner 按照从上到下的顺序执行这些步骤
+    steps:
+      # 把当前 Pull Request 接受检查的代码放入 runner
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      # 配置项目使用的 Node.js，并启用 npm 下载缓存
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # 按照 package-lock.json 安装项目依赖
+      - name: Install dependencies
+        run: npm ci
+
+      # 安装 Playwright E2E 测试所需的浏览器和系统依赖
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # 执行 lint、组件测试、build 和 E2E 测试
+      - name: Run complete quality check
+        run: npm run check
+```
+
+workflow 现在已经具备第一条可运行的 CI。提交并推送配置：
+
+```bash
+git add .github/workflows/pull-request.yml
+git commit -m "ci: add pull request quality check"
+git push -u origin ci/initial-delivery
+```
+
+通过 GitHub 网页创建从当前分支到 `main` 的 Pull Request：
+
+```text
+ci/initial-delivery
+→ main
+```
+
+创建 PR 会产生 `opened` 事件。GitHub 读取 `pull-request.yml`，创建 Quality job，并让远程 runner 依次执行前面定义的 steps。
+
+在 Pull Request 的 Checks 区域或仓库的 Actions 页面可以看到执行过程：
+
+```text
+Check out pull request
+→ Set up Node.js
+→ Install dependencies
+→ Install Chromium
+→ Run complete quality check
+```
+
+第一次 CI 需要确认：
+
+- runner 使用 Node.js 24；
+- `npm ci` 成功安装 lockfile 中记录的依赖；
+- lint、组件测试、build 和 runner 内的 E2E 测试全部通过；
+- Quality 结果显示在当前 Pull Request 中。
+
+只要 PR 保持打开，继续向 `ci/initial-delivery` 推送提交就会产生 `synchronize` 事件，GitHub 随后自动重新运行 Quality job。至此，合并前的自动质量检查已经建立。
+
+### 4. 保存 Quality job 产生的文件
+
+第一次 CI 已经证明 Quality job 可以在远程 runner 中完成 `npm run check`。其中的 build 会生成可部署的 `dist`，这个目录就是刚刚通过质量检查的前端版本。
+
+后续需要把同一个 `dist` 部署成 Preview。但是，每个 job 通常使用独立的 runner；Quality job 结束后，当前 runner 和它的临时文件系统都会被释放。以后建立的 Deploy job 无法直接读取这台 runner 中的文件，也就无法取得刚刚通过检查的 `dist`。
+
+因此，在 Quality job 结束前，需要把仍有价值的文件交给 GitHub Actions 临时保存。GitHub Actions 把这种由 workflow 产生并保存的文件称为 artifact。前一个 job 可以上传 artifact，后一个 job 再通过名称下载它。
+
+这条构建产物传递流程是：
+
+```text
+Quality job 执行 build
+→ runner 生成 dist
+→ 上传为 frontend-dist artifact
+→ GitHub Actions 临时保存
+→ 后续 Deploy job 下载并部署
+```
+
+先在 `Run complete quality check` 后加入上传步骤。只有前面的完整质量检查成功，这个 step 才会继续执行：
+
+```yaml
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+```
+
+其中`name` 是后续 job 下载 artifact 时使用的名称，`path` 指向需要保存的 `dist`。如果 build 没有正确生成该目录，`if-no-files-found: error` 会让 job 失败，避免后续部署一个不存在的构建结果。这个 artifact 只用于当前 workflow 的 Preview 部署，保留一天已经足够。
+
+runner 中还可能产生另一类有价值的文件：Playwright 的失败报告和 trace。它们不参与部署，而是在 E2E 测试失败时帮助开发者查看浏览器测试过程。因此，Quality job 的两种结果需要分别处理：
+
+```text
+Quality 成功
+→ 保存 frontend-dist
+→ 供后续 Deploy job 使用
+
+Quality 失败
+→ 不保存部署产物
+→ 尝试保存 Playwright 报告
+→ 供开发者排查错误
+```
+
+在 Quality job 最后加入失败诊断上传步骤：
+
+```yaml
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-quality-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+```
+
+`if: failure()` 表示只有前面的 step 失败时才尝试上传报告。失败可能发生在 lint、组件测试或 build 阶段，此时 Playwright 尚未运行，`playwright-report` 可能不存在，所以这里使用 `if-no-files-found: ignore`，保留原本的失败原因，不再制造第二个错误。诊断报告需要留出排查时间，因此保存七天。
+
+加入两类 artifact 后，完整的 `.github/workflows/pull-request.yml` 如下：
+
+```yaml
+# workflow 在 GitHub Actions 页面和 Pull Request 中显示的名称
+name: Pull Request Delivery
+
+# 当目标分支为 main 的 Pull Request 被创建或更新时启动
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      # 第一次创建 Pull Request
+      - opened
+      # Pull Request 打开期间，功能分支收到新的提交
+      - synchronize
+      # 已关闭的 Pull Request 被重新打开
+      - reopened
+
+# Quality job 只需要读取仓库代码
+permissions:
+  contents: read
+
+jobs:
+  # 在独立 runner 中重复项目的完整质量检查
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    # runner 按照从上到下的顺序执行这些步骤
+    steps:
+      # 把当前 Pull Request 接受检查的代码放入 runner
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      # 配置项目使用的 Node.js，并启用 npm 下载缓存
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # 按照 package-lock.json 安装项目依赖
+      - name: Install dependencies
+        run: npm ci
+
+      # 安装 Playwright E2E 测试所需的浏览器和系统依赖
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # 执行 lint、组件测试、build 和 E2E 测试
+      - name: Run complete quality check
+        run: npm run check
+
+      # 保存通过检查的 dist，供后续 Deploy job 下载
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+      # 检查失败时保存 Playwright 报告，供开发者排查
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-quality-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+```
+
+提交并推送这次增量修改：
+
+```bash
+git add .github/workflows/pull-request.yml
+git commit -m "ci: preserve pull request build"
+git push
+```
+
+当前 PR 已经打开，因此 push 会产生 `synchronize` 事件并重新运行 Quality job。这一次除了原有检查，还会在成功后上传 `frontend-dist`。
+
+Quality 再次通过后，在本次 workflow 运行结果的 Artifacts 区域确认：
+
+- 出现名为 `frontend-dist` 的 artifact；
+- artifact 来自当前这次 workflow 运行；
+- Quality job 保持成功状态；
+- 没有生成 `playwright-quality-report`，因为本次检查没有失败。
+
+这个结果证明，通过检查的 `dist` 已经离开即将释放的 Quality runner，并由 GitHub Actions 暂时保存。下一步建立部署任务时，新的 runner 就可以下载并使用它。
+
+### 5. 准备 Azure 部署目标
+
+Quality job 已经能够生成并保存 `frontend-dist`，但后续 Deploy job 还不能直接运行。一次真实部署还需要三个条件：构建产物包含 Azure 的运行规则、Azure 中存在接收文件的 Static Web Apps 资源，以及 GitHub runner 拥有向该资源上传文件的凭据。
+
+```text
+frontend-dist 已准备好
+→ 补充 Azure 运行规则
+→ 创建 Azure Static Web Apps 资源
+→ 把 Deployment Token 安全交给 GitHub Actions
+→ 建立 Deploy job
+```
+
+先处理构建产物需要携带的运行规则。RoostMap 使用 React Router，`/methodology` 是前端路由，构建目录中并不存在 `methodology.html`。在应用内部点击链接时，React Router 可以直接切换页面；如果用户在浏览器中直接打开或刷新 `/methodology`，请求会先到达 Azure，Azure 应该必须先返回 `index.html`，React 启动后才能根据当前地址显示 Methodology 页面。
+
+流程顺序是这样：
+
+```text
+浏览器请求 /methodology
+→ Azure 返回 /index.html
+→ React 应用启动
+→ React Router 读取 /methodology
+→ 显示 Methodology 页面
+```
+
+这条页面回退规则需要由 `staticwebapp.config.json` 提供，而且该文件最终必须位于部署目录 `dist` 的根部。Vite 会把 `public` 目录中的文件原样复制到 `dist`，因此先创建当 `public` 目录，用于放置这些文件：
+
+```bash
+mkdir -p public
+```
+
+创建回退规则配置文件 `public/staticwebapp.config.json` ：
+
+```json
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*"]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  }
+}
+```
+
+`navigationFallback` 把没有对应静态文件的页面地址交给 `index.html`。`/assets/*` 保存 Vite 构建出的 JavaScript 和 CSS 文件，这些请求应继续按真实静态文件处理。`globalHeaders` 为 Azure 返回的资源增加基础响应头，避免浏览器猜测错误的内容类型，并限制跨站请求携带的来源信息。
+
+重新构建，确认配置文件确实进入部署产物：
+
+```bash
+npm run build
+ls dist/staticwebapp.config.json
+```
+
+文件流向应该是：
+
+```text
+public/staticwebapp.config.json
+→ Vite build
+→ dist/staticwebapp.config.json
+```
+
+本地构建产物现在已经具备 Azure 需要的页面规则，接下来准备真正接收它的云端资源。
+
+在 Azure Portal 创建一个 Static Web Apps 资源，并把部署来源选择为 `Other`。这里选择 `Other`，是因为 RoostMap 已经在仓库中自行建立 GitHub Actions workflow，不需要 Azure 另外生成或修改 workflow。
+
+创建资源只是在 Azure 中建立一个空的托管目标，并不会自动读取 GitHub 仓库，也不会立即发布当前应用。资源创建完成后，后续 runner 仍然需要使用 Deployment Token 才能向它上传 `dist`。
+
+在新建的 Static Web Apps 资源 Overview 页面选择 **Manage deployment token**，复制 Deployment Token。然后进入 GitHub 仓库：
+
+```text
+Settings
+→ Secrets and variables
+→ Actions
+→ New repository secret
+```
+
+使用下面的名称保存 token：
+
+```text
+AZURE_STATIC_WEB_APPS_API_TOKEN
+```
+
+Repository secret 会加密保存 token。workflow 以后只能在 runner 运行时通过 secret 名称读取它，页面和日志不会显示原始值。它在部署流程中的作用是：
+
+```text
+Azure Static Web Apps 生成 Deployment Token
+→ GitHub Repository Secret 加密保存
+→ Deploy runner 在运行时读取
+→ Azure 验证 token 后接收 dist
+```
+
+真实 token 不写入项目文件、`.env.example`、workflow 明文、README 或学习笔记。GitHub 的 Secrets 页面只需要确认 `AZURE_STATIC_WEB_APPS_API_TOKEN` 已存在，不需要也无法再次查看它的完整值。
+
+现在建立 Deploy job 所需的三个条件已经齐备：
+
+- `dist` 中包含 `staticwebapp.config.json`；
+- Azure 中已经存在 RoostMap 的 Static Web Apps 资源；
+- GitHub Actions 已经可以通过 repository secret 取得部署凭据。
+
+此时 Azure 资源仍然是等待接收文件的部署目标。真正的 Preview 上传需要有新的 Deploy job 完成。
+
+### 6. 把通过检查的 dist 部署成 Preview
+
+现在，部署所需的构建产物、Azure 目标和访问凭据都已经准备完成。下一步要把它们连接起来，让 Pull Request 每次通过 Quality 后都产生一个可以在浏览器中访问的 Preview。
+
+这次部署仍然属于同一个 `pull-request.yml` workflow，但部署和质量检查承担不同职责，因此使用两个 job：
+
+```text
+Quality job
+→ 构建并检查应用
+→ 上传 frontend-dist
+
+Deploy job
+→ 等待 Quality 成功
+→ 下载 frontend-dist
+→ 上传到 Azure Preview
+→ 返回 Preview URL
+```
+
+先在 `jobs` 下建立与 `quality` 同级的 `deploy` job。`needs` 表示 Deploy 依赖 Quality；只有 Quality 成功结束，GitHub 才会创建并运行后续部署任务。
+
+```yaml
+  deploy:
+    name: Deploy
+    needs:
+      - quality
+    runs-on: ubuntu-latest
+
+    steps:
+```
+
+这种依赖关系把质量检查变成部署前提：
+
+```text
+Quality 成功
+→ Deploy 运行
+
+Quality 失败
+→ Deploy 跳过
+→ 未通过检查的代码不会进入 Azure
+```
+
+Deploy job 使用一台新的临时 runner，因此它看不到 Quality runner 中的 `dist`。不过，第 4 小节已经把该目录保存为 `frontend-dist` artifact。Deploy 的第一个 step 使用相同名称下载它，并在当前 runner 中还原为 `dist`：
+
+```yaml
+      - name: Download frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: dist
+```
+
+这一步没有重新构建应用。Deploy runner 获得的是 Quality job 已经检查过的同一份构建结果：
+
+```text
+GitHub Actions 中的 frontend-dist
+→ Download frontend build
+→ Deploy runner 的 dist/
+```
+
+取得 `dist` 后，调用 Azure Static Web Apps 官方 Deploy Action 上传文件：
+
+```yaml
+      - name: Deploy preview
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+```
+
+这组参数分别解决不同问题：
+
+- `azure_static_web_apps_api_token`：在运行时读取 repository secret，证明 runner 有权向当前 Azure 资源上传文件；
+- `action: upload`：本次操作是上传应用，而不是关闭 Preview；
+- `app_location: dist`：需要上传的文件就在当前 runner 的 `dist`；
+- `skip_app_build: true`：跳过 Azure 自带的构建过程，直接部署已经通过 Quality 的产物；
+
+Deploy Action 成功后会产生 `static_web_app_url`。后面的远程 E2E job 需要使用这个真实地址，因此给 Deploy step 设置 `id: deploy`，再把它的 URL 提升为当前 job 的输出：
+
+```yaml
+  deploy:
+    name: Deploy
+    needs:
+      - quality
+    runs-on: ubuntu-latest
+
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.static_web_app_url }}
+```
+
+表达式的读取路径是：
+
+```text
+id 为 deploy 的 step
+→ static_web_app_url
+→ Deploy job 的 preview_url
+→ 后续 job 可以通过 needs.deploy.outputs.preview_url 读取
+```
+
+加入 Deploy job 后，完整的 `.github/workflows/pull-request.yml` 如下：
+
+```yaml
+# workflow 在 GitHub Actions 页面和 Pull Request 中显示的名称
+name: Pull Request Delivery
+
+# 当目标分支为 main 的 Pull Request 被创建或更新时启动
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      # 第一次创建 Pull Request
+      - opened
+      # Pull Request 打开期间，功能分支收到新的提交
+      - synchronize
+      # 已关闭的 Pull Request 被重新打开
+      - reopened
+
+# 当前 workflow 只需要读取仓库代码
+permissions:
+  contents: read
+
+jobs:
+  # 先在独立 runner 中执行完整质量检查
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run complete quality check
+        run: npm run check
+
+      # 保存通过检查的 dist，供 Deploy job 下载
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+      # 检查失败时保存 Playwright 报告
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-quality-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Quality 成功后，把同一份 dist 部署成 Azure Preview
+  deploy:
+    name: Deploy
+    needs:
+      - quality
+    runs-on: ubuntu-latest
+
+    # 把 Azure 返回的地址提供给后续远程测试 job
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.static_web_app_url }}
+
+    steps:
+      # 从当前 workflow 下载 Quality 保存的构建产物
+      - name: Download frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: dist
+
+      # 使用 Deployment Token 把已有 dist 上传到 Azure
+      - name: Deploy preview
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+```
+
+提交 Azure 配置和 Deploy job：
+
+```bash
+git add public/staticwebapp.config.json
+git add .github/workflows/pull-request.yml
+git commit -m "ci: deploy pull request preview"
+git push
+```
+
+当前 PR 已经打开，push 会产生 `synchronize` 事件。新的 workflow 运行应形成下面的依赖关系：
+
+```text
+Quality
+→ Deploy
+```
+
+运行完成后依次确认：
+
+- Quality 成功并上传 `frontend-dist`；
+- Deploy 在 Quality 之后启动；
+- `Download frontend build` 成功把 artifact 还原到 `dist`；
+- `Deploy preview` 成功完成上传；
+- Deploy 日志或 Azure Static Web Apps 的 Environments 页面出现 Preview URL；
+- 浏览器可以打开 Preview 首页；
+- 直接打开或刷新 Preview 的 `/methodology` 仍能正常显示页面。
+
+最后一项同时验证 `staticwebapp.config.json` 已随 `dist` 部署，并且 Azure 正确执行了 SPA 页面回退。此时 Preview 已经可以人工访问，后面再让 Playwright 自动测试这个真实地址。
+
+### 7. 使用 Playwright 测试真实 Preview
+
+Deploy job 成功后，Azure 已经生成可以访问的 Preview。接下来需要使用现有 E2E 测试验证这个真实部署结果，确认应用在 Azure 中仍能正常加载和跳转。
+
+整个过程沿用前面已经建立的 job 依赖关系：
+
+```text
+Deploy job 完成部署
+→ 取得 Azure 返回的 Preview URL
+→ 把 URL 传给新的浏览器测试 job
+→ Playwright 访问 Preview 并执行现有 E2E 测试
+```
+
+要完成这条流程，先让 Playwright 能根据运行环境选择测试地址，再由 GitHub Actions 提供本次部署生成的 Preview URL。
+
+#### 7.1 配置 Playwright 测试地址
+
+当前 `playwright.config.ts` 把测试地址固定为 `http://127.0.0.1:5173`，并在测试前启动本地 Vite。这适合本地开发，但无法直接测试已经部署到 Azure 的应用。
+
+我们先约定使用一个环境变量 `PLAYWRIGHT_BASE_URL`专门用来接收Azure部署的地址。这个名称由当前项目自行定义，不是 Node.js、Playwright 或 GitHub 内置的变量。它只负责在执行 E2E 测试时把目标地址传给 Playwright：
+
+```text
+本地执行测试
+→ 不设置 PLAYWRIGHT_BASE_URL
+→ 使用本地地址
+
+GitHub Actions 测试 Preview
+→ workflow 设置 PLAYWRIGHT_BASE_URL
+→ 使用 Azure Preview URL
+```
+
+这样， 原先`playwright.config.ts`配置文件中的项目测试时写死的运行地址，需要按条件选择：
+
+```
+有Azure部署地址码??
+ - yes -> 将执行GitHub Actions 测试 Preview
+ - no  -> 将执行本地测试
+```
+
+因此先改造 测试地址的读取：
+
+```ts
+import { defineConfig, devices } from "@playwright/test";
+
+// Use the deployed URL when CI provides one; otherwise test the local app.
+const deployedBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim();
+const localBaseURL = "http://127.0.0.1:5173";
+
+export default defineConfig({
+  ...
+  use: {
+    baseURL: deployedBaseURL || localBaseURL,
+    trace: "retain-on-failure",
+  },
+  projects: [
+    ...
+  ],
+  webServer: {
+    ...
+  },
+});
+
+```
+
+配置文件由 Node.js 执行，因此可以通过 `process.env` 读取当前进程的环境变量。变量未设置时，`deployedBaseURL` 为 `undefined`；GitHub Actions 后面为它提供 Preview URL 时，`deployedBaseURL` 就是对应的远程地址。
+
+测试 Azure Preview 时，应用已经由 Azure 提供，不需要 Playwright 再启动本地 Vite。因此 `webServer` 使用相同条件决定是否启动开发服务器：
+
+```ts
+webServer: deployedBaseURL
+  ? undefined
+  : {
+      command: "npm run dev -- --host 127.0.0.1",
+      url: localBaseURL,
+      reuseExistingServer: true,
+    },
+```
+
+修改后的完整 `playwright.config.ts` 如下：
+
+```ts
+import { defineConfig, devices } from "@playwright/test";
+
+// Use the deployed URL when CI provides one; otherwise test the local app.
+const deployedBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim();
+const localBaseURL = "http://127.0.0.1:5173";
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  fullyParallel: true,
+  reporter: [["list"], ["html", { open: "never" }]],
+  use: {
+    baseURL: deployedBaseURL || localBaseURL,
+    trace: "retain-on-failure",
+  },
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+    },
+  ],
+  // Azure already serves deployed builds, so only start Vite for local tests.
+  webServer: deployedBaseURL
+    ? undefined
+    : {
+        command: "npm run dev -- --host 127.0.0.1",
+        url: localBaseURL,
+        reuseExistingServer: true,
+      },
+});
+```
+
+此时 workflow 还没有设置 `PLAYWRIGHT_BASE_URL`，所以会先运行现有本地测试：
+
+```bash
+npm run test:e2e
+```
+
+Playwright 应继续启动本地 Vite 并完成测试。这一步确认新增的地址选择逻辑没有影响原来的本地测试。
+
+#### 7.2  Preview 部署后运行 E2E
+
+第 6 小节已经把 Azure 返回的地址保存为 Deploy job 的 `preview_url` 输出。现在增加 `deployed-smoke-test` job，让它等待 Deploy 成功，并把该输出赋值给前面约定的 `PLAYWRIGHT_BASE_URL`：
+
+```yaml
+  deployed-smoke-test:
+    name: Deployed smoke test
+    needs:
+      - deploy
+    runs-on: ubuntu-latest
+
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.preview_url }}
+```
+
+Preview URL 的传递过程如下：
+
+```text
+Azure Deploy Action 的 static_web_app_url
+→ Deploy job 的 preview_url
+→ PLAYWRIGHT_BASE_URL
+→ playwright.config.ts 中的 deployedBaseURL
+```
+
+`needs: deploy` 规定了执行顺序：只有 Deploy 成功，GitHub 才会启动这个测试 job。
+
+新的 job 使用新的 runner，其中没有项目代码、依赖和浏览器，因此先完成 checkout、依赖安装和 Chromium 安装，然后再执行 E2E 测试：
+
+```yaml
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Require deployed URL
+        run: |
+          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "PLAYWRIGHT_BASE_URL is required"
+            exit 1
+          fi
+
+      - name: Test deployed preview
+        run: npm run test:e2e
+```
+
+如果 Preview URL 缺失，Playwright 会选择本地地址。`Require deployed URL` 会在这种情况下主动终止任务，避免远程测试错误地变成本地测试。
+
+远程测试失败时，同样保存 Playwright HTML 报告，便于查看失败页面和测试步骤：
+
+```yaml
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-deployed-smoke-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+```
+
+加入 `.github/workflows/pull-request.yml` 的完整 job 如下：
+
+```yaml
+  # Deploy 成功后，从 GitHub runner 访问真实的 Azure Preview
+  deployed-smoke-test:
+    name: Deployed smoke test
+    needs:
+      - deploy
+    runs-on: ubuntu-latest
+
+    # Deploy job 的输出成为 Playwright 测试地址
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.preview_url }}
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # URL 缺失时立即失败，避免 Playwright 错误地测试本地 Vite
+      - name: Require deployed URL
+        run: |
+          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "PLAYWRIGHT_BASE_URL is required"
+            exit 1
+          fi
+
+      - name: Test deployed preview
+        run: npm run test:e2e
+
+      # 远程测试失败时保存报告，便于定位失败页面和步骤
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-deployed-smoke-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+```
+
+提交 Playwright 配置和 workflow：
+
+```bash
+git add playwright.config.ts
+git add .github/workflows/pull-request.yml
+git commit -m "test: verify deployed previews"
+git push
+```
+
+Pull Request 收到新提交后，GitHub Actions 应按照下面的依赖关系执行：
+
+```text
+Quality
+→ Deploy
+→ Deployed smoke test
+```
+
+在 Pull Request 的 Checks 区域确认三个 job 依次通过。`Deployed smoke test` 中的 Chromium 运行在 GitHub runner，并使用 Azure Preview URL 执行现有 E2E 测试。
+
+### 8. 清理 Preview 并建立合并门禁
+
+当前 Pull Request 已经形成完整的验证流程：Quality 检查代码，Deploy 创建 Azure Preview，Deployed smoke test 再从浏览器验证真实部署结果。不过，这条流程还需要补完两个环节：
+
+- Pull Request 结束后删除对应的临时 Preview；
+- 把三个检查变成合并到 `main` 前必须满足的条件。
+
+#### 8.1 完成 Preview 生命周期
+
+当前 workflow 只监听 `opened`、`synchronize` 和 `reopened`。这些事件都发生在 Pull Request 进行期间，用来创建或更新 Preview。Pull Request 被合并或直接关闭时会产生 `closed` 事件，`closed` 事件也可以用来执行一些操作，比如清理 Preview。
+
+先把`closed`事件加入触发类型：
+
+```yaml
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+```
+
+加入 `closed` 后，同一个 workflow 既会处理 PR 更新，也会处理 PR 结束。两种事件需要执行不同任务：
+
+```text
+opened / synchronize / reopened
+→ Quality
+→ Deploy
+→ Deployed smoke test
+
+closed
+→ Close Preview
+```
+
+因此，需要给现有三个 job 增加运行条件，来区分不同的任务。 以 Quality 为例：
+
+```yaml
+  quality:
+    if: github.event.action != 'closed'
+    name: Quality
+    runs-on: ubuntu-latest
+```
+
+Deploy 和 Deployed smoke test 使用相同条件：
+
+```yaml
+  deploy:
+    if: github.event.action != 'closed'
+    name: Deploy
+    needs:
+      - quality
+    runs-on: ubuntu-latest
+
+  deployed-smoke-test:
+    if: github.event.action != 'closed'
+    name: Deployed smoke test
+    needs:
+      - deploy
+    runs-on: ubuntu-latest
+```
+
+这样，PR 结束时不会重新构建、部署或测试应用。
+
+接着增加只处理 `closed` 事件的 `close-preview` job：
+
+```yaml
+  # Pull Request 结束后删除对应的 Azure Preview
+  close-preview:
+    if: github.event.action == 'closed'
+    name: Close Preview
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Remove preview environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
+```
+
+这个 job 不需要 checkout、下载 `dist` 或安装依赖。`action: close` 不会上传文件，而是根据当前 Pull Request 和 Deployment Token 删除对应的 Azure Preview。
+
+四个 job 的事件分工如下：
+
+```text
+PR 创建、重新打开或收到新提交
+→ Quality、Deploy、Deployed smoke test 运行
+→ Close Preview 跳过
+
+PR 合并或关闭
+→ Quality、Deploy、Deployed smoke test 跳过
+→ Close Preview 运行
+```
+
+提交 Preview 清理配置：
+
+```bash
+git add .github/workflows/pull-request.yml
+git commit -m "ci: clean up pull request previews"
+git push
+```
+
+这次 push 产生的是 `synchronize` 事件，因此仍应依次运行 Quality、Deploy 和 Deployed smoke test，Close Preview 显示为跳过。`closed` 分支要等当前 Pull Request 最终被合并或关闭时才会执行。
+
+#### 8.2. 配置 main 合并规则
+
+目前，Pull Request 每次收到新提交后，GitHub Actions 都会运行 Quality、Deploy 和 Deployed smoke test，并把成功或失败结果显示在 Pull Request 中。但是，workflow 只负责执行任务和报告结果，它不会自动规定“检查失败时禁止合并”。
+
+现在需要让 GitHub 仓库根据这些结果控制 `main` 的合并入口：
+
+```text
+GitHub Actions
+→ 执行三个 job
+→ 产生三个检查结果
+
+仓库的 main 合并规则
+→ 读取这三个检查结果
+→ 全部成功时允许合并
+→ 等待或失败时阻止合并
+```
+
+GitHub 使用 branch ruleset 管理这类规则。Ruleset 的作用对象是分支；这次只保护 `main`，功能分支仍然可以正常提交和推送。
+
+当前项目需要解决三类问题。第一类是规定代码进入 `main` 的方式。开发代码必须先进入功能分支，再通过 Pull Request 合并，因此启用：
+
+```text
+Require a pull request before merging
+```
+
+这项规则要求所有进入 `main` 的开发修改都经过 Pull Request。当前项目由自己完成开发和合并，所以不要求其他人审批；Pull Request 在这里承担的是检查入口和合并入口。
+
+第二类是把现有自动检查变成合并条件，因此启用：
+
+```text
+Require status checks to pass before merging
+```
+
+并指定下面三个 required checks：
+
+```text
+Quality
+Deploy
+Deployed smoke test
+```
+
+这些名称来自 workflow 中各个 job 的 `name`：
+
+```yaml
+quality:
+  name: Quality
+
+deploy:
+  name: Deploy
+
+deployed-smoke-test:
+  name: Deployed smoke test
+```
+
+GitHub Actions 运行 job 后产生同名检查，Ruleset 再根据这些检查的状态决定 Pull Request 能否合并。三个名称已经在当前 Pull Request 中实际出现，因此可以在 Ruleset 中选择。
+
+第三类是保护 `main` 的提交历史。项目采用 Squash Merge，每个 Pull Request 最终在 `main` 中形成一个提交，因此启用：
+
+```text
+Require linear history
+```
+
+同时限制删除和强制推送：
+
+```text
+Restrict deletions
+Block force pushes
+```
+
+这两项规则防止 `main` 被删除，也防止已经进入 `main` 的提交历史被强制改写。
+
+配置完成后，一次功能提交的合并过程如下：
+
+```text
+功能分支 push 新提交
+→ Pull Request 触发 workflow
+→ Quality、Deploy、Deployed smoke test 进入等待或运行状态
+→ Ruleset 暂时阻止合并
+
+三个检查全部成功
+→ Ruleset 满足
+→ 可以执行 Squash Merge
+
+任意检查失败
+→ Ruleset 不满足
+→ Pull Request 不能合并
+```
+
+明确这些规则的作用后，再进入当前 GitHub 仓库完成配置：
+
+```text
+Settings
+→ Rules
+→ Rulesets
+→ New ruleset
+→ New branch ruleset
+```
+
+先设置 Ruleset 的基本信息：
+
+```text
+Ruleset name: Protect main
+Enforcement status: Active
+Target branches: Include default branch
+```
+
+当前仓库的 default branch 是 `main`，因此这个目标只把规则应用到 `main`。
+
+然后启用前面已经确定的规则：
+
+```text
+Restrict deletions
+Require a pull request before merging
+Require status checks to pass before merging
+Require linear history
+Block force pushes
+```
+
+在 `Require status checks to pass before merging` 中依次添加：
+
+```text
+Quality
+Deploy
+Deployed smoke test
+```
+
+确认 Ruleset 的目标分支和检查名称后，创建并启用规则。之后每次向当前功能分支 push，Pull Request 都会先显示检查正在运行，合并入口暂时不可用；三个检查全部成功后，合并入口才会恢复。
+
+不需要故意破坏测试来验证规则。下一次正常提交就会经历“等待检查 → 检查通过 → 允许合并”的完整过程。
+
+Preview 清理配置和 `main` Ruleset 完成后，Pull Request 的创建、更新、合并限制和临时环境清理已经连接成完整流程。
+
+参考：[Azure Static Web Apps build configuration](https://learn.microsoft.com/en-us/azure/static-web-apps/build-configuration)、[GitHub rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+
+### 9. 建立 Production 自动部署
+
+Pull Request workflow 已经负责合并前的质量检查和 Preview 验证。三个 required checks 全部成功后，功能分支才可以通过 Squash Merge 进入 `main`。代码进入 `main` 后，需要启动另一条流程，把这个正式提交发布到 Azure Production。
+
+两条 workflow 的职责由此分开：
+
+```text
+Pull Request Delivery
+→ 在合并前检查功能分支
+→ 部署并测试临时 Preview
+
+Production Delivery
+→ 在合并后读取 main 的正式提交
+→ 重新构建并部署 Production
+→ 测试真实 Production
+```
+
+Production 不能直接使用 PR workflow 中保存的 `dist`。那份 artifact 属于合并前的功能分支运行；正式部署应从合并后的 `main` 提交重新生成构建结果，确保 Azure 中运行的内容对应 `main` 当前状态。
+
+因此，需要创建独立的 `.github/workflows/production.yml`。
+
+#### 9.1 构建并部署 main
+
+Production 发布的起点是 `main` 收到新提交。当前项目通过 Squash Merge 更新 `main`，合并完成后 GitHub 会产生一次针对 `main` 的 `push` 事件：
+
+```text
+Squash Merge 完成
+→ main 出现新的 Squash Commit
+→ push 事件触发 Production Delivery
+```
+
+先定义 workflow 名称、触发事件和仓库权限：
+
+```yaml
+name: Production Delivery
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+```
+
+`branches: main` 把这条 workflow 限定为正式分支发布。功能分支的普通 push 不会触发它。
+
+Production deploy job 使用新的 runner，因此需要重新取得 `main` 代码并安装依赖：
+
+```yaml
+jobs:
+  deploy:
+    name: Production deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+```
+
+PR required checks 已经完成 lint、组件测试、构建和本地 E2E。代码进入 `main` 后不再重复整套合并前检查，但必须从正式提交重新执行构建：
+
+```yaml
+      - name: Build production application
+        run: npm run build
+```
+
+`npm run build` 会依次执行 `tsc -b` 和 `vite build`。任何 TypeScript 或构建错误都会终止当前 job，Azure 不会收到不完整的 `dist`。
+
+构建成功后，runner 中已经产生新的 `dist`。Deploy Action 直接把这个目录上传到 Azure：
+
+```yaml
+      - name: Deploy production
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+```
+
+这里仍然使用前面保存的 Deployment Token。`skip_app_build: true` 表示 Azure 不再重复构建，直接发布当前 runner 生成的 `dist`。
+
+这条 workflow 只由 `main` 的 push 触发，因此上传操作对应 Production，不需要再传入 `production_branch`。Deploy step 成功后会返回正式站点 URL，后续浏览器测试需要读取它，所以把 URL 提升为 job output：
+
+```yaml
+  deploy:
+    name: Production deploy
+    runs-on: ubuntu-latest
+
+    outputs:
+      production_url: ${{ steps.deploy.outputs.static_web_app_url }}
+```
+
+Production deploy job 的过程是：
+
+```text
+读取 main 的 Squash Commit
+→ npm ci 安装锁定版本的依赖
+→ npm run build 生成 dist
+→ 上传 dist 到 Azure Production
+→ 输出 production_url
+```
+
+#### 9.2 验证 Production
+
+Production deploy 成功只能证明文件已经上传。还需要从 GitHub runner 启动 Chromium，访问正式地址并执行现有 E2E 测试。
+
+新增 `smoke-test` job，并让它等待 Production deploy 完成：
+
+```yaml
+  smoke-test:
+    name: Production smoke test
+    needs:
+      - deploy
+    runs-on: ubuntu-latest
+
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.production_url }}
+```
+
+这里复用第 7 小节约定的 `PLAYWRIGHT_BASE_URL`。数据传递过程是：
+
+```text
+Deploy Action 的 static_web_app_url
+→ Production deploy 的 production_url
+→ PLAYWRIGHT_BASE_URL
+→ Playwright 访问正式站点
+```
+
+Production smoke test 使用新的 runner，因此仍需取得测试代码、安装依赖和 Chromium。运行测试前先确认正式地址存在：
+
+```yaml
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Require deployed URL
+        run: |
+          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "PLAYWRIGHT_BASE_URL is required"
+            exit 1
+          fi
+
+      - name: Test production deployment
+        run: npm run test:e2e
+```
+
+如果测试失败，保存 Playwright 报告用于定位问题：
+
+```yaml
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-production-smoke-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+```
+
+完整的 `.github/workflows/production.yml` 如下：
+
+```yaml
+# main 更新后重新构建、部署并验证正式站点
+name: Production Delivery
+
+# Squash Merge 在 main 产生新提交后启动
+on:
+  push:
+    branches:
+      - main
+
+# 当前 workflow 只需要读取仓库代码
+permissions:
+  contents: read
+
+jobs:
+  # --------------- job 1 -------------- #
+  # 从 main 的正式提交重新构建并部署 Production
+  deploy:
+    name: Production deploy
+    runs-on: ubuntu-latest
+
+    # 把 Azure 返回的正式地址提供给后续测试 job
+    outputs:
+      production_url: ${{ steps.deploy.outputs.static_web_app_url }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production application
+        run: npm run build
+
+      # 直接发布当前 runner 已经生成的 dist
+      - name: Deploy production
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+
+  # --------------- job 2 -------------- #
+  # 部署成功后，从新的 runner 访问真实 Production
+  smoke-test:
+    name: Production smoke test
+    needs:
+      - deploy
+    runs-on: ubuntu-latest
+
+    # Production URL 成为 Playwright 测试地址
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.production_url }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # 地址缺失时立即失败，避免 Playwright 错误地测试本地 Vite
+      - name: Require deployed URL
+        run: |
+          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "PLAYWRIGHT_BASE_URL is required"
+            exit 1
+          fi
+
+      - name: Test production deployment
+        run: npm run test:e2e
+
+      # 正式环境测试失败时保存报告
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-production-smoke-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+```
+
+这条 workflow 此时只存在于功能分支。创建文件或继续向功能分支 push 都不会触发 Production Delivery；它要等 Pull Request 合并，使 `production.yml` 和当前代码一起进入 `main` 后，才会被 `push: main` 启动。
+
+运行时应形成下面的依赖关系：
+
+```text
+Production deploy
+→ Production smoke test
+```
+
+Preview smoke test 是合并前的质量门禁，只有真实 Preview 通过测试，代码才能进入 `main`。Production smoke test 则在部署后验证正式站点，并把验证结果记录在 Production Delivery 中。
+
+参考：[GitHub Actions push event](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push)、[Azure Static Web Apps Deploy Action](https://github.com/Azure/static-web-apps-deploy)
+
+### 10. 完成 Pull Request 并验证 Production
+
+Production workflow 已经写入功能分支，但它只有进入 `main` 后才会运行。现在需要先把 Step 05 的最终文件提交到当前 Pull Request，通过合并门禁，再验证合并后自动发生的 Preview 清理和 Production 发布。
+
+#### 10.1 提交最终变更
+
+README 记录的是本步全部成功后的稳定状态，因此直接更新为：
+
+```markdown
+## Current status
+
+The React application foundation, automated test foundation, responsive product shell and continuous delivery foundation are in place.
+
+The application includes client-side routing for Home and Methodology, a shared Header, Main and Footer structure, unknown-route and route-error handling, Tailwind CSS design tokens, and project-owned shadcn/ui components.
+
+The complete quality pipeline covers linting, component tests, the production build and Playwright browser tests. Pull requests deploy and verify Azure Static Web Apps previews; updates merged into main trigger a fresh production build, production deployment and deployed smoke test. The delivery configuration also provides SPA fallback, basic response headers, failed-test diagnostics and automatic preview cleanup.
+```
+
+README 不记录配置过程中的临时状态。它描述的是 Step 05 按当前笔记全部执行成功后，项目已经具备的能力。
+
+提交前运行最后一次本地完整检查：
+
+```bash
+npm run check
+```
+
+检查通过后确认修改范围：
+
+```bash
+git status --short
+```
+
+本次最终提交包含 Production workflow、项目状态和已经对齐的项目文档：
+
+```bash
+git add AGENTS.md
+git add .github/workflows/production.yml
+git add README.md
+git add docs/DEVELOPMENT_OUTLINE.md
+git add docs/steps.md
+git add docs/TECHNICAL_SPEC.md
+git commit -m "ci: complete initial delivery pipeline"
+git push
+```
+
+push 更新当前 Pull Request，并再次启动合并前流程：
+
+```text
+Quality
+→ Deploy
+→ Deployed smoke test
+```
+
+此时 Production Delivery 不会运行，因为提交仍然位于功能分支。Ruleset 会在三个 required checks 等待或运行期间阻止合并；它们全部成功后，Pull Request 才满足合并条件。
+
+#### 10.2 合并并验证 Production
+
+确认最新提交对应的 Quality、Deploy 和 Deployed smoke test 全部成功后，在 GitHub Pull Request 页面执行 Squash Merge。
+
+合并会同时产生两个事件：
+
+```text
+Pull Request closed
+→ Pull Request Delivery 运行 Close Preview
+→ 删除当前 PR 的临时环境
+
+main push
+→ Production Delivery 运行 Production deploy
+→ Production smoke test 访问正式站点
+```
+
+这两条 workflow 相互独立，可以同时运行。进入仓库的 Actions 页面分别检查：
+
+```text
+Pull Request Delivery
+└─ Close Preview             ✅
+
+Production Delivery
+├─ Production deploy         ✅
+└─ Production smoke test     ✅
+```
+
+Production Delivery 通过后，打开 Azure 返回的正式地址，确认站点可以访问；再进入 Azure Static Web Apps 的 Environments 页面，确认当前 Pull Request 对应的 Preview 已经删除。
+
+Production smoke test 是部署后的确认步骤。如果它失败，Production 已经完成更新，当前基础流程不会自动回滚。此时不能把 Step 05 标记为完成，需要定位失败原因；如果必须恢复旧版本，则从最新 `main` 创建 revert 分支，撤销有问题的 Squash Commit，再通过新的 Pull Request 完成检查和重新部署：
+
+```text
+定位有问题的 Squash Commit
+→ 创建 revert 分支
+→ 提交 revert
+→ 创建新的 Pull Request
+→ required checks 全部通过
+→ 合并并重新部署 Production
+```
+
+自动回滚、蓝绿发布和环境晋升不属于当前基础流程。
+
+#### 10.3 同步 main 并清理分支
+
+只有在 Production deploy、Production smoke test 和 Close Preview 全部成功后，才进行本地清理。
+
+先切换到本地 `main`，并快进到远程最新提交：
+
+```bash
+git checkout main
+git pull --ff-only
+```
+
+如果远程功能分支仍然存在，使用命令删除：
+
+```bash
+git push origin --delete ci/initial-delivery
+```
+
+Squash Merge 在 `main` 上创建了新的提交，功能分支原有 commit 不会成为 `main` 的直接祖先，因此使用 `-D` 删除本地功能分支：
+
+```bash
+git branch -D ci/initial-delivery
+git fetch --prune
+git status --short --branch
+```
+
+此时本地和远程的 `main` 已经包含 Step 05 的最终结果，临时 Preview 与功能分支也已经清理完成。
+
+### Step 05 完成状态
+
+```text
+⬜ 已建立 ci/initial-delivery 分支并通过初始本地检查
+⬜ 已理解 GitHub 平台、runner 与 Azure 的职责边界
+⬜ Pull Request workflow 可以响应 PR 创建和更新
+⬜ Quality job 已在远程 runner 中真实运行
+⬜ frontend-dist 可以在不同 job 之间传递
+⬜ React Router 页面回退规则已进入构建产物
+⬜ Azure Static Web Apps 资源和 Deployment Token 已建立
+⬜ Deploy job 已生成真实 Pull Request Preview
+⬜ Playwright 已支持 Local 和远程测试目标
+⬜ Deployed smoke test 已验证真实 Preview
+⬜ PR 关闭后可以自动清理 Preview
+⬜ main 的 required checks 已生效
+⬜ 失败的 Quality 检查能够阻止合并和部署
+⬜ Production workflow 已建立
+⬜ 最终 npm run check 通过
+⬜ README 已记录本步成功完成后的状态
+⬜ Pull Request 已通过 Squash Merge 进入 main
+⬜ Production deploy 和 Production smoke test 已通过
+⬜ Preview 已清理，Production URL 可以访问
+⬜ 本地 main 已同步，功能分支已清理
+```
