@@ -14,42 +14,36 @@ on:
       # 已关闭的 Pull Request 被重新打开
       - reopened
 
-# Quality job 只需要读取仓库代码
+# 当前 workflow 只需要读取仓库代码
 permissions:
   contents: read
 
 jobs:
-  # 在独立 runner 中重复项目的完整质量检查
+  # 先在独立 runner 中执行完整质量检查
   quality:
     name: Quality
     runs-on: ubuntu-latest
 
-    # runner 按照从上到下的顺序执行这些步骤
     steps:
-      # 把当前 Pull Request 接受检查的代码放入 runner
       - name: Check out pull request
         uses: actions/checkout@v7
 
-      # 配置项目使用的 Node.js，并启用 npm 下载缓存
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
 
-      # 按照 package-lock.json 安装项目依赖
       - name: Install dependencies
         run: npm ci
 
-      # 安装 Playwright E2E 测试所需的浏览器和系统依赖
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      # 执行 lint、组件测试、build 和 E2E 测试
       - name: Run complete quality check
         run: npm run check
 
-      # 保存通过检查的 dist，供后续 Deploy job 下载
+      # 保存通过检查的 dist，供 Deploy job 下载
       - name: Upload frontend build
         uses: actions/upload-artifact@v7
         with:
@@ -58,7 +52,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      # 检查失败时保存 Playwright 报告，供开发者排查
+      # 检查失败时保存 Playwright 报告
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -67,3 +61,33 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 7
+
+  # Quality 成功后，把同一份 dist 部署成 Azure Preview
+  deploy:
+    name: Deploy
+    needs:
+      - quality
+    runs-on: ubuntu-latest
+
+    # 把 Azure 返回的地址提供给后续远程测试 job
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.static_web_app_url }}
+
+    steps:
+      # 从当前 workflow 下载 Quality 保存的构建产物
+      - name: Download frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: dist
+
+      # 使用 Deployment Token 把已有 dist 上传到 Azure
+      - name: Deploy preview
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+          production_branch: main
