@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 test("loads the application shell", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page).toHaveTitle("Home | RoostMap");
+  await expect(page).toHaveTitle("Intentional CI failure");
 
   await expect(
     page.getByRole("heading", {
