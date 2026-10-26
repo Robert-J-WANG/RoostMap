@@ -49,81 +49,122 @@
 }
 
 :root {
-  --background: #f8fafc;
-  --foreground: #17222a;
+  --background: #f4f8f7;
+  --foreground: #102a2d;
 
   --card: #ffffff;
-  --card-foreground: #17222a;
+  --card-foreground: #102a2d;
 
   --popover: #ffffff;
-  --popover-foreground: #17222a;
+  --popover-foreground: #102a2d;
 
-  --primary: #0f766e;
-  --primary-foreground: #ffffff;
+  --primary: #0b766e;
+  --primary-foreground: #f7fffd;
 
-  --secondary: #e6f4f1;
-  --secondary-foreground: #134e4a;
+  --secondary: #dcefeb;
+  --secondary-foreground: #174f4b;
 
-  --muted: #edf2f4;
-  --muted-foreground: #52606d;
+  --muted: #e8f0ef;
+  --muted-foreground: #536a6b;
 
-  --accent: #ccfbf1;
-  --accent-foreground: #134e4a;
+  --accent: #c9ebe4;
+  --accent-foreground: #124b47;
 
-  --border: #d8e2e5;
-  --input: #cbd8dc;
-  --ring: #0f766e;
+  --destructive: #b5473c;
+  --border: #cedddb;
+  --input: #b8ceca;
+  --ring: #138a80;
+
+  --chart-1: #0f766e;
+  --chart-2: #2f6f9f;
+  --chart-3: #d18b2c;
+  --chart-4: #c45d55;
+  --chart-5: #7663a6;
+
+  --sidebar: #edf5f3;
+  --sidebar-foreground: #102a2d;
+  --sidebar-primary: #0b766e;
+  --sidebar-primary-foreground: #f7fffd;
+  --sidebar-accent: #dcefeb;
+  --sidebar-accent-foreground: #174f4b;
+  --sidebar-border: #cedddb;
+  --sidebar-ring: #138a80;
 
   --radius: 0.75rem;
 
   --content-max-width: 72rem;
   --page-gutter: clamp(1rem, 4vw, 2rem);
   --section-space: clamp(3rem, 8vw, 6rem);
-  --surface-shadow: 0 18px 45px rgb(15 118 110 / 0.08);
+  --page-glow: rgb(13 148 136 / 0.13);
+  --surface-shadow: 0 24px 60px rgb(16 42 45 / 0.1);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0b1719;
+  --foreground: #e7f2ef;
+
+  --card: #122326;
+  --card-foreground: #e7f2ef;
+
+  --popover: #15292c;
+  --popover-foreground: #e7f2ef;
+
+  --primary: #5fd3c4;
+  --primary-foreground: #07201e;
+
+  --secondary: #1b3638;
+  --secondary-foreground: #c5e2dc;
+
+  --muted: #182a2d;
+  --muted-foreground: #9fb4b2;
+
+  --accent: #214b49;
+  --accent-foreground: #d9f4ee;
+
+  --destructive: #ff8a7d;
+  --border: #294043;
+  --input: #365054;
+  --ring: #54c9ba;
+
+  --chart-1: #57c8b8;
+  --chart-2: #70a7d8;
+  --chart-3: #e6ad5c;
+  --chart-4: #ef8074;
+  --chart-5: #aa91d8;
+
+  --sidebar: #0f2023;
+  --sidebar-foreground: #e7f2ef;
+  --sidebar-primary: #5fd3c4;
+  --sidebar-primary-foreground: #07201e;
+  --sidebar-accent: #1b3638;
+  --sidebar-accent-foreground: #c5e2dc;
+  --sidebar-border: #294043;
+  --sidebar-ring: #54c9ba;
+
+  --page-glow: rgb(45 212 191 / 0.12);
+  --surface-shadow: 0 26px 70px rgb(0 0 0 / 0.32);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-attachment: fixed;
+    background-image: radial-gradient(
+      circle at 50% -12rem,
+      var(--page-glow),
+      transparent 42rem
+    );
+  }
+
+  body,
+  #root {
+    min-height: 100vh;
   }
 }

@@ -1173,45 +1173,108 @@ npx shadcn@latest add button
 > },
 > ```
 
-现在需要把 shadcn/ui 默认的中性色调整为 RoostMap 的蓝绿色视觉方向，同时建立统一的页面宽度和边距。在生成的 `:root` 中调整对应变量，并加入布局变量：
+现在需要把 shadcn/ui 默认的中性色调整为 RoostMap 的蓝绿色视觉方向，同时建立统一的页面宽度和边距。light 使用海岸薄雾般的浅灰绿背景和深青文字，dark 使用峡湾夜色般的深蓝绿背景和明亮青色交互状态；两者共享相同的语义层级，并使用暖色表达风险。在生成的主题区域中写入：
 
 ```css
 :root {
-  --background: #f8fafc;
-  --foreground: #17222a;
+  --background: #f4f8f7;
+  --foreground: #102a2d;
 
   --card: #ffffff;
-  --card-foreground: #17222a;
+  --card-foreground: #102a2d;
 
   --popover: #ffffff;
-  --popover-foreground: #17222a;
+  --popover-foreground: #102a2d;
 
-  --primary: #0f766e;
-  --primary-foreground: #ffffff;
+  --primary: #0b766e;
+  --primary-foreground: #f7fffd;
 
-  --secondary: #e6f4f1;
-  --secondary-foreground: #134e4a;
+  --secondary: #dcefeb;
+  --secondary-foreground: #174f4b;
 
-  --muted: #edf2f4;
-  --muted-foreground: #52606d;
+  --muted: #e8f0ef;
+  --muted-foreground: #536a6b;
 
-  --accent: #ccfbf1;
-  --accent-foreground: #134e4a;
+  --accent: #c9ebe4;
+  --accent-foreground: #124b47;
 
-  --border: #d8e2e5;
-  --input: #cbd8dc;
-  --ring: #0f766e;
+  --destructive: #b5473c;
+  --border: #cedddb;
+  --input: #b8ceca;
+  --ring: #138a80;
+
+  --chart-1: #0f766e;
+  --chart-2: #2f6f9f;
+  --chart-3: #d18b2c;
+  --chart-4: #c45d55;
+  --chart-5: #7663a6;
+
+  --sidebar: #edf5f3;
+  --sidebar-foreground: #102a2d;
+  --sidebar-primary: #0b766e;
+  --sidebar-primary-foreground: #f7fffd;
+  --sidebar-accent: #dcefeb;
+  --sidebar-accent-foreground: #174f4b;
+  --sidebar-border: #cedddb;
+  --sidebar-ring: #138a80;
 
   --radius: 0.75rem;
 
   --content-max-width: 72rem;
   --page-gutter: clamp(1rem, 4vw, 2rem);
   --section-space: clamp(3rem, 8vw, 6rem);
-  --surface-shadow: 0 18px 45px rgb(15 118 110 / 0.08);
+  --page-glow: rgb(13 148 136 / 0.13);
+  --surface-shadow: 0 24px 60px rgb(16 42 45 / 0.1);
+}
+
+.dark {
+  --background: #0b1719;
+  --foreground: #e7f2ef;
+
+  --card: #122326;
+  --card-foreground: #e7f2ef;
+
+  --popover: #15292c;
+  --popover-foreground: #e7f2ef;
+
+  --primary: #5fd3c4;
+  --primary-foreground: #07201e;
+
+  --secondary: #1b3638;
+  --secondary-foreground: #c5e2dc;
+
+  --muted: #182a2d;
+  --muted-foreground: #9fb4b2;
+
+  --accent: #214b49;
+  --accent-foreground: #d9f4ee;
+
+  --destructive: #ff8a7d;
+  --border: #294043;
+  --input: #365054;
+  --ring: #54c9ba;
+
+  --chart-1: #57c8b8;
+  --chart-2: #70a7d8;
+  --chart-3: #e6ad5c;
+  --chart-4: #ef8074;
+  --chart-5: #aa91d8;
+
+  --sidebar: #0f2023;
+  --sidebar-foreground: #e7f2ef;
+  --sidebar-primary: #5fd3c4;
+  --sidebar-primary-foreground: #07201e;
+  --sidebar-accent: #1b3638;
+  --sidebar-accent-foreground: #c5e2dc;
+  --sidebar-border: #294043;
+  --sidebar-ring: #54c9ba;
+
+  --page-glow: rgb(45 212 191 / 0.12);
+  --surface-shadow: 0 26px 70px rgb(0 0 0 / 0.32);
 }
 ```
 
-保留 shadcn/ui 生成的其他变量和 `@theme inline` 映射。以后组件使用 `bg-primary`、`text-muted-foreground` 和 `border-border` 等语义名称，不直接重复具体颜色。
+保留 `@theme inline` 映射。组件使用 `bg-primary`、`text-muted-foreground` 和 `border-border` 等语义名称，不直接重复具体颜色。`--page-glow` 为页面顶部提供克制的环境光，`--surface-shadow` 分别适配浅色和深色内容面；五个 chart token 为后续地图与图表保持一致的分类颜色。
 
 来源：[Tailwind Vite 配置](https://tailwindcss.com/docs/installation/using-vite)、[shadcn/ui Vite 配置](https://ui.shadcn.com/docs/installation/vite)
 
@@ -1727,19 +1790,149 @@ lg 及以上       Home 页面变为两列
 
 当前导航项目较少，移动端保持可换行导航，不引入汉堡菜单或 Drawer。
 
-### 8. 更新测试
+### 8. 建立明暗主题切换
 
-路由建立后，需要分别更新路由组件测试和端到端测试。两类测试关注不同层次：
+全局样式已经使用 `:root` 和 `.dark` 定义了 light 与 dark 两套语义颜色。页面组件只使用 `bg-background`、`text-foreground`、`bg-card` 等语义 token，不需要知道每种主题的具体颜色。现在还需要建立主题状态，决定浏览器当前使用哪一套 token。
+
+主题按下面的顺序确定：
+
+```text
+读取已经保存的用户选择
+→ 存在 light 或 dark 时直接使用
+→ 没有保存选择时读取操作系统 prefers-color-scheme
+→ 把结果应用到 html
+```
+
+用户点击切换按钮后，新的明确选择写入 `localStorage`。后续刷新或再次访问时优先恢复这个选择，不再由当时的系统主题覆盖。主题偏好只是界面设置，不包含收入、工作地点或计划数据，因此使用独立的 `ui-theme` key，不改变后续业务数据的保存规则。
+
+在 `src/app/theme/theme.ts` 中集中处理主题的读取、应用与保存：
+
+```ts
+export type Theme = "light" | "dark";
+
+export const THEME_STORAGE_KEY = "ui-theme";
+
+export function getInitialTheme(): Theme {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+
+  if (storedTheme) {
+    return storedTheme as Theme;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+export function getDocumentTheme(): Theme {
+  return document.documentElement.classList.contains("dark")
+    ? "dark"
+    : "light";
+}
+
+export function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
+}
+
+export function persistTheme(theme: Theme) {
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+}
+
+export function initialiseTheme() {
+  const theme = getInitialTheme();
+  applyTheme(theme);
+
+  return theme;
+}
+```
+
+`.dark` class 控制 Tailwind 的 dark variant 和项目的深色 CSS variables；`colorScheme` 让浏览器原生控件使用相同的明暗外观。
+
+主题应在 React 建立页面前应用。在 `src/main.tsx` 中导入并调用初始化函数：
+
+```ts
+import App from "@/app/App";
+import { initialiseTheme } from "@/app/theme/theme";
+import "./styles/index.css";
+
+initialiseTheme();
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+接着建立 `src/components/ThemeToggle.tsx`。组件从 `<html>` 的实际 class 初始化状态，并提前计算下一次点击要切换到的主题：
+
+```tsx
+import { useState } from "react";
+
+import { Moon, Sun } from "lucide-react";
+
+import {
+  applyTheme,
+  getDocumentTheme,
+  persistTheme,
+  type Theme,
+} from "@/app/theme/theme";
+import { Button } from "@/components/ui/button";
+
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(getDocumentTheme);
+  const nextTheme = theme === "light" ? "dark" : "light";
+  const title = `Switch to ${nextTheme} theme`;
+
+  function toggleTheme() {
+    applyTheme(nextTheme);
+    persistTheme(nextTheme);
+    setTheme(nextTheme);
+  }
+
+  return (
+    <Button
+      className="rounded-full"
+      onClick={toggleTheme}
+      size="icon"
+      title={title}
+      type="button"
+      variant="outline"
+    >
+      {theme === "light" ? <Moon /> : <Sun />}
+    </Button>
+  );
+}
+```
+
+按钮使用已有的 shadcn/ui `Button` 和 Lucide 图标，不增加新的依赖。圆形 outline 外观让主题入口在两套背景中都保持清楚，但不会压过主导航。把 `ThemeToggle` 放在 `AppShell` 的主导航旁后，所有位于共享布局中的页面都使用同一个主题入口：
+
+```tsx
+<div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+  <nav aria-label="Primary navigation">...</nav>
+  <ThemeToggle />
+</div>
+```
+
+移动端让导航与主题按钮占据可用宽度，桌面端恢复为内容宽度。主题切换只改变语义 token 对应的颜色，不改变页面结构、路由状态或业务数据。
+
+### 9. 更新测试
+
+路由、应用外壳和主题功能建立后，需要从三个层次验证它们的协作结果：
 
 ```text
 路由组件测试
 → 在 jsdom 中验证路由匹配、共享布局和错误边界
 
+主题工具与组件测试
+→ 验证主题来源、文档状态、切换行为和持久化
+
 端到端测试
-→ 在真实浏览器中验证页面加载、用户导航和 URL 变化
+→ 在真实浏览器中验证页面加载、用户导航、URL 变化和刷新后的主题
 ```
 
-#### 8.1 路由组件测试
+#### 9.1 路由组件测试
 
 Vitest 和 React Testing Library 使用 `createMemoryRouter` 在内存中模拟 URL，不需要启动开发服务器。当前测试会同时渲染路由、布局和页面，因此验证的是这些组件协作后的可见结果。
 
@@ -1879,9 +2072,41 @@ npm run test
 
 预期 `routes.test.tsx` 中的四个测试全部通过。
 
-#### 8.2 端到端测试
+#### 9.2 主题工具与组件测试
 
-组件测试可以快速验证路由结构，但不会启动真实浏览器。Playwright 从用户使用应用的角度检查完整页面，因此继续验证首页加载、导航链接和未知 URL。
+主题逻辑分为不依赖 React 的工具函数和用户直接操作的按钮组件，因此分别测试。
+
+`src/app/theme/theme.test.ts` 验证：
+
+```text
+localStorage 已保存 dark
+→ 不再读取系统主题
+→ 返回 dark
+
+localStorage 没有保存选择
+→ 系统主题为 dark
+→ 返回 dark
+
+初始化 dark
+→ html 获得 dark class
+→ color-scheme 变为 dark
+→ 再应用 light 时同时恢复 light 状态
+```
+
+`src/components/ThemeToggle.test.tsx` 从 light 状态渲染按钮并执行一次点击，确认四个结果保持一致：
+
+```text
+html 获得 dark class
+color-scheme 变为 dark
+localStorage 保存 dark
+按钮提示下一次将切换到 light
+```
+
+这些测试关注可观察的主题行为，不检查组件内部 state，也不比较具体颜色值。
+
+#### 9.3 端到端测试
+
+组件测试可以快速验证路由和主题逻辑，但不会启动真实浏览器。Playwright 从用户使用应用的角度检查完整页面，因此继续验证首页加载、导航链接、未知 URL，以及主题选择能否在刷新后保留。
 
 浏览器测试不再只针对首页，删除旧的只针对首页的测试文件：
 
@@ -1891,7 +2116,7 @@ rm tests/e2e/home.spec.ts
 
 新建浏览器测试 `tests/e2e/app-shell.spec.ts`。
 
-新的 E2E 测试覆盖三个真实页面行为：打开首页、通过导航进入 Methodology，以及直接访问未知 URL。根据这些行为，写入：
+新的 E2E 测试覆盖四个真实行为：打开首页、通过导航进入 Methodology、直接访问未知 URL，以及切换主题后刷新页面。根据这些行为，写入：
 
 ```ts
 import { expect, test } from "@playwright/test";
@@ -1946,9 +2171,23 @@ test("shows the not-found page for an unknown URL", async ({ page }) => {
   ).toBeVisible();
 });
 
+/* --------- 测试 4：明确选择的主题在刷新后保留 -------- */
+test("persists an explicit theme choice", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+
+  const switchToDark = page.getByTitle("Switch to dark theme");
+  await switchToDark.click();
+
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.reload();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect(page.getByTitle("Switch to light theme")).toBeVisible();
+});
+
 ```
 
-这些测试只验证页面行为，不检查 Tailwind class、像素位置或具体颜色，避免正常调整视觉样式时产生无意义的测试失败。
+这些测试验证页面行为和主题状态，不检查 Tailwind class、像素位置或具体颜色，避免正常调整视觉样式时产生无意义的测试失败。
 
 完成后单独运行端到端测试：
 
@@ -1956,11 +2195,11 @@ test("shows the not-found page for an unknown URL", async ({ page }) => {
 npm run test:e2e
 ```
 
-预期 Playwright 启动 Chromium，三个浏览器测试全部通过，并在结束后自动停止开发服务器。
+预期 Playwright 启动 Chromium，四个浏览器测试全部通过，并在结束后自动停止开发服务器。
 
-### 9. 验证应用外壳
+### 10. 验证应用外壳
 
-现在 UI、路由、错误处理和测试已经形成完整链路，可以执行统一质量检查：
+现在 UI、路由、主题、错误处理和测试已经形成完整链路，可以执行统一质量检查：
 
 ```bash
 npm run check
@@ -1970,7 +2209,7 @@ npm run check
 
 ```text
 ESLint
-Vitest route tests
+Vitest route and theme tests
 TypeScript + production build
 Playwright browser tests
 ```
@@ -1994,9 +2233,9 @@ npm run dev
 → Not Found 页面
 ```
 
-使用浏览器开发工具检查 390px、768px 和桌面宽度，确认 Header、内容区域和 Footer 没有重叠、截断或水平滚动。
+使用浏览器开发工具检查 390px、768px 和桌面宽度，确认 Header、主题按钮、内容区域和 Footer 没有重叠、截断或水平滚动。再切换一次主题并刷新页面，确认所有现有页面使用同一主题且明确选择能够保留。
 
-### 10. 更新 README 项目状态
+### 11. 更新 README 项目状态
 
 验证全部通过后，README 应直接记录 Step 04 已经实现的结果。将 `Current status` 更新为：
 
@@ -2005,12 +2244,12 @@ npm run dev
 
 The React application foundation, automated test foundation and responsive product shell are in place.
 
-The application currently includes client-side routing for Home and Methodology, shared Header, Main and Footer structure, unknown-route and route-error handling, Tailwind CSS design tokens, and project-owned shadcn/ui components. The complete local quality check covers linting, component tests, the production build and Playwright browser tests.
+The application currently includes client-side routing for Home and Methodology, shared Header, Main and Footer structure, unknown-route and route-error handling, a system-aware light and dark theme with saved user preference, Tailwind CSS design tokens, and project-owned shadcn/ui components. The complete local quality check covers linting, component tests, the production build and Playwright browser tests.
 ```
 
 README 的其他内容继续保留。
 
-### 11. Git 提交
+### 12. Git 提交
 
 代码、测试、浏览器检查和 README 状态一致后，提交本步成果：
 
@@ -2023,9 +2262,9 @@ git push -u origin feat/app-shell
 Pull Request 记录：
 
 - Tailwind CSS 和 shadcn/ui 已配置；
-- 设计 token 和响应式应用外壳已建立；
+- 设计 token、响应式应用外壳和明暗主题切换已建立；
 - Home、Methodology、404 和页面错误边界已建立；
-- 路由组件测试和浏览器测试已加入；
+- 路由、主题工具、主题组件和浏览器测试已加入；
 - `npm run check` 已通过。
 
 完成检查后 squash merge，并同步本地 `main`：
@@ -2043,12 +2282,13 @@ git branch -D feat/app-shell
 ⬜ Tailwind CSS Vite 插件已经配置
 ⬜ shadcn/ui 已初始化并加入当前需要的组件
 ⬜ 基础视觉 token 和页面布局规则已经建立
+⬜ 首次访问跟随系统主题，用户可以明确切换并保存 light 或 dark
 ⬜ AppShell 和 RootLayout 已建立
 ⬜ Home、Methodology 和 Not Found 页面已建立
 ⬜ React Router 和页面标题已经配置
 ⬜ 404 与页面错误边界已经建立
 ⬜ 桌面与移动端布局可用
-⬜ 路由组件测试和 Playwright 测试已更新
+⬜ 路由、主题工具、主题组件和 Playwright 测试已更新
 ⬜ npm run check 通过
 ⬜ README 已记录 Step 04 完成后的状态
 ⬜ 应用外壳已通过 Pull Request 合并到 main
