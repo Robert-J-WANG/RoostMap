@@ -354,38 +354,16 @@ export type RentalArea = {
 
 ### 2.2 分类规范
 
-Dwelling Type 允许值：
-
-```text
-ALL
-Apartment
-Boarding House
-Flat
-House
-Room
-```
-
-Bedroom Category 允许值：
-
-```text
-ALL
-1
-2
-3
-4
-5+
-NA
-```
+`Dwelling Type` 和 `Number Of Beds` 使用官方源文件中的分类值。数据处理不得根据名称相似自行合并、改写或推断分类含义。
 
 处理规则：
 
 - 原始类别只做精确映射。
-- `NULL`、`-99` 和空 Location Id 不进入发布数据。
-- `0`、`5`、`6`、`7`、`8`、`9`、`15` 等不等同于来源中的 `5+` 汇总类别，进入 rejected records。
+- 完整源值经过 profiling 后，再根据产品需要确定发布分类，并写入版本化的数据 contract。
+- 指定数据切片缺失时显示缺失状态，不回退到其他房型或卧室类别。
 - 有效记录复合键为 `period + sa2Id + dwellingType + bedrooms`。
 - 重复复合键使构建失败。
-- 指定数据切片缺失时显示缺失状态，不回退到其他房型或卧室类别。
-- 默认切片为 `dwellingType=ALL`、`bedrooms=ALL`。
+- 默认筛选使用数据 contract 中明确表示全部住宅类型和全部卧室的源分类。
 
 ### 2.3 标准化数据模型
 
@@ -393,14 +371,8 @@ NA
 export type RentalObservation = {
   period: string;
   sa2Id: string;
-  dwellingType:
-    | "ALL"
-    | "Apartment"
-    | "Boarding House"
-    | "Flat"
-    | "House"
-    | "Room";
-  bedrooms: "ALL" | "1" | "2" | "3" | "4" | "5+" | "NA";
+  dwellingType: string;
+  bedrooms: string;
   reportedBonds: number;
   medianRent: number | null;
   geometricMeanRent: number | null;

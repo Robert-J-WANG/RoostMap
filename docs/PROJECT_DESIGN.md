@@ -155,25 +155,7 @@ Land area
 
 来源：[Stats NZ SA2 Higher Geographies 2019](https://datafinder.stats.govt.nz/layer/98779-statistical-area-2-higher-geographies-2019-generalised/)
 
-### 2.2 已核查的 MBIE 样本基线
-
-截至 2026-09-30 的下载样本：
-
-| 项目 | 结果 |
-|---|---:|
-| 原始记录数 | 226,080 |
-| 季度数量 | 26 |
-| 时间范围 | 2020-01-01 至 2026-04-01 |
-| 原始位置标识数量 | 2,011 |
-| 无效 Location Id | `NULL`、`-99` |
-| 无效位置记录数 | 1,885 |
-| 原始租金指标缺失数 | 803 |
-| 有效位置中的租金指标缺失数 | 9 |
-| Dwelling Type 数量 | 6 |
-
-这些数字是源结构变化检测基线，不作为永久业务常量。每次更新重新计算质量报告。官方页面标记 provisional 时，产品在数据周期和 Methodology 页面同步展示。
-
-### 2.3 地理与分类规则
+### 2.2 地理与分类规则
 
 - `sa2Id` 是租金区域、地图 feature、详情页、比较、计划和分享使用的统一业务标识。
 - MBIE `Location Id` 只与 Stats NZ SA2 2019 geometry 关联，不额外构造 suburb 边界。
@@ -183,9 +165,9 @@ Land area
 - Dwelling Type 与 Bedroom Category 只按官方源值精确映射；缺失切片保持缺失，不借用其他类别的数据。
 - 默认租金切片为全部 dwelling types 和全部 bedrooms；用户改变筛选后，地图、列表、详情、图表和比较必须使用同一切片。
 
-完整字段、分类允许值、拒绝规则、数据 contract、分片和质量门禁见 `docs/TECHNICAL_SPEC.md`。
+完整字段、分类映射、数据 contract、分片和质量门禁见 `docs/TECHNICAL_SPEC.md`。
 
-### 2.4 数据解释边界
+### 2.3 数据解释边界
 
 - Median Rent 表示选定季度和租房类别的每周租金中位数。
 - Geometric Mean Rent 用于历史趋势和同比计算。
