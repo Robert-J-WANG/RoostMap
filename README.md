@@ -2,14 +2,6 @@
 
 RoostMap is a New Zealand rental-area affordability and commute analysis platform. It uses official rental and statistical geography data to help renters compare areas, understand historical rent trends and evaluate housing costs alongside commuting requirements.
 
-## Current status
-
-The React application foundation, automated test foundation, responsive product shell and continuous delivery foundation are in place.
-
-The application includes client-side routing for Home and Methodology, a shared Header, Main and Footer structure, unknown-route and route-error handling, a system-aware light and dark theme with saved user preference, Tailwind CSS design tokens, and project-owned shadcn/ui components.
-
-The complete quality pipeline covers linting, component tests, the production build and Playwright browser tests. Pull requests deploy and verify Azure Static Web Apps previews; updates merged into main trigger a fresh production build, production deployment and deployed smoke test. The delivery configuration also provides SPA fallback, basic response headers, failed-test diagnostics and automatic preview cleanup.
-
 ## Planned product capabilities
 
 - Explore rental areas using an interactive map
@@ -31,7 +23,7 @@ Publishable geographic coverage will be determined by successfully joining valid
 
 ## Project documentation
 
-This README records the public summary of the project's implemented state. The detailed documents have separate responsibilities:
+The project documents have separate responsibilities:
 
 - [Project design](docs/PROJECT_DESIGN.md) — intended product scope, data meaning and user experience
 - [Technical specification](docs/TECHNICAL_SPEC.md) — architecture, contracts and delivery constraints

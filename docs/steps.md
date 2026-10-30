@@ -4105,3 +4105,1022 @@ git status --short --branch
 ⬜ Preview 已清理，Production URL 可以访问
 ⬜ 本地 main 已同步，功能分支已清理
 ```
+
+## Step 06 · 验证租金数据与 SA2 关联
+
+### 这一步做什么
+
+前面的步骤已经建立了应用外壳和交付流程，但 RoostMap 还没有经过验证的地区租金数据。要继续实现核心功能，首先要确认两份官方数据能否正确关联。
+
+MBIE 的 Rental Bond Data 按季度记录租金统计，其中使用 `Location Id` 表示地区。Stats NZ 的 SA2 2019 数据记录统计区域的编号、名称和边界。两份数据各自提供了一部分信息：
+
+```text
+MBIE Rental Bond Data
+└─ 地区对应的租金统计
+
+Stats NZ SA2 2019
+└─ 地区编号、名称和边界
+```
+
+如果 MBIE 的 `Location Id` 与 Stats NZ 的 SA2 编号表示同一个地区，就可以把租金统计与地区信息连接起来：
+
+```text
+MBIE Location Id
+        ↓
+Stats NZ SA2 编号
+        ↓
+租金统计 + 地区名称 + 地区边界
+```
+
+字段名称和编号形式相似，只能说明它们可能有关联，不能证明全国数据都能正确对应。因此，本步需要检查真实文件的字段和取值，找出可以参与关联的 MBIE 记录，再验证这些记录能否找到对应的 SA2 和地区边界。
+
+本步完成时，需要能够根据实际检查结果回答：
+
+```text
+哪些 MBIE 记录可以参与 SA2 关联？
+这些记录能否找到对应的 SA2？
+对应的 SA2 是否包含地区边界？
+有多少记录成功关联、不能参与关联或没有找到对应地区？
+```
+
+这些结果将决定当前两份官方数据能否支持 RoostMap 的地区租金功能。
+
+### 1. 创建数据关联验证分支
+
+本步要验证一条尚未确认的数据关联，因此使用独立的 `spike/data-join` 分支进行。`spike` 表示这次工作用于验证技术可行性，`data-join` 表示验证对象是两份数据的关联。
+
+在项目根目录执行：
+
+```bash
+git switch -c spike/data-join
+git status -sb
+```
+
+Git 创建并切换到新分支：
+
+```text
+Switched to a new branch 'spike/data-join'
+```
+
+`git status -sb` 的分支行显示：
+
+```text
+## spike/data-join
+```
+
+当前工作已经进入独立分支。接下来先取得需要检查的两份官方文件，再根据文件中的真实内容判断它们能否关联。
+
+### 2. 取得并核对两份官方数据
+
+分支准备完成后，首先要取得待验证的真实数据。
+
+项目使用 `data/raw/` 保存下载的原始文件，并按来源分成两个目录：
+
+```text
+data/raw/
+├─ mbie/
+└─ stats-nz/
+```
+
+先建立这两个目录：
+
+```bash
+mkdir -p data/raw/mbie
+mkdir -p data/raw/stats-nz
+```
+
+#### 2.1 取得 MBIE 租金数据
+
+进入 MBIE 的 [Rental Bond Data](https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/) 页面，下载 detailed quarterly tenancy CSV，并保存为：
+
+```text
+data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+```
+
+下载完成后，先确认它确实是 CSV，再记录行数和 SHA-256：
+
+```bash
+file data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+wc -l data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+shasum -a 256 data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+```
+
+终端返回：
+
+```text
+data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv: CSV text
+226081 data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+b40a39a0ce899362df5da729ed38cf8962cc31058910693aa2301feb9d0be80e
+```
+
+当前文件共有 226,081 行。SHA-256 用来标识这次检查所使用的具体文件；即使以后下载到同名文件，也可以通过哈希值判断内容是否发生变化。文件内部的表头和记录结构将在确认来源文件后继续检查。
+
+#### 2.2 取得 Stats NZ SA2 数据
+
+进入 Stats NZ Datafinder 的 [Statistical Area 2 Higher Geographies 2019 Generalised](https://datafinder.stats.govt.nz/layer/98779-statistical-area-2-higher-geographies-2019-generalised/) 页面，创建以下导出：
+
+```text
+Vector format: GeoPackage / SQLite
+Coordinate reference system: WGS 84 (EPSG:4326)
+```
+
+GeoPackage 可以在一个文件中保存 SA2 属性和边界。导出的 ZIP 保存为：
+
+```text
+data/raw/stats-nz/statsnz-statistical-area-2-higher-geographies-2019-generalised-GPKG.zip
+```
+
+检查下载文件的类型、SHA-256 和压缩包内容：
+
+```bash
+file data/raw/stats-nz/statsnz-statistical-area-2-higher-geographies-2019-generalised-GPKG.zip
+shasum -a 256 data/raw/stats-nz/statsnz-statistical-area-2-higher-geographies-2019-generalised-GPKG.zip
+unzip -l data/raw/stats-nz/statsnz-statistical-area-2-higher-geographies-2019-generalised-GPKG.zip
+```
+
+结果表明它是有效的 ZIP，SHA-256 为：
+
+```text
+f2f92af77d426b4d3c82975bfbc07d90264a6360f36639988dff19e1c71db220
+```
+
+压缩包中包含一个 GeoPackage 和四个来源说明文件：
+
+```text
+anzlic-metadata-2019-statistical-area-2.pdf
+statistical-area-2-higher-geographies-2019-generalised-ISO.pdf
+statistical-area-2-higher-geographies-2019-generalised.gpkg
+statistical-area-2-higher-geographies-2019-generalised.txt
+statistical-area-2-higher-geographies-2019-generalised.xml
+```
+
+将这些文件解压到独立目录，再确认 GeoPackage 的文件类型：
+
+```bash
+mkdir -p data/raw/stats-nz/sa2-2019
+unzip -q \
+  data/raw/stats-nz/statsnz-statistical-area-2-higher-geographies-2019-generalised-GPKG.zip \
+  -d data/raw/stats-nz/sa2-2019
+
+file data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg
+```
+
+终端确认该文件是 OGC GeoPackage 使用的 SQLite 数据库：
+
+```text
+SQLite 3.x database (OGC GeoPackage file)
+```
+
+到这里可以确认，MBIE 文件是 CSV，Stats NZ 文件包含二进制 GeoPackage。它们都是保持原样的官方输入，不适合反复写入 Git 历史，因此仓库通过 `.gitignore` 排除整个 raw 目录：
+
+```gitignore
+data/raw/
+```
+
+现在已经取得并核对了两份原始输入：一份 MBIE 租金 CSV 和一份 Stats NZ SA2 GeoPackage。文件类型和哈希值只能证明下载内容明确且可以读取；要判断它们能否关联，还需要继续检查两份文件内部的字段和数据结构。
+
+### 3. 理解两份数据的结构
+
+两份来源文件已经确认可以读取，但文件类型和哈希值无法说明内部字段能否关联。接下来分别查看它们的结构，先找出可能连接两份数据的字段。
+
+#### 3.1 检查 MBIE CSV
+
+先查看 CSV 的表头和前三条数据：
+
+```bash
+head -n 4 data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+```
+
+输出为：
+
+```csv
+TimeFrame,Location Id,Dwelling Type,Number Of Beds,Total Bonds,Active Bonds,Closed Bonds,Median Rent,Geometric Mean Rent,Upper Quartile Rent,Lower Quartile Rent,Log Std Dev Weekly Rent
+2026-04-01,NULL,ALL,1,2064,19563,1176,NULL,NULL,NULL,NULL,NULL
+2026-04-01,-99,ALL,1,22014,113820,6969,550,522,660,450,0.4144
+2026-04-01,100100,ALL,1,6,9,0,425,408,475,370,0.2834
+```
+
+CSV 有 12 个字段，可以分成四组：
+
+```text
+时间
+└─ TimeFrame
+
+地区和住宅分类
+├─ Location Id
+├─ Dwelling Type
+└─ Number Of Beds
+
+租赁债券数量
+├─ Total Bonds
+├─ Active Bonds
+└─ Closed Bonds
+
+租金统计
+├─ Median Rent
+├─ Geometric Mean Rent
+├─ Upper Quartile Rent
+├─ Lower Quartile Rent
+└─ Log Std Dev Weekly Rent
+```
+
+前三条数据已经显示出不同形式的 `Location Id`：`NULL`、`-99` 和六位编号 `100100`。其中一些租金字段也可能是 `NULL`。这几行只能说明这些值确实存在，尚不能说明它们在全国文件中出现多少次或应该怎样处理。
+
+字段名称还不能完整说明统计口径，因此需要同时阅读下载页面的说明。MBIE 说明这份数据：
+
+- 来自登记到 tenancy bond database 的私人租赁债券；
+- 按 tenancy start date 统计；
+- 使用 Stats NZ 的 SA2 2019 地区定义；
+- 因新旧 bond management systems 的迁移和数据整理而处于 provisional 状态，后续可能修订；
+- 对数量使用以 3 为基数的 fixed random rounding，并在某个选择少于 5 个 bonds 时抑制结果。
+
+这些说明确认 `Location Id` 与 SA2 2019 有直接关系，也说明当前数据不能被理解为未经处理的精确个案记录。CSV 中实际包含哪些位置编号和分类值，仍需要根据整个文件继续检查。
+
+#### 3.2 检查 Stats NZ GeoPackage
+
+解压目录中的说明文件指出，这份数据保存 Stats NZ 在 2019 年定义的 SA2 边界，并把每个 SA2 对应到 territorial authority 和 regional council。当前导出已经转换为 WGS 84。
+
+GeoPackage 本身是 SQLite 数据库。先查询 `gpkg_contents` 和 `gpkg_geometry_columns`，确认实际业务表和 geometry 定义：
+
+```bash
+sqlite3 -header -column \
+  data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg \
+  "SELECT table_name, data_type, srs_id FROM gpkg_contents;"
+
+sqlite3 -header -column \
+  data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg \
+  "SELECT column_name, geometry_type_name, srs_id
+   FROM gpkg_geometry_columns;"
+```
+
+查询结果为：
+
+```text
+table_name                                              data_type  srs_id
+------------------------------------------------------  ---------  ------
+statistical_area_2_higher_geographies_2019_generalised  features   4326
+
+column_name  geometry_type_name  srs_id
+-----------  ------------------  ------
+geom         MULTIPOLYGON        4326
+```
+
+`features` 表示该表保存地理要素。`geom` 使用 `MULTIPOLYGON`，因为一个 SA2 可能由一个或多个多边形组成。`srs_id` 为 `4326`，与下载时选择的 WGS 84 导出坐标系统一致。
+
+知道表名后，再查看业务表的字段：
+
+```bash
+sqlite3 -header -column \
+  data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg \
+  "PRAGMA table_info('statistical_area_2_higher_geographies_2019_generalised');"
+```
+
+与当前关联有关的字段包括：
+
+```text
+SA22019_V1_00        SA2 2019 编号
+SA22019_V1_00_NAME   SA2 名称
+TA2019_V1_00         territorial authority 编号
+TA2019_V1_00_NAME    territorial authority 名称
+REGC2019_V1_00       regional council 编号
+REGC2019_V1_00_NAME  regional council 名称
+LAND_AREA_SQ_KM      陆地面积
+geom                 SA2 边界
+```
+
+查看几条记录，可以确认这些字段共同描述一个 SA2 及其上级地区：
+
+```bash
+sqlite3 -header -column \
+  data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg \
+  "SELECT
+     SA22019_V1_00 AS sa2_code,
+     SA22019_V1_00_NAME AS sa2_name,
+     TA2019_V1_00_NAME AS territorial_authority,
+     REGC2019_V1_00_NAME AS region,
+     CASE
+       WHEN geom IS NULL OR length(geom) = 0 THEN 'empty'
+       ELSE 'present'
+     END AS geometry
+   FROM statistical_area_2_higher_geographies_2019_generalised
+   ORDER BY SA22019_V1_00
+   LIMIT 5;"
+```
+
+输出为：
+
+```text
+sa2_code  sa2_name                   territorial_authority  region            geometry
+--------  -------------------------  ---------------------  ----------------  --------
+100100    North Cape                 Far North District     Northland Region  present
+100200    Rangaunu Harbour           Far North District     Northland Region  present
+100300    Inlets Far North District  Far North District     Northland Region  present
+100400    Karikari Peninsula         Far North District     Northland Region  present
+100500    Tangonge                   Far North District     Northland Region  present
+```
+
+最后统计 SA2 编号和空 geometry：
+
+```bash
+sqlite3 -header -column \
+  data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg \
+  "SELECT
+     COUNT(*) AS total_rows,
+     COUNT(DISTINCT SA22019_V1_00) AS distinct_sa2_codes,
+     SUM(
+       CASE
+         WHEN SA22019_V1_00 IS NULL OR TRIM(SA22019_V1_00) = '' THEN 1
+         ELSE 0
+       END
+     ) AS missing_sa2_codes,
+     SUM(
+       CASE
+         WHEN geom IS NULL OR length(geom) = 0 THEN 1
+         ELSE 0
+       END
+     ) AS empty_geometry
+   FROM statistical_area_2_higher_geographies_2019_generalised;"
+```
+
+得到：
+
+```text
+total_rows  distinct_sa2_codes  missing_sa2_codes  empty_geometry
+----------  ------------------  -----------------  --------------
+2255        2255                0                  16
+```
+
+GeoPackage 中共有 2,255 条记录，每条记录都有不同且非空的 SA2 编号；其中 16 条记录的 `geom` 为空。这里的查询只检查 geometry 字段是否存在内容，没有判断多边形本身是否有效。
+
+MBIE 官方说明表明租金数据使用 SA2 2019 地区定义，Stats NZ 表中对应的编号字段是 `SA22019_V1_00`，因此可以提出下面的关联假设：
+
+```text
+MBIE Location Id = Stats NZ SA22019_V1_00
+```
+
+当前只确认了候选关联字段。MBIE 样本中已经出现 `NULL`、`-99` 和六位编号，而 Stats NZ 也有少量空 geometry；在决定哪些记录可以参与关联之前，还需要先了解这些情况在完整数据中的分布。
+
+### 4. 对 MBIE 全国数据进行 profiling
+
+上一节只查看了 CSV 的前三条记录，因此只能确认 `Location Id` 中出现了 `NULL`、`-99` 和六位编号。要判断候选关联字段是否适用于完整数据，还需要知道整个文件包含多少条记录、覆盖哪些季度，以及地区和住宅分类实际有哪些取值。
+
+这些统计都来自同一个 CSV，并且在源文件更新后还要重新检查。这里建立一个小型 profiling 脚本，把同一组检查保存在一起并允许再次运行。profiling 只描述源数据中存在什么，不在读取数据的同时决定保留或删除哪些记录。
+
+#### 4.1 读取完整 CSV
+
+CSV 字段可能使用引号包裹，字段内容也可能包含逗号，因此不能依靠 `split(",")` 可靠地拆分每一行。项目现有依赖没有提供 CSV 解析功能，于是加入只供本地数据脚本使用的 `csv-parse`：
+
+```bash
+npm install -D csv-parse
+npm ls csv-parse
+```
+
+安装结果确认当前版本为：
+
+```text
+roostmap@0.0.0
+└── csv-parse@7.0.3
+```
+
+`csv-parse` 在这里负责把 CSV 行转换成以表头为属性名的对象。它属于开发依赖，不会进入浏览器应用的运行代码。
+
+建立脚本目录，并创建 `data/scripts/profile-mbie.mjs`：
+
+```bash
+mkdir -p data/scripts
+```
+
+脚本先回答最基础的问题：文件能否完整读取、共有多少条记录、覆盖多少个季度。
+
+```js
+import { createReadStream } from "node:fs";
+
+import { parse } from "csv-parse";
+
+const mbieFileUrl = new URL(
+  "../raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
+  import.meta.url,
+);
+
+function sourceValue(record, field) {
+  return String(record[field] ?? "").trim();
+}
+
+let inputRecords = 0;
+const periods = new Set();
+
+const parser = createReadStream(mbieFileUrl).pipe(
+  parse({
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+  }),
+);
+
+for await (const record of parser) {
+  inputRecords += 1;
+  const period = sourceValue(record, "TimeFrame");
+  periods.add(period);
+}
+
+const sortedPeriods = [...periods].sort();
+
+console.log(
+  JSON.stringify(
+    {
+      inputRecords,
+      periods: {
+        count: sortedPeriods.length,
+        start: sortedPeriods.at(0),
+        end: sortedPeriods.at(-1),
+      },
+    },
+    null,
+    2,
+  ),
+);
+```
+
+`bom: true` 允许解析器去掉文件开头可能存在的 UTF-8 BOM；`columns: true` 使用第一行表头建立记录对象；`skip_empty_lines: true` 忽略完全空白的行。脚本使用 stream 逐条读取，不需要先把整个文件放进内存。
+
+运行第一版脚本：
+
+```bash
+node data/scripts/profile-mbie.mjs
+```
+
+得到：
+
+```json
+{
+  "inputRecords": 226080,
+  "periods": {
+    "count": 26,
+    "start": "2020-01-01",
+    "end": "2026-04-01"
+  }
+}
+```
+
+完整文件包含 226,080 条记录和 26 个季度。按字符串排序能够得到正确的起止时间，是因为 `TimeFrame` 统一使用 `YYYY-MM-DD` 格式。
+
+#### 4.2 查看分类字段的完整取值
+
+上面已经确认 CSV 包含 226,080 条记录和 26 个季度。记录数量远大于地区数量，是因为同一个季度、同一个地区还会按照住宅类型和卧室数量分别统计。现在需要回答的是：这三个分类字段在完整文件中到底出现了哪些取值？
+
+```text
+Location Id     地区编号
+Dwelling Type   住宅类型
+Number Of Beds  卧室分类
+```
+
+这里关注的是“有哪些不同值”，不需要保存同一个值出现的每一次。JavaScript 的 `Set` 只保留不同值，适合在逐条读取 CSV 时收集这些分类。
+
+profiling 脚本的读取过程因此扩展为：
+
+```text
+读取开始前建立 Set
+        ↓
+每读到一条 record，就把当前分类值放入 Set
+        ↓
+文件读取结束后，再整理 Set 中的完整结果
+```
+
+这些 `Set` 要和现有的 `periods` 一样，在读取循环开始前创建。它们会在整个读取过程中持续累积数据：
+
+```js
+let inputRecords = 0;
+
+const periods = new Set();
+const locationIds = new Set();
+const dwellingTypes = new Set();
+const bedroomCategories = new Set();
+```
+
+循环中的 `record` 表示当前读到的一条 CSV 记录。先从这条记录取得四个字段值，再分别交给对应的 `Set`：
+
+```js
+for await (const record of parser) {
+  inputRecords += 1;
+
+  const period = sourceValue(record, "TimeFrame");
+  const locationId = sourceValue(record, "Location Id");
+  const dwellingType = sourceValue(record, "Dwelling Type");
+  const bedrooms = sourceValue(record, "Number Of Beds");
+
+  periods.add(period);
+  locationIds.add(locationId);
+  dwellingTypes.add(dwellingType);
+  bedroomCategories.add(bedrooms);
+}
+```
+
+`record` 只在循环的花括号内存在，所以字段读取必须在循环内完成。循环每运行一次就处理一条记录；`Set` 遇到已经存在的值时不会重复保存。读取完 226,080 条记录后，四个 `Set` 中留下的就是完整文件里的不同取值。
+
+此时循环已经结束，可以像整理季度一样整理另外三个结果。`Location Id` 暂时只统计不同值的数量；住宅类型和卧室分类数量较少，可以排序后完整输出：
+
+```js
+const sortedPeriods = [...periods].sort();
+
+console.log(
+  JSON.stringify(
+    {
+      inputRecords,
+      periods: {
+        count: sortedPeriods.length,
+        start: sortedPeriods.at(0),
+        end: sortedPeriods.at(-1),
+      },
+      distinctLocationIds: locationIds.size,
+      dwellingTypes: [...dwellingTypes].sort(),
+      bedroomCategories: [...bedroomCategories].sort((left, right) =>
+        left.localeCompare(right, "en-NZ", { numeric: true }),
+      ),
+    },
+    null,
+    2,
+  ),
+);
+```
+
+`distinctLocationIds`、`dwellingTypes` 和 `bedroomCategories` 描述的是整个文件，与 `periods` 是并列的汇总结果。`localeCompare()` 使用数字顺序排列卧室值，避免普通字符串排序把 `15` 放在 `2` 前面。
+
+再次运行脚本：
+
+```bash
+node data/scripts/profile-mbie.mjs
+```
+
+新增统计为：
+
+```json
+{
+  "distinctLocationIds": 2011,
+  "dwellingTypes": [
+    "ALL",
+    "Apartment",
+    "Boarding House",
+    "Flat",
+    "House",
+    "Room"
+  ],
+  "bedroomCategories": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "5+",
+    "6",
+    "7",
+    "8",
+    "9",
+    "15",
+    "ALL",
+    "NA"
+  ]
+}
+```
+
+完整文件共有 2,011 种 `Location Id`、6 种住宅类型和 14 种卧室取值。`5` 与 `5+` 同时存在，说明它们是源数据中的两个独立分类；profiling 先保留并展示这些原始差异，不在观察数据之前改变分类含义。
+
+#### 4.3 分开统计不同形式的 Location Id
+
+4.2 得到 2,011 种 `Location Id`，但这个总数没有说明这些值是否都具有 Stats NZ SA2 编号的形式。第 3 节提出的关联假设要求两边编号能够对应，因此现在需要进一步看清 `Location Id` 的组成。
+
+这里需要回答两个问题：
+
+```text
+不同的 Location Id 有多少种？
+每种 Location Id 在 CSV 中出现多少行？
+```
+
+`locationIds` 这个 `Set` 已经能够回答第一个问题。`Set` 不保存重复次数，因此第二个问题需要使用 `Map`，建立“原始值 → 出现行数”的对应关系。
+
+profiling 脚本的读取过程继续沿用 4.2 的三个阶段：
+
+```text
+循环前：建立 Map，保存整个文件的计数
+循环中：读取当前 locationId，并把对应次数加 1
+循环后：根据完整统计分析编号形式并输出
+```
+
+`locationIdCounts` 需要跨越全部记录持续累计，因此和几个 `Set` 一起在读取循环之前创建。此时这一组状态变量是：
+
+```js
+let inputRecords = 0;
+
+const periods = new Set();
+const locationIds = new Set();
+const locationIdCounts = new Map();
+const dwellingTypes = new Set();
+const bedroomCategories = new Set();
+```
+
+循环读到当前记录后，`locationId` 已经从 `record` 中取得。除了把它交给 `locationIds` 去重，还要在 `locationIdCounts` 中更新出现次数。此时完整的读取循环是：
+
+```js
+for await (const record of parser) {
+  inputRecords += 1;
+
+  const period = sourceValue(record, "TimeFrame");
+  const locationId = sourceValue(record, "Location Id");
+  const dwellingType = sourceValue(record, "Dwelling Type");
+  const bedrooms = sourceValue(record, "Number Of Beds");
+
+  periods.add(period);
+  locationIds.add(locationId);
+  locationIdCounts.set(
+    locationId,
+    (locationIdCounts.get(locationId) ?? 0) + 1,
+  );
+  dwellingTypes.add(dwellingType);
+  bedroomCategories.add(bedrooms);
+}
+```
+
+第一次遇到某个 `locationId` 时，`Map.get()` 得到 `undefined`，`?? 0` 把它作为 `0` 次处理，然后加 `1`。再次遇到相同值时，脚本会在原有次数上继续累加。
+
+文件读取结束后，`locationIds` 已经包含所有不同值，`locationIdCounts` 也已经保存每个值的出现行数。Stats NZ 样本中的 SA2 编号是六位数字，因此在循环结束后检查哪些 MBIE 值具有相同形式：
+
+```js
+const sortedPeriods = [...periods].sort();
+
+const sixDigitLocationIds = [...locationIds].filter((locationId) =>
+  /^\d{6}$/.test(locationId),
+);
+
+const otherNonSixDigitLocationIds = [...locationIds].filter(
+  (locationId) =>
+    !/^\d{6}$/.test(locationId) &&
+    locationId !== "-99" &&
+    locationId !== "NULL" &&
+    locationId !== "",
+);
+```
+
+正则表达式 `/^\d{6}$/` 要求整个字符串正好由六位数字组成。另一个列表排除六位编号以及样本中已经见过的 `-99`、`NULL` 和空字符串，用来发现是否还存在没有注意到的其他形式。
+
+原来的 `distinctLocationIds` 只能输出一个总数。现在把位置编号信息整理成 `locationIdProfile`。它和 `periods`、`dwellingTypes`、`bedroomCategories` 仍然是并列的汇总结果：
+
+```js
+console.log(
+  JSON.stringify(
+    {
+      inputRecords,
+      periods: {
+        count: sortedPeriods.length,
+        start: sortedPeriods.at(0),
+        end: sortedPeriods.at(-1),
+      },
+      locationIdProfile: {
+        distinctValues: locationIds.size,
+        sixDigitCandidateValues: sixDigitLocationIds.length,
+        exactValueRows: {
+          "-99": locationIdCounts.get("-99") ?? 0,
+          NULL: locationIdCounts.get("NULL") ?? 0,
+          blank: locationIdCounts.get("") ?? 0,
+        },
+        otherNonSixDigitValues: otherNonSixDigitLocationIds,
+      },
+      dwellingTypes: [...dwellingTypes].sort(),
+      bedroomCategories: [...bedroomCategories].sort((left, right) =>
+        left.localeCompare(right, "en-NZ", { numeric: true }),
+      ),
+    },
+    null,
+    2,
+  ),
+);
+```
+
+再次运行 profiling：
+
+```bash
+node data/scripts/profile-mbie.mjs
+```
+
+位置编号统计为：
+
+```json
+{
+  "locationIdProfile": {
+    "distinctValues": 2011,
+    "sixDigitCandidateValues": 2009,
+    "exactValueRows": {
+      "-99": 1091,
+      "NULL": 794,
+      "blank": 0
+    },
+    "otherNonSixDigitValues": []
+  }
+}
+```
+
+2,011 种 `Location Id` 由 2,009 个六位编号、`-99` 和 `NULL` 组成，没有出现其他形式的值。六位格式与 Stats NZ 样本中的 SA2 编号形式一致，因此当前只能把这 2,009 个值视为候选编号；格式相同还不能证明每个编号都能关联成功。
+
+`-99` 和 `NULL` 的结果只说明它们在源文件中分别出现了 1,091 行和 794 行。profiling 没有可靠依据解释这两个值的业务含义，因此不在这里为它们定义处理方式。
+
+#### 4.4 检查观察记录是否重复
+
+4.3 已经看清 `Location Id` 的组成，但同一个地区在同一个季度中还会出现不同住宅类型和卧室分类，因此 `Location Id` 不能单独标识一条租金观察。现在需要回答的是：哪几个字段共同组成一条观察，并且这个组合在完整 CSV 中是否重复？
+
+根据字段结构，一条观察由四个维度共同描述：
+
+```text
+TimeFrame + Location Id + Dwelling Type + Number Of Beds
+```
+
+这只是一个候选组合，需要用完整文件验证。检查时可以把四个值按固定顺序连接成一个字符串键，再用 `Set` 记录已经出现的键。如果后续记录产生相同的键，就说明这个组合发生了重复。
+
+profiling 脚本继续沿用相同的三个阶段：
+
+```text
+循环前：建立组合键 Set 和重复计数器
+循环中：为当前 record 生成组合键并检查是否出现过
+循环后：输出完整文件中的重复数量
+```
+
+组合键集合和重复计数需要贯穿整个读取过程，因此在循环之前创建。此时完整的状态变量是：
+
+```js
+let inputRecords = 0;
+let duplicateObservationKeys = 0;
+
+const periods = new Set();
+const locationIds = new Set();
+const locationIdCounts = new Map();
+const dwellingTypes = new Set();
+const bedroomCategories = new Set();
+const observationKeys = new Set();
+```
+
+循环已经取得 `period`、`locationId`、`dwellingType` 和 `bedrooms`。完成原有统计后，把四个值连接成 `observationKey`，并在当前循环内检查它是否已经存在：
+
+```js
+for await (const record of parser) {
+  inputRecords += 1;
+
+  const period = sourceValue(record, "TimeFrame");
+  const locationId = sourceValue(record, "Location Id");
+  const dwellingType = sourceValue(record, "Dwelling Type");
+  const bedrooms = sourceValue(record, "Number Of Beds");
+
+  periods.add(period);
+  locationIds.add(locationId);
+  locationIdCounts.set(
+    locationId,
+    (locationIdCounts.get(locationId) ?? 0) + 1,
+  );
+  dwellingTypes.add(dwellingType);
+  bedroomCategories.add(bedrooms);
+
+  const observationKey = [
+    period,
+    locationId,
+    dwellingType,
+    bedrooms,
+  ].join("|");
+
+  if (observationKeys.has(observationKey)) {
+    duplicateObservationKeys += 1;
+  } else {
+    observationKeys.add(observationKey);
+  }
+}
+```
+
+第一次遇到某个组合时，`has()` 返回 `false`，脚本把键放入 `observationKeys`。再次遇到相同组合时，`has()` 返回 `true`，脚本只增加重复计数。
+
+文件读取结束后，季度和位置编号仍然按照 4.3 的方式整理。`duplicateObservationKeys` 描述整个文件，因此与其他汇总结果并列输出：
+
+```js
+const sortedPeriods = [...periods].sort();
+
+const sixDigitLocationIds = [...locationIds].filter((locationId) =>
+  /^\d{6}$/.test(locationId),
+);
+
+const otherNonSixDigitLocationIds = [...locationIds].filter(
+  (locationId) =>
+    !/^\d{6}$/.test(locationId) &&
+    locationId !== "-99" &&
+    locationId !== "NULL" &&
+    locationId !== "",
+);
+
+console.log(
+  JSON.stringify(
+    {
+      inputRecords,
+      periods: {
+        count: sortedPeriods.length,
+        start: sortedPeriods.at(0),
+        end: sortedPeriods.at(-1),
+      },
+      locationIdProfile: {
+        distinctValues: locationIds.size,
+        sixDigitCandidateValues: sixDigitLocationIds.length,
+        exactValueRows: {
+          "-99": locationIdCounts.get("-99") ?? 0,
+          NULL: locationIdCounts.get("NULL") ?? 0,
+          blank: locationIdCounts.get("") ?? 0,
+        },
+        otherNonSixDigitValues: otherNonSixDigitLocationIds,
+      },
+      dwellingTypes: [...dwellingTypes].sort(),
+      bedroomCategories: [...bedroomCategories].sort((left, right) =>
+        left.localeCompare(right, "en-NZ", { numeric: true }),
+      ),
+      duplicateObservationKeys,
+    },
+    null,
+    2,
+  ),
+);
+```
+
+再次运行 profiling：
+
+```bash
+node data/scripts/profile-mbie.mjs
+```
+
+组合键统计为：
+
+```json
+{
+  "duplicateObservationKeys": 0
+}
+```
+
+当前源文件没有重复的四字段组合，因此这四个维度能够区分现有 CSV 中的每条观察记录。这个结论只说明组合键在当前源文件中唯一，没有改变记录内容，也没有判断记录能否与地理数据关联。
+
+#### 4.5 统计租金字段中的缺失标记
+
+4.4 已经确认每条观察可以由四个维度区分，但这只说明记录结构没有重复，还没有说明每条观察是否都包含租金指标。第 3 节查看的 CSV 样本中已经出现租金值为 `NULL`，因此现在需要统计这种缺失标记在完整文件中出现多少次。
+
+CSV 提供五个租金统计字段，每个字段都需要独立计数：
+
+```text
+Median Rent
+Geometric Mean Rent
+Upper Quartile Rent
+Lower Quartile Rent
+Log Std Dev Weekly Rent
+```
+
+这些字段可以保存在一个数组中。`Object.fromEntries()` 再根据数组建立计数对象，使每个字段的初始缺失数量都是 `0`。
+
+profiling 脚本继续沿用相同的三个阶段：
+
+```text
+循环前：建立租金字段列表和缺失计数对象
+循环中：检查当前 record 的五个租金字段
+循环后：输出完整文件中每个字段的缺失数量
+```
+
+字段列表和计数对象都要贯穿整个读取过程，因此在循环之前创建。此时完整的状态变量是：
+
+```js
+let inputRecords = 0;
+let duplicateObservationKeys = 0;
+
+const periods = new Set();
+const locationIds = new Set();
+const locationIdCounts = new Map();
+const dwellingTypes = new Set();
+const bedroomCategories = new Set();
+const observationKeys = new Set();
+
+const rentFields = [
+  "Median Rent",
+  "Geometric Mean Rent",
+  "Upper Quartile Rent",
+  "Lower Quartile Rent",
+  "Log Std Dev Weekly Rent",
+];
+
+const missingRentValues = Object.fromEntries(
+  rentFields.map((field) => [field, 0]),
+);
+```
+
+循环处理当前 `record` 时，原有的分类和组合键统计保持不变。组合键检查完成后，再依次读取五个租金字段；空字符串和源文件中的 `NULL` 都计为缺失标记：
+
+```js
+for await (const record of parser) {
+  inputRecords += 1;
+
+  const period = sourceValue(record, "TimeFrame");
+  const locationId = sourceValue(record, "Location Id");
+  const dwellingType = sourceValue(record, "Dwelling Type");
+  const bedrooms = sourceValue(record, "Number Of Beds");
+
+  periods.add(period);
+  locationIds.add(locationId);
+  locationIdCounts.set(
+    locationId,
+    (locationIdCounts.get(locationId) ?? 0) + 1,
+  );
+  dwellingTypes.add(dwellingType);
+  bedroomCategories.add(bedrooms);
+
+  const observationKey = [
+    period,
+    locationId,
+    dwellingType,
+    bedrooms,
+  ].join("|");
+
+  if (observationKeys.has(observationKey)) {
+    duplicateObservationKeys += 1;
+  } else {
+    observationKeys.add(observationKey);
+  }
+
+  for (const field of rentFields) {
+    const value = sourceValue(record, field);
+
+    if (value === "" || value === "NULL") {
+      missingRentValues[field] += 1;
+    }
+  }
+}
+```
+
+外层 `for await` 每次处理一条 CSV 记录，内层 `for` 再检查这一条记录的五个租金字段。`missingRentValues[field]` 因此保存的是对应字段在全部记录中的缺失次数。
+
+文件读取结束后，原有汇总结果保持不变，`missingRentValues` 作为新的并列项输出。此时完整的整理和输出代码是：
+
+```js
+const sortedPeriods = [...periods].sort();
+
+const sixDigitLocationIds = [...locationIds].filter((locationId) =>
+  /^\d{6}$/.test(locationId),
+);
+
+const otherNonSixDigitLocationIds = [...locationIds].filter(
+  (locationId) =>
+    !/^\d{6}$/.test(locationId) &&
+    locationId !== "-99" &&
+    locationId !== "NULL" &&
+    locationId !== "",
+);
+
+console.log(
+  JSON.stringify(
+    {
+      inputRecords,
+      periods: {
+        count: sortedPeriods.length,
+        start: sortedPeriods.at(0),
+        end: sortedPeriods.at(-1),
+      },
+      locationIdProfile: {
+        distinctValues: locationIds.size,
+        sixDigitCandidateValues: sixDigitLocationIds.length,
+        exactValueRows: {
+          "-99": locationIdCounts.get("-99") ?? 0,
+          NULL: locationIdCounts.get("NULL") ?? 0,
+          blank: locationIdCounts.get("") ?? 0,
+        },
+        otherNonSixDigitValues: otherNonSixDigitLocationIds,
+      },
+      dwellingTypes: [...dwellingTypes].sort(),
+      bedroomCategories: [...bedroomCategories].sort((left, right) =>
+        left.localeCompare(right, "en-NZ", { numeric: true }),
+      ),
+      duplicateObservationKeys,
+      missingRentValues,
+    },
+    null,
+    2,
+  ),
+);
+```
+
+再次运行 profiling：
+
+```bash
+node data/scripts/profile-mbie.mjs
+```
+
+租金字段统计为：
+
+```json
+{
+  "missingRentValues": {
+    "Median Rent": 803,
+    "Geometric Mean Rent": 803,
+    "Upper Quartile Rent": 803,
+    "Lower Quartile Rent": 803,
+    "Log Std Dev Weekly Rent": 859
+  }
+}
+```
+
+前四个租金字段各有 803 条缺失标记，`Log Std Dev Weekly Rent` 有 859 条。这些数字来自全部 226,080 条原始记录，只描述字段的完整程度；脚本没有把缺失值改成 `0`，也没有因为某个租金字段缺失而移除记录。
+
+到这里，profiling 已经依次回答了完整文件的时间范围、分类取值、位置编号形式、观察组合唯一性和租金字段完整程度。每个结论都来自脚本的实际输出，源数据仍然保持原样。

@@ -13,8 +13,8 @@ The project exists to:
 
 - help renters compare New Zealand rental areas using verified official data;
 - demonstrate intermediate-level React and TypeScript frontend engineering;
-- practise data processing, mapping, visualisation, testing, accessibility,
-  security, Git and CI/CD in a realistic product workflow;
+- practise data processing, mapping, visualisation, proportionate testing,
+  directly relevant security, Git and CI/CD in a realistic product workflow;
 - preserve an honest, step-by-step learning history;
 - enable the project owner to explain every major implementation and technical
   decision in an interview.
@@ -39,7 +39,8 @@ with practical data-product and production awareness
 
 This means:
 
-- maintain professional correctness, accessibility, security and testing;
+- maintain practical correctness, directly relevant security and proportionate
+  testing;
 - explain concepts from first principles before relying on abstractions;
 - prefer readable, explicit implementations the owner can defend in an
   interview;
@@ -52,8 +53,67 @@ GraphQL, Redux, a separate custom backend, event-driven architecture or another
 major framework unless a verified requirement makes it necessary and the owner
 explicitly changes the approved design.
 
-Security, privacy, data integrity and accessibility are never optional because
-this is a learning project.
+Protect secrets, privacy boundaries, core data integrity and obvious security
+requirements that are directly relevant to implemented features. Do not expand
+these basics into enterprise hardening, regulatory completeness or specialised
+accessibility work unless the owner explicitly requests it.
+
+## 2.1 Scope, proportionality and explicit non-goals
+
+RoostMap is a portfolio, job-search and learning project. It demonstrates a
+normal commercial-product development workflow; it is not a production-critical,
+regulated or enterprise-scale system. Target junior-to-mid-level engineering
+decisions and code that the owner can understand, explain and maintain.
+
+Apply KISS and YAGNI. Implement the approved requirement, the normal user path
+and common realistic failures. Do not add complexity merely because it is a
+generic best practice, could theoretically help later or would be expected in a
+much larger commercial system.
+
+Assume:
+
+- current evergreen browsers with standard JavaScript and Web APIs;
+- ordinary desktop and mobile usage;
+- portfolio/demo-scale traffic, data and concurrency;
+- the documented and approved deployment environment.
+
+Unless the owner explicitly asks for them, do not introduce:
+
+- legacy-browser support, polyfills or feature checks for standard modern
+  browser APIs;
+- obsolete environments, unusual WebViews, SSR-only compatibility or other
+  unlikely runtime scenarios;
+- screen-reader-specific labels, ARIA state, interaction models, fallback
+  views, tests or abstractions;
+- high-traffic, high-concurrency, distributed-systems or enterprise-scale
+  concerns such as failover, disaster recovery, circuit breakers, retry
+  frameworks, queues, load shedding, enterprise caching, advanced observability
+  or SLO machinery;
+- exhaustive validation, defensive branches and tests for highly improbable or
+  theoretical failures;
+- advanced abstractions, complex TypeScript techniques, dependency-injection
+  frameworks, plugin systems, state machines or speculative extensibility
+  without a current requirement.
+
+Continue to protect secrets, prevent obvious vulnerabilities, preserve core
+correctness and avoid destructive data loss where these are directly relevant
+to the current feature. These basics do not justify broad enterprise hardening.
+
+A change is sufficiently complete when the approved behaviour works, common
+failure handling is proportionate, the existing checks pass and the
+implementation remains easy to understand. Prefer the simplest solution that
+meets those conditions.
+
+When priorities conflict, use this order:
+
+1. the owner's latest explicit instruction;
+2. the approved current requirement and acceptance criteria;
+3. simplicity, clarity and consistency with the repository;
+4. generic best practices or hypothetical future needs.
+
+If an unrequested concern would materially increase scope or complexity,
+explain it briefly and wait for approval instead of implementing it
+automatically.
 
 ## 3. Current-state discovery
 
@@ -66,14 +126,13 @@ evidence in this order:
 1. current source code and runtime configuration;
 2. data contracts, migrations and generated manifests, when present;
 3. current automated tests and verified results supplied by the owner;
-4. `README.md` for the public summary of implemented capabilities;
-5. the latest relevant completed section in `docs/steps.md` for development
+4. the latest relevant completed section in `docs/steps.md` for development
    context;
-6. `docs/DEVELOPMENT_OUTLINE.md` only for the planned implementation order.
+5. `docs/DEVELOPMENT_OUTLINE.md` only for the planned implementation order.
 
 Do not infer that a planned feature exists from a design or planning document.
-Record changing project status in `README.md` and the learning history in
-`docs/steps.md`, not in this file.
+Record chronological progress and verified Step results in `docs/steps.md`.
+Do not use `README.md` as a progress ledger or verification report.
 
 ## 4. Language and communication
 
@@ -121,9 +180,9 @@ Each repository document has one primary responsibility:
   explains the reasoning, operations, code, verification and corrections for
   each practised Step; it does not override the approved product or technical
   baselines.
-- `README.md` is the public project entry point. It summarises implemented
-  capabilities and basic project usage; it is not a detailed specification or
-  development diary.
+- `README.md` is the stable public project entry point. It explains the project
+  purpose, data-source overview and basic usage; it does not record Step
+  completion, milestone progress, verification results or measured data counts.
 - source code, runtime configuration, contracts, migrations, generated
   manifests and tests define the actual implemented behaviour.
 
@@ -378,8 +437,10 @@ Before adding or replacing a dependency:
 - Keep unsaved sensitive drafts in memory.
 - Write plans to local storage only after an explicit Save locally action.
 - Treat loading, empty, partial-data and error states as part of the feature.
-- Use semantic HTML, labelled controls and clear validation or error text.
-- Provide accessible tabular or textual alternatives for data visualisations.
+- Use straightforward HTML and clear validation or error text for the normal
+  demonstrated interface.
+- Add tabular or textual data views only when required by the approved product
+  experience, not as a screen-reader-specific fallback.
 - Check desktop and mobile behaviour as part of each relevant slice.
 
 Avoid speculative custom hooks, generic components, memoisation or state layers.
@@ -446,8 +507,12 @@ Preview and Production smoke tests
 
 Use focused checks first, then the full current gate before a PR is complete.
 Do not create tests that merely repeat implementation details. Prioritise
-business calculations, data contracts, privacy/security boundaries, error
-handling and critical user behaviour.
+business calculations, data contracts, privacy/security boundaries, common
+error handling and critical user behaviour.
+
+Do not add tests for screen readers, legacy browsers, standard modern APIs being
+unavailable, extreme load or concurrency, enterprise reliability, or highly
+improbable failures unless the owner explicitly requests them.
 
 Never describe an unexecuted test, build, workflow, Preview or deployment as
 passing. If a check cannot run, state the exact blocker and whether it is caused
@@ -491,8 +556,10 @@ happened.
 
 ### `README.md`
 
-This is the public entry point. Describe only implemented behaviour as complete
-and clearly separate current status from future scope.
+This is the stable public entry point. Describe the project purpose, data-source
+overview and basic usage. Do not add a current-status section, completed-Step or
+milestone summaries, CI result narratives, quality-report results or measured
+data counts.
 
 After an implementation change, update documentation in this order where
 applicable:
@@ -502,7 +569,7 @@ applicable:
 2. Current-step learning note
 3. Product design, technical specification or development outline only if
    the approved baseline changed
-4. README when public implemented status changed
+4. README only when its stable public description or usage instructions changed
 ```
 
 For documentation-only edits, check Markdown structure, code fences, links,
@@ -557,8 +624,8 @@ A step is complete only when:
 - the owner understands its purpose and relevant concepts;
 - the implementation matches the current approved scope;
 - unrelated files remain unchanged;
-- expected loading, empty, error, accessibility and privacy behaviour is handled
-  where relevant;
+- expected loading, empty, common error and directly relevant privacy behaviour
+  is handled where required by the current feature;
 - the owner has run the relevant checks and shared real results;
 - failures and environment limits are reported honestly;
 - CI, Preview, deployment and smoke tests have passed when that iteration
