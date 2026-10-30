@@ -5124,3 +5124,1268 @@ node data/scripts/profile-mbie.mjs
 前四个租金字段各有 803 条缺失标记，`Log Std Dev Weekly Rent` 有 859 条。这些数字来自全部 226,080 条原始记录，只描述字段的完整程度；脚本没有把缺失值改成 `0`，也没有因为某个租金字段缺失而移除记录。
 
 到这里，profiling 已经依次回答了完整文件的时间范围、分类取值、位置编号形式、观察组合唯一性和租金字段完整程度。每个结论都来自脚本的实际输出，源数据仍然保持原样。
+
+### 5. 验证 Location Id 与 SA2 编号的关联
+
+第 3.2 节提出了下面的关联假设：
+
+```text
+MBIE Location Id = Stats NZ SA22019_V1_00
+```
+
+第 4 节已经确认 MBIE 文件中哪些 `Location Id` 具有六位 SA2 编号的形式。接下来需要检查的不是两边各有多少个编号，而是 MBIE 中的每一个候选编号能否在 Stats NZ 数据中找到。
+
+这个问题可以转换成两个编号集合之间的比较。设 MBIE 候选编号为集合 A，Stats NZ SA2 编号为集合 B：
+
+```text
+A ∩ B  同时存在于两份数据中的编号
+A - B  只存在于 MBIE、无法找到对应 SA2 的编号
+```
+
+编号出现在交集中，只能证明两边存在同一个编号。RoostMap 还需要地区边界，因此找到编号后还要检查对应 Stats NZ 记录的 geometry。
+
+关联验证由此分成三个连续阶段：
+
+```text
+建立 MBIE 候选编号集合
+→ 建立 Stats NZ SA2 编号与 geometry 的对应关系
+→ 比较编号并检查匹配记录的 geometry
+```
+
+这些检查需要同时读取两份源文件，因此建立 `data/scripts/verify-data-join.mjs`。
+
+#### 5.1 建立 MBIE 候选编号集合
+
+集合比较需要先准备 A。第 4.3 节已经确定，只有正好由六位数字组成的 `Location Id` 才具有当前 Stats NZ SA2 编号的形式。关联脚本沿用同一条判断规则，使 profiling 和关联验证使用相同的候选范围。
+
+新脚本先加入读取 MBIE CSV 需要的 import、文件位置和字段读取函数：
+
+```js
+import { createReadStream } from "node:fs";
+
+import { parse } from "csv-parse";
+
+const mbieFileUrl = new URL(
+  "../raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
+  import.meta.url,
+);
+
+function sourceValue(record, field) {
+  return String(record[field] ?? "").trim();
+}
+```
+
+这部分沿用 profiling 脚本已经验证过的 CSV 读取方式。`sourceValue()` 统一把字段转成去除首尾空白的字符串，使正则表达式检查的是整理后的编号。
+
+接着建立空的 `Set`，逐条读取 CSV。每遇到一个六位 `Location Id`，就把它加入集合：
+
+```js
+const mbieCandidateIds = new Set();
+
+const parser = createReadStream(mbieFileUrl).pipe(
+  parse({
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+  }),
+);
+
+for await (const record of parser) {
+  const locationId = sourceValue(record, "Location Id");
+
+  if (/^\d{6}$/.test(locationId)) {
+    mbieCandidateIds.add(locationId);
+  }
+}
+```
+
+`/^\d{6}$/` 要求整个值正好包含六位数字。`Set` 自动去除重复值，因此同一个地区在不同季度、住宅类型或卧室分类中出现时，集合里仍然只保留一个编号。
+
+先输出集合大小并运行脚本：
+
+```js
+console.log(
+  JSON.stringify(
+    {
+      mbieCandidateIds: mbieCandidateIds.size,
+    },
+    null,
+    2,
+  ),
+);
+```
+
+```bash
+node data/scripts/verify-data-join.mjs
+```
+
+得到：
+
+```json
+{
+  "mbieCandidateIds": 2009
+}
+```
+
+这个数量与第 4.3 节的 profiling 结果一致，说明关联脚本已经按相同规则建立了集合 A。
+
+#### 5.2 建立 Stats NZ SA2 编号与 geometry 的对应关系
+
+集合 B 不能只保存 SA2 编号。编号匹配后还要知道对应记录是否有边界，因此需要保存下面的对应关系：
+
+```text
+SA2 编号 → geometry 是否存在
+```
+
+JavaScript 的 `Map` 可以用 SA2 编号作为键，并把 geometry 状态作为值。为了取得这些信息，脚本需要查询 GeoPackage 中已经在第 3.2 节确认过的业务表。
+
+项目环境已经使用 `sqlite3` 检查过这个 GeoPackage。这里继续调用同一个命令，并让它返回 JSON，避免为一次只读查询再增加数据库依赖。先在文件顶部补充两个 Node.js import：
+
+```js
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+```
+
+`execFileSync()` 负责执行 `sqlite3`，`fileURLToPath()` 把 `new URL()` 生成的文件地址转换成命令可以读取的本地路径。
+
+然后在 `mbieFileUrl` 后面加入 GeoPackage 的位置：
+
+```js
+const statsNzFileUrl = new URL(
+  "../raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg",
+  import.meta.url,
+);
+```
+
+MBIE 循环结束后，查询每个 SA2 编号及其 geometry 状态：
+
+```js
+const statsNzQuery = `
+  SELECT
+    SA22019_V1_00 AS sa2Id,
+    CASE
+      WHEN geom IS NULL OR length(geom) = 0 THEN 0
+      ELSE 1
+    END AS hasGeometry
+  FROM statistical_area_2_higher_geographies_2019_generalised;
+`;
+
+const statsNzRows = JSON.parse(
+  execFileSync(
+    "sqlite3",
+    ["-json", fileURLToPath(statsNzFileUrl), statsNzQuery],
+    { encoding: "utf8" },
+  ),
+);
+```
+
+SQL 中的 `CASE` 把 geometry 状态转换成 `0` 或 `1`。`sqlite3 -json` 把查询结果输出成 JSON，`JSON.parse()` 再将它变成 JavaScript 数组。
+
+查询结果仍然是一行一个对象。把它转换成 `Map` 后，可以通过 SA2 编号直接取得 geometry 状态：
+
+```js
+const statsNzAreas = new Map(
+  statsNzRows.map((row) => [
+    String(row.sa2Id).trim(),
+    Boolean(row.hasGeometry),
+  ]),
+);
+
+const statsNzAreasWithoutGeometry = [...statsNzAreas.values()].filter(
+  (hasGeometry) => !hasGeometry,
+).length;
+```
+
+这里把 SQLite 的 `0` 和 `1` 转换成 JavaScript 的 `false` 和 `true`。再次运行脚本后，两边的基础数量为：
+
+```json
+{
+  "mbieCandidateIds": 2009,
+  "statsNzSa2Ids": 2255,
+  "statsNzAreasWithoutGeometry": 16
+}
+```
+
+这些数量分别与第 4.3 节和第 3.2 节的独立检查一致。集合 A 和映射 B 都已经从完整源文件中正确建立，可以开始比较实际编号。
+
+#### 5.3 比较编号并检查 geometry
+
+对集合 A 中的每个编号调用 `statsNzAreas.has()`，就能判断 Stats NZ 映射中是否存在同一个键。根据判断结果，将编号分别放进 `matchedIds` 和 `unmatchedIds`：
+
+```js
+const matchedIds = [...mbieCandidateIds]
+  .filter((sa2Id) => statsNzAreas.has(sa2Id))
+  .sort();
+
+const unmatchedIds = [...mbieCandidateIds]
+  .filter((sa2Id) => !statsNzAreas.has(sa2Id))
+  .sort();
+```
+
+这两个数组共同覆盖集合 A：一个编号要么找到对应 SA2，要么没有找到。对已经匹配的编号继续调用 `statsNzAreas.get()`，可以检查对应的 geometry 状态：
+
+```js
+const matchedIdsWithoutGeometry = matchedIds.filter(
+  (sa2Id) => !statsNzAreas.get(sa2Id),
+);
+```
+
+最后输出两份源数据的基础数量、匹配数量和异常编号。异常项同时保留数量与具体值，出现问题时可以直接看出哪些编号需要检查：
+
+```js
+console.log(
+  JSON.stringify(
+    {
+      mbieCandidateIds: mbieCandidateIds.size,
+      statsNzSa2Ids: statsNzAreas.size,
+      statsNzAreasWithoutGeometry,
+      matchedIds: matchedIds.length,
+      unmatchedIds: {
+        count: unmatchedIds.length,
+        values: unmatchedIds,
+      },
+      matchedIdsWithoutGeometry: {
+        count: matchedIdsWithoutGeometry.length,
+        values: matchedIdsWithoutGeometry,
+      },
+    },
+    null,
+    2,
+  ),
+);
+```
+
+运行完整脚本：
+
+```bash
+node data/scripts/verify-data-join.mjs
+```
+
+实际输出为：
+
+```json
+{
+  "mbieCandidateIds": 2009,
+  "statsNzSa2Ids": 2255,
+  "statsNzAreasWithoutGeometry": 16,
+  "matchedIds": 2009,
+  "unmatchedIds": {
+    "count": 0,
+    "values": []
+  },
+  "matchedIdsWithoutGeometry": {
+    "count": 0,
+    "values": []
+  }
+}
+```
+
+2,009 个 MBIE 候选编号全部存在于 Stats NZ SA2 数据中，没有未关联编号。Stats NZ 全表虽然有 16 条记录缺少 geometry，但这些记录不在当前匹配结果中；2,009 个匹配编号都具有 geometry。
+
+因此，当前两份源文件在地区编号层面满足下面的关联：
+
+```text
+MBIE 六位 Location Id
+→ Stats NZ SA2 编号
+→ 存在 geometry
+```
+
+这个结论限定在本节检查的编号与 geometry：它证明候选地区可以完成关联，不改变第 4 节记录的其他源数据情况。
+
+### 6. 统计 MBIE 记录的关联结果
+
+第 5 节验证的是不同地区编号之间的关系。一个地区编号会在不同季度、住宅类型和卧室分类中重复出现，因此编号全部匹配还不能说明完整 CSV 中有多少条记录完成了关联。
+
+现在把检查单位从编号推进到记录。每条 MBIE 记录根据 `Location Id` 和 Stats NZ 查询结果，只能进入下面四种情况之一：
+
+```text
+Location Id 不是六位候选编号
+Location Id 找不到对应 SA2
+Location Id 找到 SA2，但对应记录没有 geometry
+Location Id 找到 SA2，并且对应记录有 geometry
+```
+
+四种记录数量相加应当等于 MBIE 输入总数。这样既能得到关联成功的记录数，也能检查统计过程中是否遗漏了记录。
+
+#### 6.1 统计每个候选编号对应的记录数
+
+第 5 节的 `mbieCandidateIds` 只保留不同编号，无法说明每个编号在 CSV 中出现多少次。要从编号级结果回到记录级结果，需要在读取 CSV 时同时保存每个候选编号的出现次数。
+
+先在 `mbieCandidateIds` 前面加入两个记录计数器，并建立一个 `Map`：
+
+```js
+let inputRecords = 0;
+let candidateLocationRecords = 0;
+
+const mbieCandidateIds = new Set();
+const mbieCandidateIdCounts = new Map();
+```
+
+`inputRecords` 统计所有输入记录，`candidateLocationRecords` 统计使用六位候选编号的记录。`mbieCandidateIdCounts` 则保存下面的对应关系：
+
+```text
+六位 Location Id → 这个编号在 CSV 中出现的记录数
+```
+
+CSV 循环每读到一条记录，先增加输入总数。当前 `Location Id` 符合六位形式时，再增加候选记录数，并更新这个编号在 `Map` 中的次数：
+
+```js
+for await (const record of parser) {
+  inputRecords += 1;
+
+  const locationId = sourceValue(record, "Location Id");
+
+  if (/^\d{6}$/.test(locationId)) {
+    candidateLocationRecords += 1;
+    mbieCandidateIds.add(locationId);
+    mbieCandidateIdCounts.set(
+      locationId,
+      (mbieCandidateIdCounts.get(locationId) ?? 0) + 1,
+    );
+  }
+}
+```
+
+第一次遇到某个编号时，`Map.get()` 返回 `undefined`，`?? 0` 把原有次数作为 `0`，然后加 `1`。后续再次遇到同一编号时，就在已有次数上继续累加。
+
+不属于候选编号的记录数不需要在循环中单独维护。完整文件读取结束后，用输入总数减去候选记录数即可得到：
+
+```js
+const nonCandidateLocationRecords =
+  inputRecords - candidateLocationRecords;
+```
+
+这里的 `nonCandidateLocationRecords` 只表示 `Location Id` 不符合本次关联使用的六位编号形式，不为这些源值增加其他含义。
+
+#### 6.2 根据关联结果归类候选记录
+
+`mbieCandidateIdCounts` 已经保存每个候选编号对应多少条记录，`statsNzAreas` 则保存这个编号是否存在以及是否有 geometry。把两个 `Map` 放在一起，就可以一次处理一个编号下的全部记录。
+
+先建立三个结果计数器：
+
+```js
+let joinedRecords = 0;
+let unmatchedLocationRecords = 0;
+let missingGeometryRecords = 0;
+```
+
+然后遍历 `mbieCandidateIdCounts`。每次循环取得一个 `sa2Id` 和它对应的 `recordCount`，再按顺序判断 Stats NZ 映射：
+
+```js
+for (const [sa2Id, recordCount] of mbieCandidateIdCounts) {
+  if (!statsNzAreas.has(sa2Id)) {
+    unmatchedLocationRecords += recordCount;
+  } else if (!statsNzAreas.get(sa2Id)) {
+    missingGeometryRecords += recordCount;
+  } else {
+    joinedRecords += recordCount;
+  }
+}
+```
+
+判断顺序保证三种结果不会重叠：
+
+```text
+映射中没有编号             → unmatchedLocationRecords
+映射中有编号但没有 geometry → missingGeometryRecords
+编号和 geometry 都存在      → joinedRecords
+```
+
+每次增加的不是 `1`，而是当前编号对应的 `recordCount`。这样无需把 224,195 条候选记录再次逐条保存，也能得到记录级关联数量。
+
+#### 6.3 检查记录总数是否守恒
+
+记录已经分成四种互不重叠的结果。将它们重新相加，可以检查完整输入是否全部得到解释：
+
+```js
+const accountedRecords =
+  nonCandidateLocationRecords +
+  joinedRecords +
+  unmatchedLocationRecords +
+  missingGeometryRecords;
+```
+
+在原有编号级输出后加入 `records`，把这组记录级结果放在一起：
+
+```js
+records: {
+  input: inputRecords,
+  candidateLocation: candidateLocationRecords,
+  nonCandidateLocation: nonCandidateLocationRecords,
+  joined: joinedRecords,
+  unmatchedLocation: unmatchedLocationRecords,
+  missingGeometry: missingGeometryRecords,
+  accounted: accountedRecords,
+},
+```
+
+再次运行关联验证脚本：
+
+```bash
+node data/scripts/verify-data-join.mjs
+```
+
+新增的 `records` 结果为：
+
+```json
+{
+  "records": {
+    "input": 226080,
+    "candidateLocation": 224195,
+    "nonCandidateLocation": 1885,
+    "joined": 224195,
+    "unmatchedLocation": 0,
+    "missingGeometry": 0,
+    "accounted": 226080
+  }
+}
+```
+
+224,195 条记录使用六位候选编号，并且全部找到带有 geometry 的 Stats NZ SA2。1,885 条记录的 `Location Id` 不属于六位候选编号；这个数量与第 4.3 节的位置编号统计一致。候选记录中没有未找到 SA2 或缺少 geometry 的情况。
+
+四种结果重新相加：
+
+```text
+1,885 + 224,195 + 0 + 0 = 226,080
+```
+
+`accounted` 与 `input` 相同，说明完整 CSV 中每条记录都进入了一个明确且唯一的关联结果。当前源文件共有 224,195 条记录能够通过六位 `Location Id` 关联到带有 geometry 的 SA2。
+
+### 7. 选择代表性 SA2 样本
+
+第 7 节继续修改第 5 节创建的 `data/scripts/verify-data-join.mjs`，不创建新的脚本文件。
+
+第 6 节已经得到全国记录的关联数量，但总数只能说明整体关联是否完整，不能直接看出记录分布不同的地区是否都能被正确识别。现在从完整关联结果中选择少量样本，直接观察几种差异明显的数据情况。
+
+样本不按城市名称手工列举，而是根据全国数据中的可计算特征产生：
+
+```text
+关联记录最多的 SA2       检查高频地区
+关联记录最少的 SA2       检查稀疏地区
+陆地面积最大的已关联 SA2 检查大面积边界
+Stats NZ 中的 Chatham Islands 地区
+                         检查只有边界、没有 MBIE 观察记录的地区
+```
+
+前三项来自已经完成关联的 2,009 个 SA2。最后一项来自 Stats NZ 边界数据，用来保留一个与前三项不同的边界情况。选择条件直接作用于完整源数据，因此源文件不变时会得到相同样本。
+
+#### 7.1 为已关联地区补充可读信息
+
+`data/scripts/verify-data-join.mjs` 中的 `statsNzAreas` 目前只保存 `SA2 编号 → geometry 状态`，足以完成第 5、6 节的计数，却无法说明选中的编号对应哪个地区。样本还需要地区名称、所属行政区、Region 和陆地面积，因此先在这个文件中找到 `const statsNzQuery`，将查询扩展为：
+
+```js
+const statsNzQuery = `
+  SELECT
+    SA22019_V1_00 AS sa2Id,
+    SA22019_V1_00_NAME AS sa2Name,
+    TA2019_V1_00_NAME AS territorialAuthority,
+    REGC2019_V1_00_NAME AS region,
+    LAND_AREA_SQ_KM AS landAreaSqKm,
+    CASE
+      WHEN geom IS NULL OR length(geom) = 0 THEN 0
+      ELSE 1
+    END AS hasGeometry
+  FROM statistical_area_2_higher_geographies_2019_generalised;
+`;
+```
+
+查询仍然只读取同一张 Stats NZ 业务表。新增字段用于解释样本，`hasGeometry` 的判断保持不变。
+
+在同一个文件中，`statsNzRows` 解析完成后，先把每个 SA2 的完整信息保存到 `statsNzDetails`：
+
+```js
+const statsNzDetails = new Map(
+  statsNzRows.map((row) => {
+    const sa2Id = String(row.sa2Id).trim();
+
+    return [
+      sa2Id,
+      {
+        sa2Id,
+        name: row.sa2Name,
+        territorialAuthority: row.territorialAuthority,
+        region: row.region,
+        landAreaSqKm: Number(row.landAreaSqKm),
+        hasGeometry: Boolean(row.hasGeometry),
+      },
+    ];
+  }),
+);
+```
+
+这个 `Map` 保存下面的关系：
+
+```text
+SA2 编号 → 该地区的名称、上级区域、陆地面积和 geometry 状态
+```
+
+第 5、6 节已有的关联判断仍然只需要 geometry 状态。由 `statsNzDetails` 再建立原来的 `statsNzAreas`，就能继续复用已有的关联逻辑：
+
+```js
+const statsNzAreas = new Map(
+  [...statsNzDetails].map(([sa2Id, area]) => [sa2Id, area.hasGeometry]),
+);
+```
+
+这样，同一份 Stats NZ 查询结果同时支持关联计数和样本说明，不需要再次读取 GeoPackage。
+
+#### 7.2 根据完整数据选择样本
+
+继续在 `data/scripts/verify-data-join.mjs` 中处理样本。`matchedIds` 已经保存全部匹配成功的 SA2 编号，`mbieCandidateIdCounts` 保存每个编号对应的 MBIE 记录数。在 `accountedRecords` 计算完成后、`console.log()` 输出之前，把两部分信息组合成用于比较的完整地区列表：
+
+```js
+const joinedAreaDetails = matchedIds.map((sa2Id) => ({
+  ...statsNzDetails.get(sa2Id),
+  recordCount: mbieCandidateIdCounts.get(sa2Id),
+}));
+```
+
+现在列表中的每一项既有 Stats NZ 地区信息，也有对应的 MBIE 记录数。先按记录数从高到低和从低到高排序，取得高频与稀疏样本：
+
+```js
+const highestRecordCountSample = [...joinedAreaDetails].sort(
+  (left, right) =>
+    right.recordCount - left.recordCount ||
+    left.sa2Id.localeCompare(right.sa2Id),
+)[0];
+
+const lowestRecordCountSample = [...joinedAreaDetails].sort(
+  (left, right) =>
+    left.recordCount - right.recordCount ||
+    left.sa2Id.localeCompare(right.sa2Id),
+)[0];
+```
+
+两个地区记录数相同时，继续按 `sa2Id` 排序。这个第二排序条件不会改变“最多”和“最少”的含义，只负责让并列情况始终选中同一个编号。
+
+同样的方法可以按陆地面积选择已关联地区中面积最大的样本：
+
+```js
+const largestLandAreaSample = [...joinedAreaDetails].sort(
+  (left, right) =>
+    right.landAreaSqKm - left.landAreaSqKm ||
+    left.sa2Id.localeCompare(right.sa2Id),
+)[0];
+```
+
+前三个样本都来自 `joinedAreaDetails`，因此一定同时具有 MBIE 观察记录和 Stats NZ geometry。Chatham Islands 的样本需要从完整 Stats NZ 列表中寻找，并明确排除已经出现在 MBIE 候选编号集合中的地区：
+
+```js
+const chathamIslandsSample = [...statsNzDetails.values()]
+  .filter(
+    (area) =>
+      area.territorialAuthority === "Chatham Islands Territory" &&
+      !mbieCandidateIds.has(area.sa2Id) &&
+      area.hasGeometry,
+  )
+  .sort(
+    (left, right) =>
+      right.landAreaSqKm - left.landAreaSqKm ||
+      left.sa2Id.localeCompare(right.sa2Id),
+  )[0];
+```
+
+这里要求地区有 geometry、没有 MBIE 候选编号，并在符合条件的 Chatham Islands 地区中选择陆地面积最大的记录。它表示“边界存在但当前没有租金观察”的数据情况。
+
+最后给四个结果加入选择原因，并组成一个小型样本列表：
+
+```js
+const representativeSamples = [
+  {
+    selection: "highestRecordCount",
+    ...highestRecordCountSample,
+  },
+  {
+    selection: "lowestRecordCount",
+    ...lowestRecordCountSample,
+  },
+  {
+    selection: "largestLandArea",
+    ...largestLandAreaSample,
+  },
+  {
+    selection: "statsOnlyChathamIslands",
+    ...chathamIslandsSample,
+    recordCount: 0,
+  },
+];
+```
+
+`selection` 记录样本为何被选中；`recordCount` 则保持统一含义，表示该 SA2 在 MBIE 文件中的候选记录数。
+
+#### 7.3 查看选择结果
+
+最后修改 `data/scripts/verify-data-join.mjs` 末尾的 `console.log()`，在现有 JSON 输出对象中加入 `representativeSamples`：
+
+```js
+{
+  // 前面的编号级和记录级结果保持不变
+  representativeSamples,
+}
+```
+
+运行脚本：
+
+```bash
+node data/scripts/verify-data-join.mjs
+```
+
+`representativeSamples` 的实际输出为：
+
+```json
+[
+  {
+    "selection": "highestRecordCount",
+    "sa2Id": "179900",
+    "name": "Greensboro",
+    "territorialAuthority": "Hamilton City",
+    "region": "Waikato Region",
+    "landAreaSqKm": 0.46632181,
+    "hasGeometry": true,
+    "recordCount": 579
+  },
+  {
+    "selection": "lowestRecordCount",
+    "sa2Id": "102100",
+    "name": "Hokianga South",
+    "territorialAuthority": "Far North District",
+    "region": "Northland Region",
+    "landAreaSqKm": 126.08930327,
+    "hasGeometry": true,
+    "recordCount": 1
+  },
+  {
+    "selection": "largestLandArea",
+    "sa2Id": "341500",
+    "name": "Mackenzie Lakes",
+    "territorialAuthority": "Mackenzie District",
+    "region": "Canterbury Region",
+    "landAreaSqKm": 5134.28848751,
+    "hasGeometry": true,
+    "recordCount": 116
+  },
+  {
+    "selection": "statsOnlyChathamIslands",
+    "sa2Id": "343000",
+    "name": "Chatham Islands",
+    "territorialAuthority": "Chatham Islands Territory",
+    "region": "Area Outside Region",
+    "landAreaSqKm": 793.94659384,
+    "hasGeometry": true,
+    "recordCount": 0
+  }
+]
+```
+
+Greensboro 和 Hokianga South 展示了同一关联规则下记录数从 579 到 1 的差异；Mackenzie Lakes 提供了面积明显更大的已关联边界；Chatham Islands 则只有 Stats NZ geometry，没有 MBIE 候选记录。四个样本都由明确条件从完整数据中选出，可以追溯到对应的官方 SA2 编号和边界记录。
+
+### 8. 保存一组最小关联样本
+
+第 7 节已经从完整 MBIE CSV 和 Stats NZ GeoPackage 中选出了代表样本。如果只想重复检查这些样本之间的关联，每次都读取两份完整源文件并不必要。当前关联实际使用的是少量 `Location Id`、SA2 编号和 geometry 状态，因此可以把这些值单独保存成一组小型固定样本。
+
+在测试和数据处理中，这种为了重复检查而保存的固定样本通常称为 fixture，所以项目使用 `data/fixtures/` 目录存放它们。这里的 fixture 只是从真实源数据中提取的一小部分字段和值。
+
+关联从 MBIE 的 `Location Id` 开始，所以先保存这些输入值，再判断另一侧还需要哪些 Stats NZ 信息。
+
+#### 8.1 保存最小输入
+
+关联过程读取 MBIE 的 `Location Id`，再到 Stats NZ 数据中寻找相同的 SA2 编号并检查 geometry。租金、住宅类型和地区面积不会改变这次关联，因此这组输入只保留三个必要信息。
+
+先建立存放固定样本的目录：
+
+```bash
+mkdir -p data/fixtures/data-join
+```
+
+创建 `data/fixtures/data-join/mbie-records.csv`，写入五个已经在完整 MBIE 文件中确认过的 `Location Id`：
+
+```csv
+Location Id
+179900
+102100
+341500
+-99
+NULL
+```
+
+前三个编号分别来自第 7 节选出的高频、稀疏和大面积已关联地区。`-99` 与 `NULL` 则保留第 4.3 节发现的两种非六位值，使最小输入同时包含可以参与关联和不能作为 SA2 候选编号的情况。
+
+`mbie-records.csv` 只提供需要查找的值，还不能判断三个六位编号是否存在，也不能判断对应边界是否可用。关联的另一侧因此需要保留 Stats NZ 的 SA2 编号和 geometry 状态。创建 `data/fixtures/data-join/sa2-areas.json`：
+
+```json
+{
+  "records": [
+    {
+      "SA22019_V1_00": "179900",
+      "hasGeometry": true
+    },
+    {
+      "SA22019_V1_00": "102100",
+      "hasGeometry": true
+    },
+    {
+      "SA22019_V1_00": "341500",
+      "hasGeometry": true
+    },
+    {
+      "SA22019_V1_00": "343000",
+      "hasGeometry": true
+    }
+  ]
+}
+```
+
+前三条 Stats NZ 记录与 CSV 中的六位编号对应。`343000` 是第 7 节选出的 Chatham Islands，只存在于当前 Stats NZ 样本中，没有对应的 MBIE 样本记录。
+
+这里使用源字段名 `SA22019_V1_00` 保存 SA2 编号，使固定样本与 GeoPackage 的关联字段保持一致。geometry 本身是较大的二进制内容；当前关联只需要判断它是否存在，因此保存第 7 节已经查询出的 `hasGeometry` 状态。
+
+#### 8.2 为五条输入写出正确结果
+
+8.1 已经保存了关联两侧的输入，但这些数据本身还没有说明什么结果才是正确的。固定样本还需要一份“答案表”，逐条写明五个 `Location Id` 应当得到的关联状态。
+
+这里按照第 5、6 节已经确认的关联方法逐条判断。Stats NZ 输入中可以查找的编号是：
+
+```text
+179900 → hasGeometry: true
+102100 → hasGeometry: true
+341500 → hasGeometry: true
+343000 → hasGeometry: true
+```
+
+现在从第一条 MBIE 输入开始判断：
+
+| MBIE `Location Id` | 判断过程 | 正确结果 |
+| --- | --- | --- |
+| `179900` | 是六位编号；Stats NZ 中存在；geometry 存在 | `joined` |
+| `102100` | 是六位编号；Stats NZ 中存在；geometry 存在 | `joined` |
+| `341500` | 是六位编号；Stats NZ 中存在；geometry 存在 | `joined` |
+| `-99` | 不是六位编号，不进入 SA2 查找 | `nonCandidateLocation` |
+| `NULL` | 不是六位编号，不进入 SA2 查找 | `nonCandidateLocation` |
+
+Stats NZ 输入中的 `343000` 没有出现在 MBIE 输入里，因此它不是一条未关联的 MBIE 记录。它只表示当前固定样本中存在一个没有对应 MBIE 观察的 Stats NZ SA2，单独记为 `statsOnlySa2Ids`。
+
+五条 MBIE 输入由此得到：
+
+```text
+3 条 joined
+2 条 nonCandidateLocation
+0 条 unmatchedLocation
+0 条 missingGeometry
+```
+
+现在创建 `data/fixtures/data-join/expected-associations.json`，把上面的逐条判断和汇总数量保存下来：
+
+```json
+{
+  "records": [
+    {
+      "locationId": "179900",
+      "status": "joined",
+      "sa2Id": "179900"
+    },
+    {
+      "locationId": "102100",
+      "status": "joined",
+      "sa2Id": "102100"
+    },
+    {
+      "locationId": "341500",
+      "status": "joined",
+      "sa2Id": "341500"
+    },
+    {
+      "locationId": "-99",
+      "status": "nonCandidateLocation",
+      "sa2Id": null
+    },
+    {
+      "locationId": "NULL",
+      "status": "nonCandidateLocation",
+      "sa2Id": null
+    }
+  ],
+  "statsOnlySa2Ids": [
+    "343000"
+  ],
+  "counts": {
+    "input": 5,
+    "joined": 3,
+    "nonCandidateLocation": 2,
+    "unmatchedLocation": 0,
+    "missingGeometry": 0
+  }
+}
+```
+
+`records` 是五条 MBIE 输入的答案，顺序与 `mbie-records.csv` 保持一致。能够关联的记录保存相同的 `sa2Id`；没有进入 SA2 查找的 `-99` 和 `NULL` 使用 `null`，表示它们没有关联结果。
+
+`statsOnlySa2Ids` 保存只出现在 Stats NZ 输入中的编号，`counts` 则把五条记录的状态重新汇总。输入文件与这份已知正确的结果放在一起，组成完整的固定样本。
+
+#### 8.3 检查固定样本文件
+
+两个 JSON 文件必须具有正确语法，CSV 则应当包含一行表头和五行输入。使用 Node.js 读取并解析 JSON，再统计 CSV 行数：
+
+```bash
+node -e 'const fs = require("node:fs"); for (const file of ["data/fixtures/data-join/sa2-areas.json", "data/fixtures/data-join/expected-associations.json"]) JSON.parse(fs.readFileSync(file, "utf8"));'
+wc -l data/fixtures/data-join/mbie-records.csv
+```
+
+JSON 解析成功时第一条命令没有输出。CSV 行数为：
+
+```text
+6 data/fixtures/data-join/mbie-records.csv
+```
+
+最后查看三份固定样本文件是否处于预期目录：
+
+```bash
+git status --short --untracked-files=all data/fixtures
+```
+
+得到：
+
+```text
+?? data/fixtures/data-join/expected-associations.json
+?? data/fixtures/data-join/mbie-records.csv
+?? data/fixtures/data-join/sa2-areas.json
+```
+
+现在这三份小文件已经固定了五条 MBIE 输入、四条 Stats NZ 输入以及对应的预期关联结果。它们保留真实源值，同时只包含复现当前关联情况需要的数据。
+
+### 9. 用固定样本验证关联规则
+
+第 8 节已经保存了关联两侧的输入，并逐条写出了正确结果。不过，人工对照只能解释这五条记录为什么得到相应状态，还不能证明同一套判断可以稳定地计算出这些结果。
+
+现在把第 5、6 节使用的最小关联规则写成脚本：
+
+```text
+读取固定输入
+→ 根据 Location Id 和 geometry 状态计算关联结果
+→ 将计算结果与 8.2 的答案逐项比较
+```
+
+本节创建 `data/scripts/verify-data-join-fixture.mjs`。这个文件只读取 `data/fixtures/data-join/` 中的三份固定样本。
+
+#### 9.1 读取固定输入
+
+新脚本首先需要读取一份 CSV 和两份 JSON。在 `data/scripts/verify-data-join-fixture.mjs` 中加入 import 和三个文件位置：
+
+```js
+import assert from "node:assert/strict";
+import { createReadStream } from "node:fs";
+import { readFile } from "node:fs/promises";
+
+import { parse } from "csv-parse";
+
+const mbieFixtureUrl = new URL(
+  "../fixtures/data-join/mbie-records.csv",
+  import.meta.url,
+);
+
+const statsNzFixtureUrl = new URL(
+  "../fixtures/data-join/sa2-areas.json",
+  import.meta.url,
+);
+
+const expectedFixtureUrl = new URL(
+  "../fixtures/data-join/expected-associations.json",
+  import.meta.url,
+);
+```
+
+`createReadStream()` 和 `csv-parse` 读取 MBIE CSV，`readFile()` 读取两个 JSON。`assert` 会在计算完成后比较实际结果和正确答案。
+
+两个 JSON 使用相同的读取方式，因此先加入一个小函数：
+
+```js
+async function readJson(fileUrl) {
+  return JSON.parse(await readFile(fileUrl, "utf8"));
+}
+```
+
+接着读取 `mbie-records.csv`。这个文件只有五条记录，但仍然沿用全国脚本中的 CSV 解析配置，使字段名和字段值的读取方式保持一致：
+
+```js
+const mbieRecords = [];
+const parser = createReadStream(mbieFixtureUrl).pipe(
+  parse({
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+  }),
+);
+
+for await (const record of parser) {
+  mbieRecords.push(record);
+}
+```
+
+CSV 读取完成后，再读取 Stats NZ 输入和 8.2 写出的答案：
+
+```js
+const [statsNzFixture, expectedAssociations] = await Promise.all([
+  readJson(statsNzFixtureUrl),
+  readJson(expectedFixtureUrl),
+]);
+```
+
+现在脚本内有三组数据：
+
+```text
+mbieRecords             五条待判断的 Location Id
+statsNzFixture          四条 SA2 编号及其 geometry 状态
+expectedAssociations    五条记录的正确答案和汇总数量
+```
+
+#### 9.2 计算实际关联结果
+
+`sa2-areas.json` 当前仍然是对象数组。为了通过 SA2 编号直接查找 geometry 状态，在读取代码后面建立 `statsNzAreas`：
+
+```js
+const statsNzAreas = new Map(
+  statsNzFixture.records.map((record) => [
+    String(record.SA22019_V1_00).trim(),
+    Boolean(record.hasGeometry),
+  ]),
+);
+```
+
+这个 `Map` 保存下面的关系：
+
+```text
+SA2 编号 → geometry 是否存在
+```
+
+接下来在同一个文件中加入 `associateRecord()`。函数每次接收一条 MBIE 输入，并按照固定顺序判断：
+
+```js
+function associateRecord(record) {
+  const locationId = String(record["Location Id"] ?? "").trim();
+
+  if (!/^\d{6}$/.test(locationId)) {
+    return {
+      locationId,
+      status: "nonCandidateLocation",
+      sa2Id: null,
+    };
+  }
+
+  if (!statsNzAreas.has(locationId)) {
+    return {
+      locationId,
+      status: "unmatchedLocation",
+      sa2Id: null,
+    };
+  }
+
+  if (!statsNzAreas.get(locationId)) {
+    return {
+      locationId,
+      status: "missingGeometry",
+      sa2Id: locationId,
+    };
+  }
+
+  return {
+    locationId,
+    status: "joined",
+    sa2Id: locationId,
+  };
+}
+```
+
+判断顺序决定了每条记录只能得到一个状态：
+
+```text
+不是六位编号                  → nonCandidateLocation
+是六位编号，但 Map 中没有键    → unmatchedLocation
+Map 中有键，但值为 false       → missingGeometry
+Map 中有键，并且值为 true      → joined
+```
+
+用这个函数依次处理五条 MBIE 输入：
+
+```js
+const records = mbieRecords.map(associateRecord);
+```
+
+Stats NZ 输入中还包含没有对应 MBIE 记录的 `343000`。先从 MBIE 输入中取得全部六位候选编号，再找出只存在于 `statsNzAreas` 的编号：
+
+```js
+const mbieCandidateIds = new Set(
+  mbieRecords
+    .map((record) => String(record["Location Id"] ?? "").trim())
+    .filter((locationId) => /^\d{6}$/.test(locationId)),
+);
+
+const statsOnlySa2Ids = [...statsNzAreas.keys()]
+  .filter((sa2Id) => !mbieCandidateIds.has(sa2Id))
+  .sort();
+```
+
+最后统计五条实际结果。计数对象先把四种状态设为 `0`，然后根据每条记录的 `status` 增加对应数量：
+
+```js
+const counts = {
+  input: records.length,
+  joined: 0,
+  nonCandidateLocation: 0,
+  unmatchedLocation: 0,
+  missingGeometry: 0,
+};
+
+for (const record of records) {
+  counts[record.status] += 1;
+}
+```
+
+#### 9.3 对照正确答案
+
+实际结果已经由关联规则计算完成。把逐条结果、Stats NZ 独有编号和汇总数量组合成与 `expected-associations.json` 相同的结构：
+
+```js
+const actualAssociations = {
+  records,
+  statsOnlySa2Ids,
+  counts,
+};
+```
+
+然后比较实际结果与 8.2 保存的正确答案：
+
+```js
+assert.deepStrictEqual(actualAssociations, expectedAssociations);
+```
+
+`deepStrictEqual()` 会递归比较对象中的数组、字段和值。只要任意一条记录的状态、编号、顺序或汇总数量不同，断言就会失败，Node.js 以非零状态结束；全部相同时才继续输出结果。
+
+在脚本末尾加入通过状态和实际关联结果：
+
+```js
+console.log(
+  JSON.stringify(
+    {
+      status: "passed",
+      ...actualAssociations,
+    },
+    null,
+    2,
+  ),
+);
+```
+
+运行固定样本验证：
+
+```bash
+node data/scripts/verify-data-join-fixture.mjs
+```
+
+语法检查没有输出，关联验证的关键结果为：
+
+```text
+status: passed
+
+input: 5
+joined: 3
+nonCandidateLocation: 2
+unmatchedLocation: 0
+missingGeometry: 0
+
+statsOnlySa2Ids: 343000
+```
+
+`passed` 表示脚本计算出的五条记录、Stats NZ 独有编号和汇总数量与固定答案全部一致；同一组输入再次运行时会经过相同判断并得到相同结果。
+
+### 10. 汇总最终质量结论
+
+第 9 节已经证明固定样本能够按照同一套规则得到已知答案，但它只检查了五条 MBIE 记录。全国关联脚本虽然已经输出编号和记录数量，这些数字目前仍然是分散的结果，还没有形成一个明确的通过或失败状态。
+
+现在回到 `data/scripts/verify-data-join.mjs`，根据已经计算出的全国结果判断三件事：
+
+```text
+所有 MBIE 六位候选编号是否都找到 Stats NZ SA2
+所有已匹配 SA2 是否都具有 geometry
+所有 MBIE 输入记录是否都进入一个关联结果
+```
+
+三项条件全部成立时，全国关联才可以记为 `passed`。完成判断后，再把脚本输出的完整 JSON 保存下来，使本节结论与产生它的具体结果保存在一起。
+
+#### 10.1 将全国结果转换成通过状态
+
+第 5 节已经得到 `unmatchedIds` 和 `matchedIdsWithoutGeometry`，第 6 节已经得到 `accountedRecords` 与 `inputRecords`。这些变量正好对应三个质量条件，因此不需要重新读取或统计数据。
+
+在 `data/scripts/verify-data-join.mjs` 中，`representativeSamples` 定义完成后、`console.log()` 之前加入：
+
+```js
+const checks = {
+  allCandidateIdsMatched: unmatchedIds.length === 0,
+  allMatchedIdsHaveGeometry: matchedIdsWithoutGeometry.length === 0,
+  allInputRecordsAccountedFor: accountedRecords === inputRecords,
+};
+
+const status = Object.values(checks).every(Boolean) ? "passed" : "failed";
+```
+
+`checks` 把三个已有结果分别转换成 `true` 或 `false`。`Object.values(checks).every(Boolean)` 只有在三个值全部为 `true` 时才返回 `true`，因此其中任何一项失败，`status` 都会变成 `failed`。
+
+接着在脚本末尾原有的 JSON 输出对象开头加入 `status` 和 `checks`：
+
+```js
+{
+  status,
+  checks,
+  mbieCandidateIds: mbieCandidateIds.size,
+  // 后面的编号、记录和代表样本结果保持不变
+}
+```
+
+JSON 输出负责说明具体结果。命令本身还需要在检查失败时返回非零状态，因此在 `console.log()` 之后加入：
+
+```js
+if (status === "failed") {
+  process.exitCode = 1;
+}
+```
+
+运行全国关联脚本：
+
+```bash
+node data/scripts/verify-data-join.mjs
+```
+
+输出开头为：
+
+```json
+{
+  "status": "passed",
+  "checks": {
+    "allCandidateIdsMatched": true,
+    "allMatchedIdsHaveGeometry": true,
+    "allInputRecordsAccountedFor": true
+  }
+}
+```
+
+三个条件全部为 `true`，因此脚本得到 `passed`。如果以后任意一个条件变成 `false`，输出会改为 `failed`，命令也会以非零状态结束。
+
+#### 10.2 保存全国关联结果
+
+10.1 运行脚本时，`console.log()` 已经把质量状态、编号统计、记录统计和代表样本组合成一份 JSON，并显示在终端中。现在需要保存的就是这份脚本输出，不再手动填写另一组统计数字。
+
+先建立报告目录，再把脚本的标准输出写入 `data/reports/step-06-data-join.json`：
+
+```bash
+mkdir -p data/reports
+node data/scripts/verify-data-join.mjs > data/reports/step-06-data-join.json
+```
+
+这条命令仍然由 `verify-data-join.mjs` 读取源文件并计算所有结果。Shell 的 `>` 只把 `console.log()` 输出的 JSON 写入指定文件，因此 `step-06-data-join.json` 是脚本运行的产物。
+
+生成报告中的记录统计为：
+
+```json
+{
+  "input": 226080,
+  "candidateLocation": 224195,
+  "nonCandidateLocation": 1885,
+  "joined": 224195,
+  "unmatchedLocation": 0,
+  "missingGeometry": 0,
+  "accounted": 226080
+}
+```
+
+为了确认报告能够由相同源文件重新生成，再运行一次脚本，并把新输出与报告比较：
+
+```bash
+node data/scripts/verify-data-join.mjs > /tmp/roostmap-step-06-data-join.json
+cmp -s data/reports/step-06-data-join.json /tmp/roostmap-step-06-data-join.json
+echo $?
+```
+
+结果为：
+
+```text
+0
+```
+
+`cmp` 返回 `0`，说明两次脚本运行生成的 JSON 完全相同。报告中的数字来自全国关联脚本的计算结果，不是手动录入的结果。
+
+#### 10.3 得出最终关联结论
+
+全国脚本得到的编号级结果是：
+
+```text
+2,009 个 MBIE 六位 Location Id
+→ 2,009 个全部找到 Stats NZ SA2 2019
+→ 2,009 个全部具有 geometry
+```
+
+对应的记录级结果是：
+
+```text
+226,080 条 MBIE 输入记录
+→ 224,195 条六位编号记录完成关联
+→ 1,885 条非六位编号记录单独计数
+→ 0 条候选记录未找到 SA2
+→ 0 条候选记录缺少 geometry
+→ 226,080 条记录全部得到解释
+```
+
+Stats NZ 全表存在 16 条缺少 geometry 的记录，但它们都不属于当前 2,009 个 MBIE 匹配编号，因此不会改变已匹配地区的 geometry 结果。第 9 节的五条固定样本也得到 `passed`，实际关联结果与逐条写出的正确答案一致。
+
+当前两份源文件由此得到：
+
+```text
+Location Id → SA2 2019 → geometry
+状态：passed
+```
+
+这个结论只说明当前 MBIE 租金数据可以通过六位 `Location Id` 与当前 Stats NZ SA2 2019 数据完成地区关联。
+
+### 11. git 提交
+
+确认本步文件：
+
+```bash
+git status --short
+```
+
+提交 脚本、固定样本、报告和文档：
+
+```bash
+git add .
+git commit -m "chore: verify rental data and SA2 join"
+git push -u origin spike/data-join
+```
+
+在 GitHub 创建 Pull Request，检查后 squash merge。合并完成后同步本地仓库：
+
+```bash
+git switch main
+git pull --ff-only
+
+```
+
+删除分支
+
+```bash
+git branch -D spike/data-join
+git push origin --delete spike/data-join
+```
+
+
+
+### Step 06 完成状态
+
+```text
+⬜ 两份官方源文件已取得并完成完整性核对
+⬜ MBIE 与 Stats NZ 的数据结构和关联键已经确认
+⬜ MBIE 全国数据 profiling 已完成
+⬜ 2,009 个 MBIE 六位 Location Id 全部关联到带有 geometry 的 SA2
+⬜ 226,080 条 MBIE 输入记录全部得到解释
+⬜ 代表样本和最小固定样本已经建立
+⬜ 全国关联与固定样本验证均通过
+⬜ 全国关联报告可以稳定重新生成
+⬜ 数据脚本和文档已经完成
+```

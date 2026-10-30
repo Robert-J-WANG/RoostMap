@@ -1,0 +1,39 @@
+{
+  "records": [
+    {
+      "locationId": "179900",
+      "status": "joined",
+      "sa2Id": "179900"
+    },
+    {
+      "locationId": "102100",
+      "status": "joined",
+      "sa2Id": "102100"
+    },
+    {
+      "locationId": "341500",
+      "status": "joined",
+      "sa2Id": "341500"
+    },
+    {
+      "locationId": "-99",
+      "status": "nonCandidateLocation",
+      "sa2Id": null
+    },
+    {
+      "locationId": "NULL",
+      "status": "nonCandidateLocation",
+      "sa2Id": null
+    }
+  ],
+  "statsOnlySa2Ids": [
+    "343000"
+  ],
+  "counts": {
+    "input": 5,
+    "joined": 3,
+    "nonCandidateLocation": 2,
+    "unmatchedLocation": 0,
+    "missingGeometry": 0
+  }
+}

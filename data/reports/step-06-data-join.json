@@ -1,0 +1,71 @@
+{
+  "status": "passed",
+  "checks": {
+    "allCandidateIdsMatched": true,
+    "allMatchedIdsHaveGeometry": true,
+    "allInputRecordsAccountedFor": true
+  },
+  "mbieCandidateIds": 2009,
+  "statsNzSa2Ids": 2255,
+  "statsNzAreasWithoutGeometry": 16,
+  "matchedIds": 2009,
+  "unmatchedIds": {
+    "count": 0,
+    "values": []
+  },
+  "matchedIdsWithoutGeometry": {
+    "count": 0,
+    "values": []
+  },
+  "records": {
+    "input": 226080,
+    "candidateLocation": 224195,
+    "nonCandidateLocation": 1885,
+    "joined": 224195,
+    "unmatchedLocation": 0,
+    "missingGeometry": 0,
+    "accounted": 226080
+  },
+  "representativeSamples": [
+    {
+      "selection": "highestRecordCount",
+      "sa2Id": "179900",
+      "name": "Greensboro",
+      "territorialAuthority": "Hamilton City",
+      "region": "Waikato Region",
+      "landAreaSqKm": 0.46632181,
+      "hasGeometry": true,
+      "recordCount": 579
+    },
+    {
+      "selection": "lowestRecordCount",
+      "sa2Id": "102100",
+      "name": "Hokianga South",
+      "territorialAuthority": "Far North District",
+      "region": "Northland Region",
+      "landAreaSqKm": 126.08930327,
+      "hasGeometry": true,
+      "recordCount": 1
+    },
+    {
+      "selection": "largestLandArea",
+      "sa2Id": "341500",
+      "name": "Mackenzie Lakes",
+      "territorialAuthority": "Mackenzie District",
+      "region": "Canterbury Region",
+      "landAreaSqKm": 5134.28848751,
+      "hasGeometry": true,
+      "recordCount": 116
+    },
+    {
+      "selection": "statsOnlyChathamIslands",
+      "sa2Id": "343000",
+      "name": "Chatham Islands",
+      "territorialAuthority": "Chatham Islands Territory",
+      "region": "Area Outside Region",
+      "landAreaSqKm": 793.94659384,
+      "hasGeometry": true,
+      "recordCount": 0
+    }
+  ]
+}

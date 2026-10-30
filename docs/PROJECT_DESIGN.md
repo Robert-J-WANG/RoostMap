@@ -165,7 +165,7 @@ Land area
 - Dwelling Type 与 Bedroom Category 只按官方源值精确映射；缺失切片保持缺失，不借用其他类别的数据。
 - 默认租金切片为全部 dwelling types 和全部 bedrooms；用户改变筛选后，地图、列表、详情、图表和比较必须使用同一切片。
 
-完整字段、分类允许值、拒绝规则、数据 contract、分片和质量门禁见 `docs/TECHNICAL_SPEC.md`。
+完整字段、分类映射、数据 contract、分片和质量门禁见 `docs/TECHNICAL_SPEC.md`。
 
 ### 2.3 数据解释边界
 
