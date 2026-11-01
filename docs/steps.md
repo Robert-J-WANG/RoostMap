@@ -6389,3 +6389,568 @@ git push origin --delete spike/data-join
 ⬜ 全国关联报告可以稳定重新生成
 ⬜ 数据脚本和文档已经完成
 ```
+
+---
+
+## Step 07 · 验证地图、图表与数据分片
+
+### 这一步做什么
+
+Step 06 已经确认，MBIE 的六位 `Location Id` 可以找到对应的 Stats NZ SA2，而且这些已匹配地区都具有 geometry。这个结论解决了数据能否关联的问题，但目前得到的仍然是 CSV、GeoPackage 和验证报告，浏览器还不能直接用它们组成地图与图表。
+
+地图和历史图表需要从同一份关联结果中取得两种不同形态的数据：
+
+```text
+地图
+→ 同一范围内的多个 SA2
+→ 每个 SA2 的边界、稳定编号和当前租金指标
+
+历史图表
+→ 当前选中的一个 SA2
+→ 按季度排列的历史租金指标
+```
+
+如果两部分各自选择地区、季度或住宅分类，用户在地图上选中的区域就可能与图表显示的数据不一致。因此，本步使用同一个 `sa2Id` 和同一组分类条件贯穿数据准备、地图绘制和历史图表。
+
+地图相关工具分工如下：
+
+```text
+React                         保存页面选择和交互状态
+react-map-gl/maplibre         把 React 状态连接到地图
+MapLibre GL JS                绘制 GeoJSON 图层并处理地图交互
+MapTiler Cloud                提供地图底图
+Recharts                      绘制选中 SA2 的季度历史
+```
+
+除了确认地图和图表能够显示真实数据，还要确定浏览器应该怎样加载全国范围的数据。一次传输全国 SA2 geometry 可能产生较大的 data payload；按 Region 拆分可以减少单次加载量，但也会增加文件和加载切换。因此需要比较全国一次加载和 Region 按需加载的实际体积、解析时间与基本交互表现。
+
+整条验证链路是：
+
+```text
+选择一个真实 Region 和 SA2
+→ 从两份官方数据准备同一切片
+→ 将 geometry 转成浏览器可读取的 GeoJSON
+→ 在地图中显示 SA2 边界和租金指标
+→ 用地图选择驱动同一 SA2 的历史图表
+→ 比较全国数据与 Region 分片
+→ 根据实际结果确定加载策略
+```
+
+本步完成后，应当得到一个加载真实最小数据切片的地图与历史图表技术样例，并且能够用测量结果说明全国数据应当怎样分片和按需加载。
+
+### 1. 创建地图与图表验证分支
+
+Step 06 已经合并到 `main`，因此从最新的稳定状态建立本步分支：
+
+```bash
+git switch main
+git pull --ff-only
+git status
+git switch -c spike/map-chart
+```
+
+### 2. 确定最小真实数据切片
+
+地图需要同一范围内的多个 SA2 边界，历史图表则需要其中一个 SA2 的连续季度记录。直接从全国数据开始会把 geometry 转换、地图绘制和加载体积混在一起，因此先选择一个真实 Region 和一个初始 SA2，固定本次技术样例使用的数据范围。
+
+这个选择不能只凭熟悉的城市名称。Step 06 已经从完整关联结果中按记录数量选出了下面的代表样本：
+
+```text
+selection                  highestRecordCount
+sa2Id                      179900
+name                       Greensboro
+territorialAuthority       Hamilton City
+region                     Waikato Region
+hasGeometry                true
+recordCount                579
+```
+
+`179900` 是完整 MBIE 候选记录中出现次数最多的 SA2，并且具有 Stats NZ geometry。它所在的 Waikato Region 可以提供多个 SA2 边界用于地图，Greensboro 则提供一个数据较充足的初始选择用于历史图表。因此，本次样例固定为：
+
+```text
+Region             Waikato Region
+Initial SA2        179900 · Greensboro
+```
+
+这里的 `recordCount: 579` 包含这个 SA2 的不同季度、住宅类型和卧室分类，不能直接作为某一个租金切片的历史点数量。地图与图表仍然需要继续使用完全相同的分类条件。
+
+#### 2.1 固定地图与图表的分类条件
+
+Step 06 第 4 节的 MBIE profiling 已经确认，数据覆盖 2020-01-01 至 2026-04-01，共 26 个季度。源文件同时提供 `ALL` 住宅类型和 `ALL` 卧室分类，项目设计将这两个官方源值作为默认切片。
+
+本次样例因此固定下面的分类条件：
+
+```text
+Dataset latest period      2026-04-01
+Dwelling Type              ALL
+Number Of Beds             ALL
+```
+
+这里的 `ALL` 是 MBIE 源文件中已经存在的分类值，不是脚本把其他住宅类型或卧室数量重新相加得到的结果。地图和图表都只读取精确匹配这两个值的记录，不混入其他分类。
+
+#### 2.2 确定地图指标与历史指标
+
+地图需要在同一个季度比较多个 SA2，因此使用最新数据季度的 `Median Rent`。历史图表需要观察同一个 SA2 随季度变化的趋势，因此使用项目设计中规定的 `Geometric Mean Rent`。`Total Bonds` 同时保留为 Reported Bonds，用于说明每个观测的记录覆盖。
+
+两部分的数据范围由此确定为：
+
+```text
+地图数据
+Region             Waikato Region
+Period             2026-04-01
+Dwelling Type      ALL
+Number Of Beds     ALL
+Metric             Median Rent
+Coverage           Total Bonds
+
+历史图表数据
+SA2                179900 · Greensboro
+Periods            2020-01-01 至 2026-04-01
+Dwelling Type      ALL
+Number Of Beds     ALL
+Metric             Geometric Mean Rent
+Coverage           Total Bonds
+```
+
+地图范围中的 SA2 geometry 不因为当前季度缺少租金记录而被删除；没有精确匹配记录的地区保留边界，并将租金指标保持为缺失。历史数据也不使用其他住宅类型、卧室分类或相邻季度填补空值。
+
+这样，地图负责比较 Waikato Region 内同一切片的多个 SA2，图表负责显示当前选中 SA2 在同一分类下的季度历史。两者通过 `sa2Id` 连接，初始值都是 `179900`。
+
+### 3. 组合地图边界和租金数据
+
+第 2 节已经确定本次样例使用 Waikato Region、初始地区 Greensboro，以及 `ALL / ALL` 分类。地图需要比较 Waikato 各 SA2 的最新季度租金，图表需要显示 Greensboro 在相同分类下的季度历史。
+
+这些信息分散在两个源文件中：Stats NZ GeoPackage 保存地区身份和边界，MBIE CSV 保存季度租金。两边都使用六位 SA2 编号，因此可以通过 `sa2Id` 组合；在组合之前，先要把 GeoPackage 中的边界转换成 JavaScript 能处理的 GeoJSON geometry。
+
+#### 3.1 解决 GeoPackage geometry 的格式差异
+
+GeoPackage 表中的 `geom` 是二进制字段。它由 GeoPackage header 和 WKB geometry 两部分组成，而地图需要的是 GeoJSON 坐标。`sqlite3` 可以把二进制字段转成十六进制文本，但不能直接完成 WKB 到 GeoJSON 的转换。
+
+项目因此只为本地数据脚本加入 `wkx`。它负责解析去掉 GeoPackage header 之后的 WKB，不参与浏览器应用运行：
+
+```bash
+npm install -D wkx
+npm ls wkx
+```
+
+安装结果为：
+
+```text
+roostmap@0.0.0
+└── wkx@0.5.0
+```
+
+Stats NZ 导出时已经选择 EPSG:4326，因此这里只转换 geometry 的存储格式，不改变坐标系。
+
+#### 3.2 读取 Waikato Region 的 SA2 边界
+
+现在创建 `data/scripts/prepare-map-chart-sample.mjs`，先只处理 Stats NZ 数据。这个阶段的目标是确认三件事：脚本能够限定 Waikato Region、能够把每条 geometry 转成 GeoJSON，并且没有在转换过程中丢失边界。
+
+脚本先引入 Node.js 文件路径工具和 `wkx`，再指向已经解压的 GeoPackage：
+
+```js
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+import wkx from "wkx";
+
+const statsNzFileUrl = new URL(
+  "../raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg",
+  import.meta.url,
+);
+
+const regionName = "Waikato Region";
+```
+
+从 SQLite 取得的十六进制内容仍然包含 GeoPackage header。header 中的 flags 决定 envelope 长度，所以 WKB 的开始位置不能写成一个固定数字。接着加入 `geoPackageWkb()`，先计算 header 长度，再返回真正的 WKB：
+
+```js
+function geoPackageWkb(geometryHex) {
+  const geometryBuffer = Buffer.from(geometryHex, "hex");
+
+  if (
+    geometryBuffer.length < 8 ||
+    geometryBuffer.toString("ascii", 0, 2) !== "GP"
+  ) {
+    throw new Error("Invalid GeoPackage geometry header");
+  }
+
+  const flags = geometryBuffer.readUInt8(3);
+  const envelopeType = (flags >> 1) & 0b111;
+  const envelopeCoordinateCounts = [0, 4, 6, 6, 8];
+  const envelopeCoordinateCount = envelopeCoordinateCounts[envelopeType];
+
+  if (envelopeCoordinateCount === undefined) {
+    throw new Error(`Unsupported GeoPackage envelope type: ${envelopeType}`);
+  }
+
+  const headerLength = 8 + envelopeCoordinateCount * 8;
+  return geometryBuffer.subarray(headerLength);
+}
+```
+
+有了转换函数以后，再查询 Waikato Region。SQL 同时读取 SA2 编号、名称、上级地理、陆地面积和 geometry。`hex(geom)` 让 SQLite 可以通过 JSON 输出二进制内容，`ORDER BY` 保证相同源文件每次产生相同顺序：
+
+```js
+const statsNzQuery = `
+  SELECT
+    SA22019_V1_00 AS sa2Id,
+    SA22019_V1_00_NAME AS name,
+    TA2019_V1_00_NAME AS territorialAuthority,
+    REGC2019_V1_00 AS regionCode,
+    REGC2019_V1_00_NAME AS region,
+    LAND_AREA_SQ_KM AS landAreaSqKm,
+    CASE
+      WHEN geom IS NULL OR length(geom) = 0 THEN NULL
+      ELSE hex(geom)
+    END AS geometryHex
+  FROM statistical_area_2_higher_geographies_2019_generalised
+  WHERE REGC2019_V1_00_NAME = 'Waikato Region'
+  ORDER BY SA22019_V1_00;
+`;
+
+const statsNzRows = JSON.parse(
+  execFileSync(
+    "sqlite3",
+    ["-json", fileURLToPath(statsNzFileUrl), statsNzQuery],
+    {
+      encoding: "utf8",
+      maxBuffer: 32 * 1024 * 1024,
+    },
+  ),
+);
+```
+
+`hex()` 会把每个 byte 展开成两个字符，Waikato 的查询输出会明显大于原始二进制内容。这里把 `execFileSync()` 的输出缓冲区设为 32 MiB，避免完整查询结果被默认缓冲区截断。
+
+`statsNzRows` 仍然只是数据库记录。继续把每一行整理成 GeoJSON feature：`wkx` 解析 WKB，`id` 和 `properties.sa2Id` 都保留同一个地区编号，其他属性用于识别和展示地区。
+
+```js
+const geometryFeatures = statsNzRows.map((row) => {
+  const sa2Id = String(row.sa2Id).trim();
+
+  return {
+    type: "Feature",
+    id: sa2Id,
+    geometry: row.geometryHex
+      ? wkx.Geometry.parse(geoPackageWkb(row.geometryHex)).toGeoJSON()
+      : null,
+    properties: {
+      sa2Id,
+      name: row.name,
+      territorialAuthority: row.territorialAuthority,
+      regionCode: String(row.regionCode).trim(),
+      region: row.region,
+      landAreaSqKm: Number(row.landAreaSqKm),
+    },
+  };
+});
+
+const missingGeometryFeatures = geometryFeatures.filter(
+  (feature) => feature.geometry === null,
+);
+
+console.log(
+  JSON.stringify(
+    {
+      region: regionName,
+      areaCount: geometryFeatures.length,
+      missingGeometry: missingGeometryFeatures.length,
+      firstFeature: geometryFeatures[0]
+        ? {
+            id: geometryFeatures[0].id,
+            name: geometryFeatures[0].properties.name,
+            geometryType: geometryFeatures[0].geometry?.type ?? null,
+          }
+        : null,
+    },
+    null,
+    2,
+  ),
+);
+```
+
+这时先检查脚本语法，再运行 geometry 读取：
+
+```bash
+node --check data/scripts/prepare-map-chart-sample.mjs
+node data/scripts/prepare-map-chart-sample.mjs
+```
+
+运行结果为：
+
+```json
+{
+  "region": "Waikato Region",
+  "areaCount": 240,
+  "missingGeometry": 0,
+  "firstFeature": {
+    "id": "166500",
+    "name": "Colville",
+    "geometryType": "MultiPolygon"
+  }
+}
+```
+
+脚本从 Stats NZ 读取到 240 个 Waikato SA2，且没有缺失 geometry。第一条记录成功转换为 `MultiPolygon`，说明 GeoPackage header 与 WKB 的分界计算正确。此时得到的是 Stats NZ 的完整 Region 范围，还没有判断哪些 SA2 在 MBIE 租金数据中出现。
+
+#### 3.3 关联 MBIE 记录
+
+地图不能直接把 240 个 Stats NZ SA2 都当作租金地区。项目的可发布范围要求 SA2 同时具有 Stats NZ geometry 和 MBIE 观测，因此下一步是在现有脚本中读取 MBIE CSV，并用 `sa2Id` 完成关联。
+
+一次 CSV 读取需要得到三组信息：
+
+```text
+mbieWaikatoSa2Ids   Waikato 中曾经出现过 MBIE 观测的 SA2
+currentMetrics      2026-04-01、ALL / ALL 的地图指标
+historyObservations Greensboro 在 ALL / ALL 下的季度历史
+```
+
+先扩展文件顶部的 import 区域，让脚本可以流式读取 CSV：
+
+```js
+import { execFileSync } from "node:child_process";
+import { createReadStream } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { parse } from "csv-parse";
+import wkx from "wkx";
+```
+
+在 `statsNzFileUrl` 声明结束后加入 MBIE 文件位置：
+
+```js
+const mbieFileUrl = new URL(
+  "../raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
+  import.meta.url,
+);
+```
+
+脚本原有的 `regionName` 保持不变。在它后面加入第 2 节已经确定的季度、地区和分类条件：
+
+```js
+const latestPeriod = "2026-04-01";
+const initialSa2Id = "179900";
+const dwellingType = "ALL";
+const bedroomCategory = "ALL";
+```
+
+MBIE 字段需要统一去掉首尾空白；数值字段中的空字符串和 `NULL` 都表示缺失，不能改写成 `0`。在这些常量后、`geoPackageWkb()` 前加入两个读取函数：
+
+```js
+function sourceValue(record, field) {
+  return String(record[field] ?? "").trim();
+}
+
+function sourceNumber(record, field) {
+  const value = sourceValue(record, field);
+
+  if (value === "" || value === "NULL") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    throw new Error(`Invalid ${field}: ${value}`);
+  }
+
+  return number;
+}
+```
+
+文件上半部分到这里准备完成。脚本下半部分继续保留 `geometryFeatures` 和 `missingGeometryFeatures`，删除第 3.2 节末尾只检查 geometry 的 `console.log(...)`。从 `missingGeometryFeatures` 后面开始，新的代码按照“读取 MBIE → 组合指标 → 输出检查”的顺序连续加入。
+
+先把 Waikato 的 SA2 编号整理成集合，并建立三组结果容器。CSV 使用 stream 逐条读取，不需要一次把 226,080 条记录全部保存在内存中：
+
+```js
+const waikatoSa2Ids = new Set(
+  geometryFeatures.map((feature) => feature.id),
+);
+
+const mbieWaikatoSa2Ids = new Set();
+const currentMetrics = new Map();
+const historyObservations = [];
+
+const parser = createReadStream(mbieFileUrl).pipe(
+  parse({
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+  }),
+);
+```
+
+读取每条记录时，先收集所有能够与 Waikato geometry 对应的六位 `Location Id`。这个判断发生在分类筛选之前，因为一个 SA2 只要存在有效 MBIE 观测，就属于关联范围。
+
+随后只让 `ALL / ALL` 记录继续参与当前指标和历史整理：最新季度记录进入 `currentMetrics`，Greensboro 的各季度记录进入 `historyObservations`。
+
+```js
+for await (const record of parser) {
+  const period = sourceValue(record, "TimeFrame");
+  const sa2Id = sourceValue(record, "Location Id");
+  const recordDwellingType = sourceValue(record, "Dwelling Type");
+  const recordBedroomCategory = sourceValue(record, "Number Of Beds");
+
+  if (/^\d{6}$/.test(sa2Id) && waikatoSa2Ids.has(sa2Id)) {
+    mbieWaikatoSa2Ids.add(sa2Id);
+  }
+
+  if (
+    recordDwellingType !== dwellingType ||
+    recordBedroomCategory !== bedroomCategory
+  ) {
+    continue;
+  }
+
+  const reportedBonds = sourceNumber(record, "Total Bonds");
+
+  if (period === latestPeriod && waikatoSa2Ids.has(sa2Id)) {
+    currentMetrics.set(sa2Id, {
+      medianRent: sourceNumber(record, "Median Rent"),
+      reportedBonds,
+    });
+  }
+
+  if (sa2Id === initialSa2Id) {
+    historyObservations.push({
+      period,
+      geometricMeanRent: sourceNumber(record, "Geometric Mean Rent"),
+      reportedBonds,
+    });
+  }
+}
+
+historyObservations.sort((left, right) =>
+  left.period.localeCompare(right.period),
+);
+```
+
+CSV 读取结束后，`mbieWaikatoSa2Ids` 表示 Waikato geometry 与 MBIE 观测的交集。用它筛选 `geometryFeatures`，再把当前季度指标加入每个保留的 feature。某个可发布地区缺少当前切片时仍然保留边界，对应指标保持 `null`。
+
+```js
+const publishableFeatures = geometryFeatures.filter(
+  (feature) =>
+    feature.geometry !== null && mbieWaikatoSa2Ids.has(feature.id),
+);
+
+const mapFeatures = publishableFeatures.map((feature) => {
+  const metric = currentMetrics.get(feature.id);
+
+  return {
+    ...feature,
+    properties: {
+      ...feature.properties,
+      medianRent: metric?.medianRent ?? null,
+      reportedBonds: metric?.reportedBonds ?? null,
+    },
+  };
+});
+
+const initialMapFeature = mapFeatures.find(
+  (feature) => feature.id === initialSa2Id,
+);
+```
+
+最后加入新的检查输出。它把 Stats NZ 原始范围、MBIE 关联范围、当前切片和 Greensboro 历史分别列出，便于判断每一步的记录是否完整：
+
+```js
+console.log(
+  JSON.stringify(
+    {
+      region: regionName,
+      sourceAreaCount: geometryFeatures.length,
+      associatedAreaCount: mbieWaikatoSa2Ids.size,
+      publishableAreaCount: mapFeatures.length,
+      missingGeometry: missingGeometryFeatures.length,
+      mapSlice: {
+        period: latestPeriod,
+        dwellingType,
+        bedroomCategory,
+        metricRecords: currentMetrics.size,
+        missingMetricRecords: mapFeatures.length - currentMetrics.size,
+        initialFeature: initialMapFeature
+          ? {
+              id: initialMapFeature.id,
+              name: initialMapFeature.properties.name,
+              medianRent: initialMapFeature.properties.medianRent,
+              reportedBonds: initialMapFeature.properties.reportedBonds,
+            }
+          : null,
+      },
+      history: {
+        sa2Id: initialSa2Id,
+        observations: historyObservations.length,
+        start: historyObservations.at(0)?.period ?? null,
+        end: historyObservations.at(-1)?.period ?? null,
+      },
+    },
+    null,
+    2,
+  ),
+);
+```
+
+完成这些改动后，再检查语法并运行脚本：
+
+```bash
+node --check data/scripts/prepare-map-chart-sample.mjs
+node data/scripts/prepare-map-chart-sample.mjs
+```
+
+运行结果为：
+
+```json
+{
+  "region": "Waikato Region",
+  "sourceAreaCount": 240,
+  "associatedAreaCount": 222,
+  "publishableAreaCount": 222,
+  "missingGeometry": 0,
+  "mapSlice": {
+    "period": "2026-04-01",
+    "dwellingType": "ALL",
+    "bedroomCategory": "ALL",
+    "metricRecords": 162,
+    "missingMetricRecords": 60,
+    "initialFeature": {
+      "id": "179900",
+      "name": "Greensboro",
+      "medianRent": 350,
+      "reportedBonds": 171
+    }
+  },
+  "history": {
+    "sa2Id": "179900",
+    "observations": 26,
+    "start": "2020-01-01",
+    "end": "2026-04-01"
+  }
+}
+```
+
+240 个 Stats NZ SA2 中有 222 个能够关联到 MBIE 观测，而且这些地区都有 geometry，因此关联范围与可发布范围数量一致。最新 `ALL / ALL` 切片覆盖其中 162 个地区；另外 60 个地区保留边界，但当前租金指标为缺失。Greensboro 取得 26 个季度的连续分类记录，范围与第 2 节确定的数据周期一致。
+
+### 4. 建立地图与图表技术样例页面
+
+安装并配置 `react-map-gl/maplibre`、MapLibre GL JS 和 Recharts，接入 MapTiler Cloud 底图与 attribution，建立只承载本次验证的页面，并加载第 3 节准备的真实样例数据。
+
+### 5. 绘制 SA2 专题地图
+
+把 GeoJSON 加入 MapLibre source，使用 fill 和 line layer 显示 SA2 边界，验证 feature id、租金指标、hover 和选择状态都对应正确地区。
+
+### 6. 连接地图选择与历史图表
+
+选择地图中的 SA2 后，将同一个 `sa2Id` 交给 Recharts 显示季度历史，并验证分类切片、缺失季度、稀疏记录以及文字或表格结果。
+
+### 7. 测量全国数据与 Region 分片
+
+先验证选择 Region 后只按需加载对应分片，再比较全国一次加载与 Region 分片的 data payload 大小、压缩体积、读取与解析时间、首次渲染时间和基本交互响应，并区分数据 payload 与应用 bundle，根据实际测量判断加载策略。
+
+### 8. 验证技术样例并形成结论
+
+使用组件测试和浏览器测试检查真实 geometry、地图指标、图表历史、地图选择联动、非视觉结果和代表样本是否正确，并确认分片结论具有实际测量结果支持。
+
+### 9. 记录结果并完成 Git 操作
+
+将技术样例、测量结果和分片结论记录到学习笔记与技术规范，运行项目检查后提交 `spike/map-chart` 分支。
