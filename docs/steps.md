@@ -6933,7 +6933,457 @@ node data/scripts/prepare-map-chart-sample.mjs
 
 ### 4. 建立地图与图表技术样例页面
 
-安装并配置 `react-map-gl/maplibre`、MapLibre GL JS 和 Recharts，接入 MapTiler Cloud 底图与 attribution，建立只承载本次验证的页面，并加载第 3 节准备的真实样例数据。
+第 3 节的脚本已经得到 Waikato 的 222 个可发布 SA2，以及 Greensboro 的 26 条季度记录。不过，这些数据目前只保存在 Node.js 进程的变量中，脚本结束后就不会继续保留。终端输出的是检查用的摘要，也没有包含全部边界坐标和历史记录，React 页面无法从这份摘要取得地图和图表需要的数据。
+
+因此，建立页面先从打通数据入口开始：让脚本把已经整理好的结果保存为 JSON，再确认浏览器能够请求到这些内容。有了这个入口，页面才能加载同一份地图切片和历史记录。
+
+#### 4.1 将关联结果保存为浏览器可读取的文件
+
+Vite 的 `public` 目录用于提供静态文件。例如，放在 `public/data/` 下面的文件可以通过浏览器中的 `/data/` 路径访问。当前样例需要一份地区边界和一份单地区历史，因此把输出放在 `public/data/spike/map-chart/`，分别命名为 `waikato.geo.json` 和 `179900-history.json`。
+
+继续修改 `data/scripts/prepare-map-chart-sample.mjs`。写入文件需要 Node.js 的 `mkdir` 和 `writeFile`，所以在文件顶部现有的 `createReadStream` import 后面加入：
+
+```js
+import { mkdir, writeFile } from "node:fs/promises";
+```
+
+脚本中的 `mapFeatures` 已经包含地区边界和最新季度指标。GeoJSON 用 `FeatureCollection` 将多个 feature 组合成一个完整对象，因此可以直接包装这组结果。历史数据则需要同时保存 SA2 编号、分类和指标名称，让读取方能够判断这些季度记录属于哪个数据切片。
+
+在脚本末尾现有的 `console.log(...)` 结束后，接着加入下面两组数据对象。原有检查输出继续保留，用于核对每次生成前的关联结果：
+
+```js
+const mapData = {
+  type: "FeatureCollection",
+  features: mapFeatures,
+};
+
+const historyData = {
+  sa2Id: initialSa2Id,
+  dwellingType,
+  bedroomCategory,
+  metric: "geometricMeanRent",
+  observations: historyObservations,
+};
+```
+
+两个对象使用的仍然是第 3 节整理出的数据：地图保留当前指标缺失的地区边界，历史保留源记录中的缺失值。保存文件只改变数据的存放位置，不重新计算租金。
+
+现在已经有了要保存的内容，接着确定文件位置。这里和源文件路径一样使用 `import.meta.url`，使输出位置相对于脚本文件确定，不受终端当前目录影响。在 `historyData` 声明后继续加入：
+
+```js
+const outputDirectoryUrl = new URL(
+  "../../public/data/spike/map-chart/",
+  import.meta.url,
+);
+
+const mapFileUrl = new URL("waikato.geo.json", outputDirectoryUrl);
+const historyFileUrl = new URL(
+  `${initialSa2Id}-history.json`,
+  outputDirectoryUrl,
+);
+
+await mkdir(outputDirectoryUrl, { recursive: true });
+
+await writeFile(mapFileUrl, JSON.stringify(mapData), "utf8");
+await writeFile(historyFileUrl, JSON.stringify(historyData), "utf8");
+```
+
+`mkdir()` 先建立输出目录，`recursive: true` 允许上级目录尚未存在，也允许重复运行时沿用已有目录。`JSON.stringify()` 把 JavaScript 对象转成 JSON 文本；再次运行脚本时，两份文件会根据源数据重新生成。
+
+写入完成后，继续在文件末尾加入生成摘要。只有两次 `writeFile()` 都成功结束，才会输出这些路径：
+
+```js
+console.log(
+  JSON.stringify(
+    {
+      mapFile: fileURLToPath(mapFileUrl),
+      mapFeatures: mapData.features.length,
+      historyFile: fileURLToPath(historyFileUrl),
+      historyObservations: historyData.observations.length,
+    },
+    null,
+    2,
+  ),
+);
+```
+
+代码准备好后，在项目根目录检查语法并运行脚本：
+
+```bash
+node --check data/scripts/prepare-map-chart-sample.mjs
+node data/scripts/prepare-map-chart-sample.mjs
+```
+
+这次运行应先显示原有的关联统计，再显示文件生成摘要。使用当前源文件时，摘要中的 `mapFeatures` 应为 `222`，`historyObservations` 应为 `26`；两条路径应指向项目的 `public/data/spike/map-chart/` 目录。这两个数量来自第 3 节的实际关联结果，用来确认写出的内容与内存结果一致。
+
+文件生成后，启动 Vite：
+
+```bash
+npm run dev
+```
+
+使用终端实际显示的本地地址，在浏览器分别打开下面两条路径。如果 Vite 使用默认端口，对应地址为：
+
+```text
+http://localhost:5173/data/spike/map-chart/waikato.geo.json
+http://localhost:5173/data/spike/map-chart/179900-history.json
+```
+
+地图文件应能看到 `type: "FeatureCollection"` 和 `features` 数组；历史文件应能看到 `sa2Id: "179900"`、`ALL / ALL` 分类和 `observations` 数组。这里需要确认浏览器返回的是对应 JSON，而不是应用首页或找不到文件的响应。只有浏览器能取得这两份数据，页面的数据入口才算打通。
+
+实际运行后，生成摘要中的地图 feature 数量为 `222`，历史记录数量为 `26`。浏览器分别打开两个地址后，地图文件返回 `FeatureCollection` 和 `MultiPolygon` 坐标，历史文件返回 `179900` 的 `ALL / ALL` 季度记录。数据文件的生成和浏览器访问均已确认。
+
+#### 4.2 为页面接入地图工具和底图
+
+浏览器能够取得边界坐标，但 React 本身不会将坐标绘制成地图。项目选定的 `MapLibre GL JS` 负责绘制，`react-map-gl/maplibre` 则将地图包装成 React 组件。道路、地名等底图内容来自 MapTiler Cloud，与本地生成的 SA2 边界数据各自独立。
+
+当前要先显示地图，因此在项目根目录安装负责地图绘制和 React 组件接入的两个依赖：
+
+```bash
+npm install react-map-gl maplibre-gl
+npm ls react-map-gl maplibre-gl
+```
+
+组件从 `react-map-gl/maplibre` 导入，但安装的 npm 包名是 `react-map-gl`。这一对应关系来自 [react-map-gl 官方示例](https://github.com/visgl/react-map-gl#example)。安装结束后，检查 `npm ls` 能否列出两个包，具体版本以本次生成的 `package-lock.json` 为准。
+
+地图组件还需要一个底图样式地址。样式文件描述地图使用的图层、字体和瓦片来源，MapLibre 会根据它继续请求底图资源。MapTiler 的地址需要附带当前项目的 API key，因此先登录 [MapTiler Cloud](https://cloud.maptiler.com/)，在 API keys 中为本地开发创建一个 key。
+
+这个 key 会随浏览器请求发送出去。按照 [MapTiler 的本地测试说明](https://docs.maptiler.com/guides/developer/credentials/api-key/#local-testing)，当前通过 `http://localhost:5173` 访问页面时，在 key 的 Allowed HTTP origins 中填写 `localhost`，不带协议和端口。如果通过 `127.0.0.1` 访问，则填写 `127.0.0.1`。
+
+在项目根目录的 `.env.local` 中保留已有配置，并加入真实 key：
+
+```dotenv
+VITE_MAPTILER_KEY=VMpKWUQFK2DPrKiLxMn0
+```
+
+`.env.local` 已受 `.gitignore` 排除。为了让项目说明保留变量名称，在 `.env.example` 原有内容后增加一个空值：
+
+```dotenv
+VITE_MAPTILER_KEY=
+```
+
+Vite 会将 `VITE_` 开头的变量暴露给浏览器代码，所以这里使用的是受来源限制的浏览器 key。环境变量修改后，需要停止当前 Vite 进程并重新启动，页面才能读到新值。
+
+#### 4.3 在样例页面显示底图
+
+现在可以建立承载地图的页面。它使用现有应用外壳，在页面中留出一个有明确高度的区域，再让 MapLibre 在其中绘制底图。当前样例范围是 Waikato，因此初始视角放在 Waikato 附近。
+
+项目已有的 `src/pages/` 保存与路由对应的页面，因此在这里创建 `src/pages/MapChartPage.tsx`，与 Home、Methodology 页面保持相同的组织方式。
+
+`Map` 在页面中创建地图，`NavigationControl` 提供缩放和方向按钮，CSS 负责按钮和署名控件的样式。本次安装的 MapLibre GL JS 为 `6.16.0`，地图瓦片的处理使用一个独立的 Worker，也就是在浏览器后台执行计算的脚本。Vite 需要打包这份脚本，并将生成的地址交给 MapLibre，所以在文件顶部一起导入：
+
+```tsx
+import Map, { NavigationControl } from "react-map-gl/maplibre";
+import { setWorkerUrl } from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+import "maplibre-gl/dist/maplibre-gl.css";
+```
+
+`?worker&url` 让 Vite 将 Worker 打包，并返回它的访问地址。地图创建之前需要知道这个地址，因此在所有 import 之后、页面函数之前加入：
+
+```tsx
+setWorkerUrl(workerUrl);
+```
+
+这对应 [MapLibre 官方的 Vite 接入方式](https://maplibre.org/maplibre-gl-js/docs/#installation)。
+
+地图首先需要实际的绘制空间。页面给外层 `div` 设置高度，再让 `Map` 的宽高占满它。为了打开页面时就能看到 Waikato，使用附近的经纬度 `175.3, -37.8` 作为初始视角，缩放级别设为 `7`。这是显示位置，不是用来计算 SA2 边界的坐标。
+
+底图内容通过 `mapStyle` 指定，它使用 [MapTiler Maps API](https://docs.maptiler.com/cloud/api/maps/) 的样式地址，并附带刚才配置的 key。署名控件保持显示，用于呈现底图资源的来源。页面先读取 key；缺少配置时给出提示，有配置时才创建地图。
+
+Worker 地址配置好后，接着定义页面组件：
+
+```tsx
+export function MapChartPage() {
+  const mapTilerKey = import.meta.env.VITE_MAPTILER_KEY;
+
+  if (!mapTilerKey) {
+    return <p>Set VITE_MAPTILER_KEY to load the basemap.</p>;
+  }
+
+  return (
+    <section className="space-y-6">
+      <title>Map and chart sample | RoostMap</title>
+
+      <div>
+        <h1 className="text-3xl font-semibold">Waikato rental data sample</h1>
+        <p className="mt-2 text-muted-foreground">
+          2026-04-01 · All dwelling types · All bedroom categories
+        </p>
+      </div>
+
+      <div className="h-[420px] overflow-hidden rounded-xl border sm:h-[560px]">
+        <Map
+          initialViewState={{
+            longitude: 175.3,
+            latitude: -37.8,
+            zoom: 7,
+          }}
+          style={{ width: "100%", height: "100%" }}
+          mapStyle={`https://api.maptiler.com/maps/streets-v4/style.json?key=${mapTilerKey}`}
+          attributionControl={{ compact: false }}
+        >
+          <NavigationControl position="top-right" />
+        </Map>
+      </div>
+    </section>
+  );
+}
+```
+
+`initialViewState` 只设置地图打开时的视角；拖动和缩放由地图组件继续处理。此时显示的道路和地名来自 MapTiler，页面还没有读取本地的 SA2 文件。
+
+页面组件还没有路由入口。继续在 `src/app/router/routes.tsx` 的 import 区域加入：
+
+```tsx
+import { MapChartPage } from "@/pages/MapChartPage";
+```
+
+现有路由的页面都放在根路径的 `children` 数组中。样例也放在同一层，位于 `methodology` 后面、通配路径 `*` 前面；这一段的顺序为：
+
+```tsx
+          {
+            path: "methodology",
+            Component: MethodologyPage,
+          },
+          {
+            path: "spike/map-chart",
+            Component: MapChartPage,
+          },
+          {
+            path: "*",
+            Component: NotFoundPage,
+          },
+```
+
+路由建立后，页面已经有访问地址，但顶部导航还没有它的入口。现有 `src/components/layout/AppShell.tsx` 通过 `navigationItems` 生成导航链接，因此沿用这组配置加入 MapChart。该数组现在包含：
+
+```tsx
+const navigationItems = [
+  { label: "Home", to: "/" },
+  { label: "Methodology", to: "/methodology" },
+  { label: "MapChart", to: "/spike/map-chart" },
+];
+```
+
+`to` 使用以 `/` 开头的站点路径，与现有两项保持一致。
+
+重新启动开发服务器后，点击顶部 MapChart 进入样例页面。此时应先确认页面标题、Waikato 附近的底图、缩放按钮和底部署名能够显示，并且拖动和缩放有效。再点击 Home、Methodology 和 MapChart，确认能够往返切换，当前链接的高亮随页面变化。如果显示缺少 key 的提示，检查 `.env.local` 和 Vite 是否已经重启；如果底图资源返回 `401` 或 `403`，检查 MapTiler key、允许来源和账户可用状态。
+
+#### 4.4 在页面中读取样例数据
+
+底图来自 MapTiler，而 SA2 边界和租金记录来自本地两份 JSON。现在页面需要发出请求，并区分数据尚在加载、请求失败和成功取得数据这几种状态。
+
+先解决如何读取文件。页面将使用边界的 `features` 和历史的 `observations`，所以先用 TypeScript 描述这两份文件实际包含的字段，让读取结果在页面中有明确的类型。
+
+GeoJSON 已经有现成的类型定义，不需要重新描述坐标数组。在项目根目录加入只供 TypeScript 使用的类型包：
+
+```bash
+npm install -D @types/geojson
+npm ls @types/geojson
+```
+
+现有 `src/features/explore/` 负责地图探索相关功能，页面使用的样例数据读取逻辑放在这个功能目录中， 创建 `src/features/explore/sample-data.ts`。
+
+地图中的每个 feature 都有一组地区属性，`FeatureCollection` 则表示这些 feature 的集合；历史文件保存地区编号、分类和季度记录。先在文件中描述它们：
+
+```ts
+import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
+
+type AreaProperties = {
+  sa2Id: string;
+  name: string;
+  territorialAuthority: string;
+  regionCode: string;
+  region: string;
+  landAreaSqKm: number;
+  medianRent: number | null;
+  reportedBonds: number | null;
+};
+
+type MapData = FeatureCollection<Polygon | MultiPolygon, AreaProperties>;
+
+type HistoryData = {
+  sa2Id: string;
+  dwellingType: string;
+  bedroomCategory: string;
+  metric: "geometricMeanRent";
+  observations: {
+    period: string;
+    geometricMeanRent: number | null;
+    reportedBonds: number | null;
+  }[];
+};
+```
+
+`FeatureCollection<Polygon | MultiPolygon, AreaProperties>` 表示：集合里的边界可以是多边形或多重多边形，每个 feature 的属性遵循 `AreaProperties`。`number | null` 则保留租金和记录数量缺失的可能性。这些类型检查的是页面代码如何使用数据，不会在运行时验证 JSON。
+
+页面需要同时取得地图和历史文件，因此用 `Promise.all()` 并行发出两个请求，再把结果作为一组数据返回。`fetch()` 收到 HTTP 错误时不会自动抛出异常，所以先检查响应的 `ok`，成功后再用 `json()` 解析内容。
+
+读取函数还接收一个取消信号 `signal`，并传给两个请求，使调用方取消读取时能够中止网络请求。继续在类型声明后加入 `loadSampleData()`：
+
+```ts
+export async function loadSampleData(signal: AbortSignal) {
+  const [mapResponse, historyResponse] = await Promise.all([
+    fetch("/data/spike/map-chart/waikato.geo.json", { signal }),
+    fetch("/data/spike/map-chart/179900-history.json", { signal }),
+  ]);
+
+  if (!mapResponse.ok || !historyResponse.ok) {
+    throw new Error("Could not load the map and history data files.");
+  }
+
+  const map: MapData = await mapResponse.json();
+  const history: HistoryData = await historyResponse.json();
+
+  return { map, history };
+}
+```
+
+现在调用 `loadSampleData()` 就能取得 `{ map, history }`，但请求需要时间，也可能失败。React 页面需要知道请求是否结束，并在结果到达时重新渲染。
+
+项目选定的 TanStack Query 负责保存这些请求状态和返回结果：开始读取时标记为等待，成功时保存数据，失败时保存错误。页面读取这些状态来决定显示内容，因此在这里安装它：
+
+```bash
+npm install @tanstack/react-query
+npm ls @tanstack/react-query
+```
+
+读取函数已经准备好，现在需要让 React 页面能够使用查询客户端。`QueryClient` 保存请求状态和返回结果，这份保存下来的结果就是查询缓存；`QueryClientProvider` 将客户端提供给它内部的组件，内部组件才能调用 `useQuery()`。
+
+异步数据管理属于应用级配置，现有 `src/app/providers/` 就负责这一类依赖的接入。因此在这里创建 `src/app/providers/QueryProvider.tsx`，为应用提供同一个客户端。
+
+先导入组件内容类型和查询工具：
+
+```tsx
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+```
+
+客户端创建在组件之外，组件重新渲染时就不会重新创建缓存。这个 Provider 接收 `children`，也就是需要使用查询的内部组件，并用 `QueryClientProvider` 包住它们。在 import 后继续加入：
+
+```tsx
+const queryClient = new QueryClient();
+
+type QueryProviderProps = {
+  children: ReactNode;
+};
+
+export function QueryProvider({ children }: QueryProviderProps) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+```
+
+Provider 只有进入组件树才会生效。现有 `src/app/App.tsx` 负责渲染 `RouterProvider`，在这里接入查询 Provider，可以让路由中的各个页面共用同一个客户端，切换页面时也保留查询缓存。
+
+在 `App.tsx` 中导入 `QueryProvider`，并让它包住原有的 `RouterProvider`。这个文件的内容为：
+
+```tsx
+import { RouterProvider } from "react-router/dom";
+
+import { QueryProvider } from "@/app/providers/QueryProvider";
+import { router } from "@/app/router/router";
+
+function App() {
+  return (
+    <QueryProvider>
+      <RouterProvider router={router} />
+    </QueryProvider>
+  );
+}
+
+export default App;
+```
+
+此时的组件关系是：
+
+```text
+App
+└─ QueryProvider
+   └─ RouterProvider
+      └─ 应用布局和当前页面
+```
+
+页面已经处于 Provider 内部，可以直接连接读取函数。在 `src/pages/MapChartPage.tsx` 的 import 区域加入：
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+
+import { loadSampleData } from "@/features/explore/sample-data";
+```
+
+`useQuery()` 会通过上层 Provider 找到客户端，执行读取函数并取得状态。`queryFn` 指定怎样取得数据，`queryKey` 则给这组请求结果一个稳定名称，让客户端能够找到对应的缓存。当前只读取固定的两份文件，因此使用 `map-chart-sample` 标识这一组结果。
+
+`useQuery()` 是 React Hook，需要在组件每次渲染时保持相同的调用顺序。因此在 `MapChartPage()` 内、原有 `const mapTilerKey = ...` 后面、缺少 key 的条件返回之前加入：
+
+```tsx
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: ["map-chart-sample"],
+    queryFn: ({ signal }) => loadSampleData(signal),
+    retry: false,
+  });
+```
+
+查询会把取消信号交给 `loadSampleData()`。这里设置 `retry: false`，失败时直接显示错误，由用户点击按钮重新请求。[TanStack Query 官方入门](https://tanstack.com/query/latest/docs/framework/react/quick-start)提供了客户端、Provider 和查询的基本用法。
+
+接下来根据返回状态决定页面内容：`isPending` 表示尚未取得结果，`isError` 表示请求失败，`error` 保存失败原因，`refetch()` 用于再次读取。只有请求成功，才读取 `data` 中的两组记录；如果数组为空，则显示没有数据的提示。
+
+这段判断放在原有 `if (!mapTilerKey) { ... }` 结束后、绘制页面的 `return (...)` 之前：
+
+```tsx
+  if (isPending) {
+    return <p>Loading the Waikato sample data…</p>;
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-3">
+        <p>{error.message}</p>
+        <button
+          className="rounded-md border px-4 py-2"
+          onClick={() => void refetch()}
+          type="button"
+        >
+          Retry loading data
+        </button>
+      </div>
+    );
+  }
+
+  if (data.map.features.length === 0 || data.history.observations.length === 0) {
+    return <p>No map or history observations are available for this sample.</p>;
+  }
+```
+
+请求成功且数据非空后，页面继续显示底图。现在需要确认 React 实际取得了什么，因此把边界数量、地区编号、分类和历史记录数量显示在底图下方。下面的摘要放在现有地图容器的结束 `</div>` 之后、最外层 `</section>` 之前：
+
+```tsx
+      <div className="rounded-xl border bg-card p-4 text-sm">
+        <p>Loaded SA2 boundaries: {data.map.features.length}</p>
+        <p>Initial SA2: {data.history.sa2Id}</p>
+        <p>
+          History classification: {data.history.dwellingType} /{" "}
+          {data.history.bedroomCategory}
+        </p>
+        <p>Quarterly observations: {data.history.observations.length}</p>
+      </div>
+```
+
+到这里，页面应当同时显示可交互的底图和来自两份 JSON 的摘要。打开样例页面后，在浏览器 Network 中确认两个本地 JSON 请求成功，并核对页面是否显示 `222` 个边界、初始 SA2 `179900`、`ALL / ALL` 和 `26` 条季度记录。
+
+为了检查请求失败时的表现，在 Chrome 开发者工具的 Network request blocking 中临时屏蔽 `*179900-history.json*`，刷新页面，检查是否出现错误和重试按钮。取消屏蔽后点击重试，应重新取得数据。这个检查能够确认成功路径之外，请求失败也有明确反馈。
+
+最后在项目根目录运行现有检查：
+
+```bash
+npm run check
+```
+
+
 
 ### 5. 绘制 SA2 专题地图
 

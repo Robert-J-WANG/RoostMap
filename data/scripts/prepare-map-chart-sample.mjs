@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse";
 import wkx from "wkx";
 
+import { mkdir, writeFile } from "node:fs/promises";
+
 const statsNzFileUrl = new URL(
   "../raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg",
   import.meta.url,
@@ -209,11 +211,11 @@ console.log(
         missingMetricRecords: mapFeatures.length - currentMetrics.size,
         initialFeature: initialMapFeature
           ? {
-              id: initialMapFeature.id,
-              name: initialMapFeature.properties.name,
-              medianRent: initialMapFeature.properties.medianRent,
-              reportedBonds: initialMapFeature.properties.reportedBonds,
-            }
+            id: initialMapFeature.id,
+            name: initialMapFeature.properties.name,
+            medianRent: initialMapFeature.properties.medianRent,
+            reportedBonds: initialMapFeature.properties.reportedBonds,
+          }
           : null,
       },
       history: {
@@ -222,6 +224,48 @@ console.log(
         start: historyObservations.at(0)?.period ?? null,
         end: historyObservations.at(-1)?.period ?? null,
       },
+    },
+    null,
+    2,
+  ),
+);
+
+const mapData = {
+  type: "FeatureCollection",
+  features: mapFeatures,
+};
+
+const historyData = {
+  sa2Id: initialSa2Id,
+  dwellingType,
+  bedroomCategory,
+  metric: "geometricMeanRent",
+  observations: historyObservations,
+};
+
+const outputDirectoryUrl = new URL(
+  "../../public/data/spike/map-chart/",
+  import.meta.url,
+);
+
+const mapFileUrl = new URL("waikato.geo.json", outputDirectoryUrl);
+const historyFileUrl = new URL(
+  `${initialSa2Id}-history.json`,
+  outputDirectoryUrl,
+);
+
+await mkdir(outputDirectoryUrl, { recursive: true });
+
+await writeFile(mapFileUrl, JSON.stringify(mapData), "utf8");
+await writeFile(historyFileUrl, JSON.stringify(historyData), "utf8");
+
+console.log(
+  JSON.stringify(
+    {
+      mapFile: fileURLToPath(mapFileUrl),
+      mapFeatures: mapData.features.length,
+      historyFile: fileURLToPath(historyFileUrl),
+      historyObservations: historyData.observations.length,
     },
     null,
     2,
