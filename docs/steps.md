@@ -7387,7 +7387,327 @@ npm run check
 
 ### 5. 绘制 SA2 专题地图
 
-把 GeoJSON 加入 MapLibre source，使用 fill 和 line layer 显示 SA2 边界，验证 feature id、租金指标、hover 和选择状态都对应正确地区。
+第 4 节的页面已经能显示底图，并通过查询取得 `data.map`。页面摘要中的 `222` 表示文件包含 222 个 SA2，但这些坐标还没有交给地图绘制。
+
+现在把这份 GeoJSON 接到现有地图上。先确认边界能够显示，再让颜色反映当前季度的 Median Rent，最后通过悬停和点击核对地图上的地区编号与记录是否一致。所有改动继续在 `src/pages/MapChartPage.tsx` 中进行，使用已经加载的 `data.map`。
+
+#### 5.1 将 SA2 边界加入底图
+
+MapLibre 将“数据从哪里来”和“数据怎样画出来”分开处理。`Source` 接收数据，`Layer` 决定画法：多边形内部由 `fill` 图层填充，边缘由 `line` 图层描绘。同一份 GeoJSON 可以同时供这两种图层使用。
+
+这些组件来自已经安装的 `react-map-gl/maplibre`。扩展 `MapChartPage.tsx` 顶部原有的地图组件 import，并加入图层配置的类型：
+
+```tsx
+import Map, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
+import type { LayerProps } from "react-map-gl/maplibre";
+```
+
+其余 import 和 `setWorkerUrl(workerUrl)` 保留。为了先确认坐标和范围，填充图层暂时使用统一的蓝绿色，再加一层细线区分相邻地区。在 `setWorkerUrl(workerUrl)` 后、`MapChartPage()` 函数之前定义：
+
+```tsx
+const sa2FillLayer: LayerProps = {
+  id: "sa2-fill",
+  type: "fill",
+  paint: {
+    "fill-color": "#57c8b8",
+    "fill-opacity": 0.55,
+  },
+};
+
+const sa2BoundaryLayer: LayerProps = {
+  id: "sa2-boundaries",
+  type: "line",
+  paint: {
+    "line-color": "#536a6b",
+    "line-width": 1,
+  },
+};
+```
+
+图层的 `id` 是地图内部识别图层的名称，和单个地区的 `sa2Id` 不同。两个图层的配置放在组件之外，因为它们不需要随组件每次渲染重新创建。
+
+页面的 `<Map>` 目前只有 `NavigationControl`。在它后面加入 `Source`，将 `data.map` 交给地图，并在 Source 内依次放置填充和边界图层。现有 `<Map>` 内的内容变为：
+
+```tsx
+          <NavigationControl position="top-right" />
+
+          <Source id="sa2-areas" type="geojson" data={data.map}>
+            <Layer {...sa2FillLayer} />
+            <Layer {...sa2BoundaryLayer} />
+          </Source>
+```
+
+这里的 `data` 来自页面现有的 `useQuery()`，不是再次读取文件。Layer 直接放在 Source 内部，会使用这个 Source 的数据。[Source](https://visgl.github.io/react-map-gl/docs/api-reference/maplibre/source) 和 [Layer](https://visgl.github.io/react-map-gl/docs/api-reference/maplibre/layer) 的官方说明介绍了这种组合方式。
+
+保存后打开现有样例页面，检查 Waikato 附近是否出现半透明填色和地区分界线。拖动、缩放时，边界应当跟随地图移动，而不是固定在页面某个位置。此时所有地区颜色相同，先用它确认 geometry 已经进入地图绘制流程。
+
+#### 5.2 用当前季度租金区分地区
+
+边界显示出来后，就可以让颜色表达租金。每个 feature 的 `properties.medianRent` 已经保存 `2026-04-01`、`ALL / ALL` 切片的每周租金中位数，不需要在页面重新计算。
+
+颜色规则由 MapLibre 表达式描述。`get` 读取当前 feature 的属性，`case` 处理缺失值，`step` 按数值分段选择颜色。当前样例用每周 NZ$400 和 NZ$600 作为显示分段；这两个数只定义本次地图色阶，不代表官方租金等级或负担能力结论。
+
+| Median Rent | 显示颜色 |
+|---|---|
+| 小于 NZ$400 | 蓝绿色 |
+| NZ$400 至不足 NZ$600 | 黄色 |
+| NZ$600 及以上 | 红棕色 |
+| `null` | 灰色 |
+
+缺少当前观测的地区仍然保留边界，因此需要单独的灰色，而不是把缺失租金当作零。将刚才的 `sa2FillLayer` 定义更新为下面的完整配置，`sa2BoundaryLayer` 继续沿用：
+
+```tsx
+const sa2FillLayer: LayerProps = {
+  id: "sa2-fill",
+  type: "fill",
+  paint: {
+    "fill-color": [
+      "case",
+      ["==", ["get", "medianRent"], null],
+      "#94a3b8",
+      [
+        "step",
+        ["number", ["get", "medianRent"]],
+        "#57c8b8",
+        400,
+        "#e6ad5c",
+        600,
+        "#c45d55",
+      ],
+    ],
+    "fill-opacity": 0.55,
+  },
+};
+```
+
+`number` 确认参与分段的是数字；外层 `case` 已经将 `null` 分到灰色，不会拿它参与租金分段。表达式读取的是每个 feature 自己的属性，因此同一图层就能为多个地区绘制不同颜色。[MapLibre 表达式说明](https://maplibre.org/maplibre-style-spec/expressions/)提供了这些运算的定义。
+
+页面还需要说明颜色含义。紧接在地图容器的结束 `</div>` 后、原有数据摘要之前加入图例：
+
+```tsx
+<div className="space-y-2 text-sm">
+  <p>Median weekly rent · NZD · 2026-04-01 · ALL / ALL</p>
+  <ul className="flex flex-wrap gap-x-5 gap-y-2">
+    <li>
+      <span className="mr-2 inline-block h-3 w-3 bg-[#57c8b8]" />
+      Under $400
+    </li>
+    <li>
+      <span className="mr-2 inline-block h-3 w-3 bg-[#e6ad5c]" />
+      $400–under $600
+    </li>
+    <li>
+      <span className="mr-2 inline-block h-3 w-3 bg-[#c45d55]" />
+      $600 and over
+    </li>
+    <li>
+      <span className="mr-2 inline-block h-3 w-3 bg-[#94a3b8]" />
+      No observation
+    </li>
+  </ul>
+  <p className="text-muted-foreground">
+    Sources: MBIE rental bond data; Stats NZ SA2 2019 boundaries.
+  </p>
+</div>
+```
+
+保存后，地图应当按租金区间显示不同颜色，同时保留灰色地区。
+
+#### 5.3 核对悬停、选择与地区记录
+
+地图已经能按租金填色，但仅看颜色还无法知道指针所在的多边形是哪一个地区。先让页面显示悬停地区的编号和名称，用它确认地图上的形状能够对应到原始记录。
+
+地图事件返回的是渲染后的 feature。源文件虽然把 `id` 保存为字符串，但 MapLibre 的瓦片处理可能将数字形式的字符串转成数字。因此，不能仅凭源文件里的 `id` 类型，就假定事件中的类型也相同。
+
+每个 feature 的 `properties.sa2Id` 已经保存了字符串编号。Source 的 `promoteId` 可以指定使用这个属性作为渲染时的 feature id，让地图事件、图层过滤和原始记录都使用同一个字符串编号。在 `MapChartPage.tsx` 中，为已有 Source 加上 `promoteId="sa2Id"`，此时这一段为：
+
+```tsx
+  <Source
+    id="sa2-areas"
+    type="geojson"
+    data={data.map}
+    promoteId="sa2Id"
+  >
+    <Layer {...sa2FillLayer} />
+    <Layer {...sa2BoundaryLayer} />
+  </Source>
+```
+
+Source 的 `id="sa2-areas"` 识别整份地图数据，`promoteId="sa2Id"` 则指定每个地区的身份字段。它不修改 JSON 文件，也不按数组位置重新编号。[MapLibre Source 说明](https://maplibre.org/maplibre-style-spec/sources/#promoteid)介绍了这个选项。
+
+身份字段确定后，页面需要记住指针当前所在的地区。鼠标移动会改变这个值，所以用 React 状态保存它。在文件顶部加入 `useState`，并将现有地图类型 import 扩展为下面这一行：
+
+```tsx
+import { useState } from "react";
+import type { LayerProps, MapLayerMouseEvent } from "react-map-gl/maplibre";
+```
+
+在 `MapChartPage()` 函数开头、现有 `useQuery()` 之前加入悬停状态：
+
+```tsx
+  const [hoveredSa2Id, setHoveredSa2Id] = useState<string | null>(null);
+```
+
+这里的字符串表示当前地区编号，`null` 表示没有悬停地区。状态只保存编号，名称和指标仍然从已经加载的 `data.map` 中取得。
+
+接下来处理鼠标移动。地图还包含底图的道路和文字，因此把命中范围限定为 `sa2-fill`；这样事件中的 `features` 只包含命中的 SA2 填充图形。处理函数从第一个命中结果读取编号，没有命中时清除悬停状态。
+
+这个函数放在页面已有的空数组判断结束后、绘制页面的 `return (...)` 之前：
+
+```tsx
+  function handleMapMove(event: MapLayerMouseEvent) {
+    const id = event.features?.[0]?.id;
+    setHoveredSa2Id(typeof id === "string" ? id : null);
+  }
+```
+
+`MapLayerMouseEvent` 描述地图鼠标事件的类型。`event.features?.[0]` 允许指针没有命中地区；此时取不到编号，状态会恢复为 `null`。
+
+函数有了，再把它交给现有 `<Map>`。在 Map 的属性区域加入命中范围、移动和离开事件，原有视角、样式地址、尺寸和署名配置保留。此时地图这一段为：
+
+```tsx
+<Map
+  initialViewState={{
+    longitude: 175.3,
+    latitude: -37.8,
+    zoom: 7,
+  }}
+  style={{ width: "100%", height: "100%" }}
+  mapStyle={`https://api.maptiler.com/maps/streets-v4/style.json?key=${mapTilerKey}`}
+  attributionControl={{ compact: false }}
+  interactiveLayerIds={["sa2-fill"]}
+  onMouseMove={handleMapMove}
+  onMouseLeave={() => setHoveredSa2Id(null)}
+>
+  <NavigationControl position="top-right" />
+  <Source
+    id="sa2-areas"
+    type="geojson"
+    data={data.map}
+    promoteId="sa2Id"
+  >
+    <Layer {...sa2FillLayer} />
+    <Layer {...sa2BoundaryLayer} />
+  </Source>
+</Map>
+```
+
+`interactiveLayerIds` 设置前面说明的命中范围，`onMouseMove` 将事件交给处理函数；鼠标离开地图时，`onMouseLeave` 清除悬停编号。
+
+现在编号能够随鼠标移动变化，还需要把它对应的名称显示出来。紧接在 `handleMapMove()` 函数后，根据当前编号查找原始 feature：
+
+```tsx
+  const hoveredArea = data.map.features.find(
+    (feature) => feature.id === hoveredSa2Id,
+  );
+```
+
+`find()` 返回编号相符的地区；没有悬停时找不到记录。因此在图例之后、原有数据摘要之前加入文字区域，分别显示地区信息或移动鼠标的提示：
+
+```tsx
+<div className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+  <p>
+    Hovered SA2:{" "}
+    {hoveredArea
+      ? `${hoveredArea.id} · ${hoveredArea.properties.name}`
+      : "Move the pointer over an area"}
+  </p>
+</div>
+```
+
+保存并刷新页面，先观察文字：指针移入填色地区时，应显示对应编号和名称；移到地区之外或离开地图时，应恢复提示。这一步用来确认“地图命中 → 字符串编号 → 原始记录”的关联。
+
+文字能够识别地区后，再让地图本身突出同一个地区。在已有 Source 内、`<Layer {...sa2BoundaryLayer} />` 后面加入悬停线图层：
+
+```tsx
+<Layer
+  id="sa2-hover"
+  type="line"
+  filter={["==", ["id"], hoveredSa2Id ?? ""]}
+  paint={{ "line-color": "#2f6f9f", "line-width": 3 }}
+/>
+```
+
+这个图层使用同一份 Source，但 `filter` 只保留编号等于 `hoveredSa2Id` 的地区。没有悬停时，`?? ""` 提供空字符串，不会命中任何 SA2。保存后，蓝色轮廓应当和下方显示的地区名称一起变化。
+
+悬停状态在鼠标移开时会消失，阅读租金时则需要保留一个地区。为此加入点击选择：点击哪个地区，就保存哪个编号；鼠标继续移动不会改变这项选择。
+
+在函数开头已有的 `hoveredSa2Id` 状态声明后，增加选择状态，初始编号沿用第 2 节确定的 Greensboro：
+
+```tsx
+  const [selectedSa2Id, setSelectedSa2Id] = useState("179900");
+```
+
+点击事件使用相同的命中范围。只有点击到地区时才更新选择，点击地区之外则保留原值。在 `handleMapMove()` 后、`hoveredArea` 查询之前加入：
+
+```tsx
+  function handleMapClick(event: MapLayerMouseEvent) {
+    const id = event.features?.[0]?.id;
+
+    if (typeof id === "string") {
+      setSelectedSa2Id(id);
+    }
+  }
+```
+
+在现有 Map 的 `onMouseMove`、`onMouseLeave` 属性后加入点击回调：
+
+```tsx
+          onClick={handleMapClick}
+```
+
+与悬停记录一样，选中地区也通过编号回到原始数据。紧接在 `hoveredArea` 声明后加入：
+
+```tsx
+  const selectedArea = data.map.features.find(
+    (feature) => feature.id === selectedSa2Id,
+  );
+```
+
+这次需要显示名称、Median Rent 和 Reported Bonds。数值为 `null` 时显示没有观测，避免让缺失数据变成零租金。将下面的内容放入已有的悬停文字区域，接在 `Hovered SA2` 的 `</p>` 后、该区域结束的 `</div>` 前：
+
+```tsx
+        {selectedArea && (
+          <>
+            <h2 className="text-lg font-semibold">Selected SA2</h2>
+            <p>{selectedArea.id} · {selectedArea.properties.name}</p>
+            <p>
+              Median weekly rent: {selectedArea.properties.medianRent === null
+                ? "No observation"
+                : `NZ$${selectedArea.properties.medianRent}`}
+            </p>
+            <p>Reported Bonds: {selectedArea.properties.reportedBonds ?? "No observation"}</p>
+          </>
+        )}
+```
+
+保存后，初始记录应为 `179900`、Greensboro、Median Rent `350`、Reported Bonds `171`，这些是第 3 节已经核对过的值。点击其他地区后，选中记录应发生变化；只移动鼠标时，悬停文字变化，但选中记录保持不变。
+
+选中记录也需要在地图上保留标记。沿用悬停线图层的做法，在 Source 内的 `sa2-hover` 图层后加入选中线图层：
+
+```tsx
+            <Layer
+              id="sa2-selected"
+              type="line"
+              filter={["==", ["id"], selectedSa2Id]}
+              paint={{ "line-color": "#102a2d", "line-width": 4 }}
+            />
+```
+
+选中图层按 `selectedSa2Id` 过滤，并最后绘制，使深色轮廓位于其他 SA2 图层上方。此时 Source 的子图层按“租金填色、普通边界、悬停轮廓、选中轮廓”排列，Source 上的 `promoteId="sa2Id"` 继续保留。
+
+再观察同一组操作：悬停时名称和蓝色轮廓对应同一地区，点击后文字记录和深色轮廓对应同一地区，移开鼠标后选择仍然保留。点击灰色地区时，边界仍可选中，租金显示 `No observation`。
+
+最后选取一个地区，用编号在地图 JSON 中找到原始 feature，核对名称、租金和 Reported Bonds，再把租金与图例分段对照。这样可以检查事件命中、文字数值和地图颜色是否确实来自同一条记录。
+
+完成浏览器核对后，在项目根目录运行：
+
+```bash
+npm run lint
+npm run build
+```
+
+检查通过并核对实际地图结果后，再记录本节的验证结论。
 
 ### 6. 连接地图选择与历史图表
 
