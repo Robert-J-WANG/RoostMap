@@ -8,6 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useQuery } from "@tanstack/react-query";
 
 import { loadSampleData } from "@/features/explore/sample-data";
+import { RentHistoryChart } from "@/features/explore/RentHistoryChart";
 
 // 地图运行环境：在创建地图前指定 Worker 地址。
 setWorkerUrl(workerUrl);
@@ -82,11 +83,8 @@ export function MapChartPage() {
     );
   }
 
-  if (
-    data.map.features.length === 0 ||
-    data.history.observations.length === 0
-  ) {
-    return <p>No map or history observations are available for this sample.</p>;
+  if (data.map.features.length === 0) {
+    return <p>No map boundaries are available for this sample.</p>;
   }
 
   // 地图事件：更新命中的编号，点击空白处保留原选择。
@@ -111,6 +109,9 @@ export function MapChartPage() {
   const selectedArea = data.map.features.find(
     (feature) => feature.id === selectedSa2Id,
   );
+
+  // 历史选择：从已加载的大区文件按编号取出数组，无需再次请求。
+  const selectedHistory = data.history.histories[selectedSa2Id] ?? [];
 
   return (
     <section className="space-y-6">
@@ -216,16 +217,16 @@ export function MapChartPage() {
           </>
         )}
       </div>
-      {/* 文件加载摘要：核对边界数量与初始地区历史范围。 */}
-      <div className="rounded-xl border bg-card p-4 text-sm">
-        <p>Loaded SA2 boundaries: {data.map.features.length}</p>
-        <p>Initial SA2: {data.history.sa2Id}</p>
-        <p>
-          History classification: {data.history.dwellingType} /{" "}
-          {data.history.bedroomCategory}
-        </p>
-        <p>Quarterly observations: {data.history.observations.length}</p>
-      </div>
+      {/* 历史视图：名称、编号、图表和表格都来自当前点击选择。 */}
+      {selectedArea && (
+        <RentHistoryChart
+          sa2Id={selectedSa2Id}
+          areaName={selectedArea.properties.name}
+          dwellingType={data.history.dwellingType}
+          bedroomCategory={data.history.bedroomCategory}
+          observations={selectedHistory}
+        />
+      )}
     </section>
   );
 }

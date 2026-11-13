@@ -7713,6 +7713,1344 @@ npm run build
 
 选择地图中的 SA2 后，将同一个 `sa2Id` 交给 Recharts 显示季度历史，并验证分类切片、缺失季度、稀疏记录以及文字或表格结果。
 
+地图已经通过 `selectedSa2Id` 保存选中的地区，但页面读取的历史文件只包含 Greensboro。选择其他地区后，要展示它自己的租金变化，首先需要能用这个编号找到它的季度记录。
+
+现有数据准备脚本已经能完成边界读取、CSV 关联和文件生成，不过这些处理都连续写在文件顶层。
+
+本节安排：
+
+| 小节 | 内容 | 状态 |
+|---|---|---|
+| 6.1 整理数据准备脚本 | 按数据流封装读取、关联、摘要和写入功能 | 已完成 |
+| 6.2 按 SA2 收集历史记录 | 收集 Waikato 各地区的季度记录，并核对地区数和记录总数 | 已完成 |
+| 6.3 按季度整理各地区的历史 | 统一季度顺序，保留缺失季度和空数据 | 已完成 |
+| 6.4 保存大区历史文件 | 生成 `waikato-history.json`，按 SA2 编号保存各地区历史 | 已完成 |
+| 6.5 接入大区历史数据 | 页面加载大区文件，按选中编号取得对应地区记录 | 已完成 |
+| 6.6 绘制历史图表并验证联动 | 显示选中地区的季度趋势，检查切换、缺失、稀疏和空数据 | 已完成 |
+
+本节完成时，点击地图中的地区，历史图表和文字或表格记录应切换到同一个 SA2，并使用同一组住宅类型、卧室分类和历史指标。缺失值保留为缺失，加载失败和没有历史记录时有明确反馈。
+
+#### 6.1 整理数据准备脚本
+
+现有数据准备脚本 `data/scripts/prepare-map-chart-sample.mjs` 已经能完成边界读取、CSV 关联和文件生成。但当前的脚本内容执行逻辑较为混乱，对应后续的功能升级不容易统一管理，且不易阅读。 因此，我们先对现有的脚本依据数据流向做一次重构，并封装相关的功能函数。
+
+按照脚本功能，主流程应该是：
+
+```
+
+ 读取边界 → 扫描租金 CSV → 合并为地图数据 → 输出核对摘要 → 写出文件。
+ 
+```
+
+先定义 `main()` 
+
+```js
+async function main() {
+  // 1. 读取边界 
+  // 2. 扫描租金 CSV  
+  // 3. 合并为地图数据  
+  // 4. 输出核对摘要  
+  // 5. 写出文件 
+}
+await main();
+```
+
+这样，直接能按数据流，在入口函数中调用相关的封装好的功能函数。
+
+对通用数据、参数等，统一在脚本开头设置配置区域:
+
+```js
+// ─────────────────────────────────────────────
+// 配置：数据源路径、输出路径与本次样例的筛选条件
+// ─────────────────────────────────────────────
+
+const statsNzFileUrl = new URL(
+  "../raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg",
+  import.meta.url,
+);
+
+const mbieFileUrl = new URL(
+  "../raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
+  import.meta.url,
+);
+
+// 保存到 public 目录，供开发服务器通过 /data/spike/map-chart/ 提供文件。
+const outputDirectoryUrl = new URL(
+  "../../public/data/spike/map-chart/",
+  import.meta.url,
+);
+
+const regionName = "Waikato Region"; // 目标大区
+const latestPeriod = "2026-04-01"; // 地图使用的季度
+const initialSa2Id = "179900"; // 图表初始展示的 SA2
+const dwellingType = "ALL"; // 住宅类型筛选
+const bedroomCategory = "ALL"; // 卧室分类筛选
+
+// ─────────────────────────────────────────────
+// 主流程
+// ─────────────────────────────────────────────
+
+async function main() {
+  ...
+}
+await main();
+```
+
+接着按脚本数据流功能封装功能函数。
+
+读取边界功能封装：GeoPackage 使用 SQLite 存储数据，这里通过 Node.js 内置的 `node:sqlite` 直接查询。在 import 区域引入 `DatabaseSync`，移除原来的 `node:child_process` 导入，无需安装新的依赖。
+
+`readStatsNzRows()` 以只读方式打开 GeoPackage，按大区查询属性和 `geom` 字段。`geom` 直接返回 `Uint8Array` 字节数组；查询完成后关闭数据库，取得的行对象交给 `toGeometryFeature(row)` 转成 GeoJSON feature。
+
+转换 geometry 时，`geoPackageWkb()` 先把字节数组转为 Buffer，便于读取头部，再按原有规则去掉 GeoPackage 头部和 envelope，取出 WKB。`toGeometryFeature()` 将它交给 `wkx` 转成 GeoJSON。三个函数分别负责查询记录、转换一行记录和提取几何数据；主流程将用 `readStatsNzRows().map(toGeometryFeature)` 得到完整的边界数组。
+
+```js
+// ─────────────────────────────────────────────
+// 边界：读取 Stats NZ 的 SA2 数据并转换为 GeoJSON features
+// ─────────────────────────────────────────────
+
+/**
+ * 使用 Node.js 内置 SQLite 接口，只读查询目标大区的 SA2 属性和边界。
+ * geom 二进制字段直接返回 Uint8Array，供后续解析为 GeoJSON。
+ * @returns {object[]} 数据库行对象数组
+ */
+function readStatsNzRows() {
+  const query = `
+    SELECT
+      SA22019_V1_00 AS sa2Id,
+      SA22019_V1_00_NAME AS name,
+      TA2019_V1_00_NAME AS territorialAuthority,
+      REGC2019_V1_00 AS regionCode,
+      REGC2019_V1_00_NAME AS region,
+      LAND_AREA_SQ_KM AS landAreaSqKm,
+      geom
+    FROM statistical_area_2_higher_geographies_2019_generalised
+    WHERE REGC2019_V1_00_NAME = ?
+    ORDER BY SA22019_V1_00;
+  `;
+
+  const database = new DatabaseSync(statsNzFileUrl, { readOnly: true });
+
+  try {
+    return database.prepare(query).all(regionName);
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * 将一行 SA2 数据库记录转换为 GeoJSON feature。
+ * SA2 编号保持字符串，供后续与租金数据关联和地图选择使用。
+ * @param {object} row readStatsNzRows 返回的一行记录
+ * @returns {object} GeoJSON feature
+ */
+function toGeometryFeature(row) {
+  const sa2Id = String(row.sa2Id).trim();
+
+  return {
+    type: "Feature",
+    id: sa2Id,
+    geometry: row.geom?.byteLength
+      ? wkx.Geometry.parse(geoPackageWkb(row.geom)).toGeoJSON()
+      : null,
+    properties: {
+      sa2Id,
+      name: row.name,
+      territorialAuthority: row.territorialAuthority,
+      regionCode: String(row.regionCode).trim(),
+      region: row.region,
+      landAreaSqKm: Number(row.landAreaSqKm),
+    },
+  };
+}
+
+/**
+ * 从 GeoPackage 几何数据中取出 WKB，供 wkx 解析。
+ *
+ * GeoPackage 几何由「头部 + 可选 envelope + WKB」组成：
+ *   - 固定头部 8 字节：魔数 "GP"(2) + 版本(1) + flags(1) + SRS ID(4)
+ *   - flags 的第 1~3 位表示 envelope 类型，决定 envelope 的坐标个数
+ *   - envelope 中每个坐标值占 8 字节
+ *
+ * @param {Uint8Array} geometryBytes 从 geom 字段读取的 GeoPackage 几何字节
+ * @returns {Buffer} 去掉头部和 envelope 之后的 WKB
+ */
+function geoPackageWkb(geometryBytes) {
+  // 将字节数组转为 Buffer，以读取头部并截取 WKB，字节内容保持不变。
+  const geometryBuffer = Buffer.from(geometryBytes);
+
+  if (
+    geometryBuffer.length < 8 ||
+    geometryBuffer.toString("ascii", 0, 2) !== "GP"
+  ) {
+    throw new Error("Invalid GeoPackage geometry header");
+  }
+
+  const flags = geometryBuffer.readUInt8(3);
+  const envelopeType = (flags >> 1) & 0b111;
+
+  // 下标即 envelope 类型：0 无、1 XY、2 XYZ、3 XYM、4 XYZM。
+  const envelopeCoordinateCounts = [0, 4, 6, 6, 8];
+  const envelopeCoordinateCount = envelopeCoordinateCounts[envelopeType];
+
+  if (envelopeCoordinateCount === undefined) {
+    throw new Error(`Unsupported GeoPackage envelope type: ${envelopeType}`);
+  }
+
+  const headerLength = 8 + envelopeCoordinateCount * 8;
+  return geometryBuffer.subarray(headerLength);
+}
+```
+
+扫描租金 CSV功能封装：
+
+有了边界编号，就可以扫描 MBIE CSV。`scanMbieCsv(waikatoSa2Ids)` 接收这个编号集合，逐行读取全国租金记录：先收集其中出现过的 Waikato 编号，再按住宅类型和卧室分类筛选，分别保存指定季度的地图指标和 Greensboro 的各季度历史。
+
+循环中，`sourceValue()` 负责取出字段并去掉两端空白；需要租金或 Reported Bonds 数值时，`sourceNumber()` 先调用它取得文本，再转换成数字，来源空值保留为 `null`。
+
+因此，`scanMbieCsv()` 负责读取和筛选，两项辅助函数负责字段转换。读取结束后，返回的对象同时包含地区编号集合、当前指标 Map 和初始地区历史数组，供下一阶段使用。
+
+```js
+/**
+ * 流式扫描 MBIE CSV，同一次遍历收集三组结果：
+ *   1. mbieWaikatoSa2Ids：MBIE 中出现过的 Waikato SA2 编号（关联范围，不限分类）
+ *   2. currentMetrics：指定季度的地图指标，按 SA2 保存
+ *   3. historyObservations：初始 SA2 的各季度历史，按日期升序
+ *
+ * @param {Set<string>} waikatoSa2Ids 目标大区的 SA2 编号集合
+ * @returns {Promise<{
+ *   mbieWaikatoSa2Ids: Set<string>,
+ *   currentMetrics: Map<string, {medianRent: number|null, reportedBonds: number|null}>,
+ *   historyObservations: {period: string, geometricMeanRent: number|null, reportedBonds: number|null}[],
+ * }>}
+ */
+async function scanMbieCsv(waikatoSa2Ids) {
+  const mbieWaikatoSa2Ids = new Set();
+  const currentMetrics = new Map();
+  const historyObservations = [];
+
+  // 流式读取 CSV，按表头将每一行解析成字段对象。
+  const parser = createReadStream(mbieFileUrl).pipe(
+    parse({
+      bom: true,
+      columns: true,
+      skip_empty_lines: true,
+    }),
+  );
+
+  // parser 是异步数据流，for await 会等待下一条记录，直到文件读取结束。
+  for await (const record of parser) {
+    const period = sourceValue(record, "TimeFrame");
+    const sa2Id = sourceValue(record, "Location Id");
+    const recordDwellingType = sourceValue(record, "Dwelling Type");
+    const recordBedroomCategory = sourceValue(record, "Number Of Beds");
+
+    // 关联范围统计所有分类，因此在住宅类型和卧室分类筛选之前收集编号。
+    if (/^\d{6}$/.test(sa2Id) && waikatoSa2Ids.has(sa2Id)) {
+      mbieWaikatoSa2Ids.add(sa2Id);
+    }
+
+    // 后续地图指标和历史记录使用本次指定的住宅类型与卧室分类。
+    if (
+      recordDwellingType !== dwellingType ||
+      recordBedroomCategory !== bedroomCategory
+    ) {
+      continue;
+    }
+
+    const reportedBonds = sourceNumber(record, "Total Bonds");
+
+    // 地图只取指定季度，按 SA2 保存 Median Rent 和 Reported Bonds。
+    if (period === latestPeriod && waikatoSa2Ids.has(sa2Id)) {
+      currentMetrics.set(sa2Id, {
+        medianRent: sourceNumber(record, "Median Rent"),
+        reportedBonds,
+      });
+    }
+
+    // 初始地区保留各季度的 Geometric Mean Rent 和 Reported Bonds。
+    if (sa2Id === initialSa2Id) {
+      historyObservations.push({
+        period,
+        geometricMeanRent: sourceNumber(record, "Geometric Mean Rent"),
+        reportedBonds,
+      });
+    }
+  }
+
+  // 将初始地区历史按日期升序排列。
+  historyObservations.sort((left, right) =>
+    left.period.localeCompare(right.period),
+  );
+
+  return { mbieWaikatoSa2Ids, currentMetrics, historyObservations };
+}
+
+/**
+ * 读取 CSV 字段并去掉两端空白；字段不存在时按空字符串处理。
+ * @param {object} record CSV 解析出的一行记录
+ * @param {string} field 字段名（CSV 表头）
+ * @returns {string}
+ */
+function sourceValue(record, field) {
+  return String(record[field] ?? "").trim();
+}
+
+/**
+ * 读取 CSV 数值字段。
+ * 来源中的空值（空字符串或 "NULL"）返回 null 而不是 0，
+ * 避免「无数据」被误当成「数值为零」；非数字内容直接抛错。
+ * @param {object} record CSV 解析出的一行记录
+ * @param {string} field 字段名（CSV 表头）
+ * @returns {number|null}
+ */
+function sourceNumber(record, field) {
+  const value = sourceValue(record, field);
+
+  if (value === "" || value === "NULL") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    throw new Error(`Invalid ${field}: ${value}`);
+  }
+
+  return number;
+}
+```
+
+合并为地图数据功能封装：
+
+扫描完成后，已经有边界数组、出现过租金记录的地区编号，以及当前季度指标。`buildMapFeatures()` 接收这三项结果，先筛选同时具有 geometry 和 MBIE 观测的地区，再按 SA2 编号将当前指标附加到边界属性上。
+
+某个地区即使缺少当前季度指标，只要符合上述地区范围，仍保留边界，并把缺失指标设为 `null`。函数返回的 `mapFeatures` 就是要保存的地图 features。
+
+```js
+// ─────────────────────────────────────────────
+// 组装：合并边界与指标，生成可发布的地图 features
+// ─────────────────────────────────────────────
+
+/**
+ * 生成可发布的地图 features。
+ * 发布范围要求同时具有边界和 MBIE 观测，不以当前季度是否有指标为条件；
+ * 当前指标按 SA2 附加到边界属性上，没有指标的地区保留 null。
+ *
+ * @param {object[]} geometryFeatures 目标大区的全部边界 features
+ * @param {Set<string>} mbieWaikatoSa2Ids MBIE 中出现过的 SA2 编号
+ * @param {Map<string, object>} currentMetrics 指定季度的指标，按 SA2 索引
+ * @returns {object[]} 附带 medianRent / reportedBonds 的 features
+ */
+function buildMapFeatures(
+  geometryFeatures,
+  mbieWaikatoSa2Ids,
+  currentMetrics,
+) {
+  return geometryFeatures
+    .filter(
+      (feature) =>
+        feature.geometry !== null && mbieWaikatoSa2Ids.has(feature.id),
+    )
+    .map((feature) => {
+      const metric = currentMetrics.get(feature.id);
+
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          medianRent: metric?.medianRent ?? null,
+          reportedBonds: metric?.reportedBonds ?? null,
+        },
+      };
+    });
+}
+```
+
+输出核对摘要功能封装：主要包括
+
+地图 features 整理好后，需要核对处理前后的地区数量、当前指标覆盖情况和初始地区历史区间。`buildCheckSummary()` 接收这些已有结果，统计数量并找到 Greensboro 的当前指标，返回摘要对象。
+
+参数较多，因此用一个对象传入，在函数参数中按属性名取出。主流程取得返回值后统一打印，便于运行脚本时核对各阶段的结果。
+
+```js
+// ─────────────────────────────────────────────
+// 输出：核对摘要
+// ─────────────────────────────────────────────
+
+/**
+ * 生成核对摘要：数据源与可发布地区数量、缺失边界和缺失指标的数量、
+ * 初始地区的当前指标，以及初始地区历史的记录数和起止季度。
+ *
+ * @param {object} data
+ * @param {object[]} data.geometryFeatures 目标大区的全部边界 features
+ * @param {Set<string>} data.mbieWaikatoSa2Ids MBIE 中出现过的 SA2 编号
+ * @param {object[]} data.mapFeatures 可发布的地图 features
+ * @param {Map<string, object>} data.currentMetrics 指定季度的指标
+ * @param {object[]} data.historyObservations 初始地区的历史观测
+ * @returns {object}
+ */
+function buildCheckSummary({
+  geometryFeatures,
+  mbieWaikatoSa2Ids,
+  mapFeatures,
+  currentMetrics,
+  historyObservations,
+}) {
+  const missingGeometryCount = geometryFeatures.filter(
+    (feature) => feature.geometry === null,
+  ).length;
+
+  const initialMapFeature = mapFeatures.find(
+    (feature) => feature.id === initialSa2Id,
+  );
+
+  return {
+    region: regionName,
+    sourceAreaCount: geometryFeatures.length,
+    associatedAreaCount: mbieWaikatoSa2Ids.size,
+    publishableAreaCount: mapFeatures.length,
+    missingGeometry: missingGeometryCount,
+    mapSlice: {
+      period: latestPeriod,
+      dwellingType,
+      bedroomCategory,
+      metricRecords: currentMetrics.size,
+      missingMetricRecords: mapFeatures.length - currentMetrics.size,
+      initialFeature: initialMapFeature
+        ? {
+          id: initialMapFeature.id,
+          name: initialMapFeature.properties.name,
+          medianRent: initialMapFeature.properties.medianRent,
+          reportedBonds: initialMapFeature.properties.reportedBonds,
+        }
+        : null,
+    },
+    history: {
+      sa2Id: initialSa2Id,
+      observations: historyObservations.length,
+      start: historyObservations.at(0)?.period ?? null,
+      end: historyObservations.at(-1)?.period ?? null,
+    },
+  };
+}
+
+```
+
+写出文件功能封装：主要包括
+
+接着把结果保存为页面能够请求的文件。这里由一个 `writeOutputFiles(mapFeatures, historyObservations)` 函数完成：将地图 features 包装成 GeoJSON `FeatureCollection`，将初始地区历史与编号、分类和指标名称组成历史对象，再分别写入原有的两份文件。
+
+`mkdir()` 和 `writeFile()` 都是异步操作，所以函数使用 `async`，并通过 `await` 等待写入完成。最后返回文件路径和记录数量，主流程再打印这份生成摘要。
+
+```js
+// ─────────────────────────────────────────────
+// 文件写入
+// ─────────────────────────────────────────────
+
+/**
+ * 组装地图 GeoJSON 与初始地区历史 JSON，创建输出目录并写入文件（覆盖同名文件）。
+ * @param {object[]} mapFeatures 可发布的地图 features
+ * @param {object[]} historyObservations 初始地区按日期升序的季度观测
+ * @returns {Promise<object>} 文件路径与记录数量
+ */
+async function writeOutputFiles(mapFeatures, historyObservations) {
+  // 地图使用的 GeoJSON FeatureCollection。
+  const mapData = {
+    type: "FeatureCollection",
+    features: mapFeatures,
+  };
+
+  // 图表使用的初始地区历史数据。
+  const historyData = {
+    sa2Id: initialSa2Id,
+    dwellingType,
+    bedroomCategory,
+    metric: "geometricMeanRent",
+    observations: historyObservations,
+  };
+
+  const mapFileUrl = new URL("waikato.geo.json", outputDirectoryUrl);
+  const historyFileUrl = new URL(
+    `${initialSa2Id}-history.json`,
+    outputDirectoryUrl,
+  );
+
+  await mkdir(outputDirectoryUrl, { recursive: true });
+
+  await writeFile(mapFileUrl, JSON.stringify(mapData), "utf8");
+  await writeFile(historyFileUrl, JSON.stringify(historyData), "utf8");
+
+  return {
+    mapFile: fileURLToPath(mapFileUrl),
+    mapFeatures: mapData.features.length,
+    historyFile: fileURLToPath(historyFileUrl),
+    historyObservations: historyData.observations.length,
+  };
+}
+```
+
+主程序函数实现完整的数据流逻辑：
+
+```js
+async function main() {
+  // 1. 读取 Stats NZ 边界，并建立 Waikato SA2 编号集合。
+  const geometryFeatures = readStatsNzRows().map(toGeometryFeature);
+  const waikatoSa2Ids = new Set(geometryFeatures.map((feature) => feature.id));
+
+  // 2. 扫描 MBIE CSV，收集关联范围、当前季度指标和初始地区历史。
+  const { mbieWaikatoSa2Ids, currentMetrics, historyObservations } =
+    await scanMbieCsv(waikatoSa2Ids);
+
+  // 3. 合并边界与指标，得到可发布的地图 features。
+  const mapFeatures = buildMapFeatures(
+    geometryFeatures,
+    mbieWaikatoSa2Ids,
+    currentMetrics,
+  );
+
+  // 4. 输出核对摘要，用于检查关联范围、指标覆盖情况和历史区间。
+  const checkSummary = buildCheckSummary({
+    geometryFeatures,
+    mbieWaikatoSa2Ids,
+    mapFeatures,
+    currentMetrics,
+    historyObservations,
+  });
+  console.log(JSON.stringify(checkSummary));
+
+  // 5. 写出地图与历史文件，写入成功后再输出文件路径和记录数量。
+  const writeResult = await writeOutputFiles(mapFeatures, historyObservations);
+  console.log(JSON.stringify(writeResult));
+}
+```
+
+完整脚本结构和引用如下：
+
+```js
+import { createReadStream } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
+
+import { parse } from "csv-parse";
+import wkx from "wkx";
+
+// ─────────────────────────────────────────────
+// 配置：数据源路径、输出路径与本次样例的筛选条件
+// ─────────────────────────────────────────────
+
+...
+
+// ─────────────────────────────────────────────
+// 主流程
+// ─────────────────────────────────────────────
+
+async function main() {
+  ...
+}
+await main();
+
+// ─────────────────────────────────────────────
+// 功能函数
+// ─────────────────────────────────────────────
+
+...
+
+```
+
+运行测试重构的脚本
+
+```bash
+node --check data/scripts/prepare-map-chart-sample.mjs                           
+node data/scripts/prepare-map-chart-sample.mjs
+```
+
+运行结果：
+
+```
+{"region":"Waikato Region","sourceAreaCount":240,"associatedAreaCount":222,"publishableAreaCount":222,"missingGeometry":0,"mapSlice":{"period":"2026-04-01","dwellingType":"ALL","bedroomCategory":"ALL","metricRecords":162,"missingMetricRecords":60,"initialFeature":{"id":"179900","name":"Greensboro","medianRent":350,"reportedBonds":171}},"history":{"sa2Id":"179900","observations":26,"start":"2020-01-01","end":"2026-04-01"}}
+{"mapFile":"/Users/aqiang/Desktop/myGitHub/upload/ReactProject/RoostMap/public/data/spike/map-chart/waikato.geo.json","mapFeatures":222,"historyFile":"/Users/aqiang/Desktop/myGitHub/upload/ReactProject/RoostMap/public/data/spike/map-chart/179900-history.json","historyObservations":26}
+```
+
+输出目录中得到2份文件。
+
+#### 6.2 按 SA2 收集历史记录
+
+目前脚本只收集了 Greensboro 的历史数据。地图中选择其他地区时，也需要取得对应地区的季度记录。因此，接下来调整 `scanMbieCsv()`，我们需要把历史收集范围扩大到 Waikato 的各个 SA2，并按地区编号分别保存。
+
+在扫描 MBIE CSV租房数据的功能函数`scanMbieCsv()`中，原来的 `historyObservations` 是用来保存单个地区数据的数组。而我们现在需要保存多个地区的数据，因此，需要使用一个新的Map结构的变量来实现。Map 的键是 SA2 编号，值是这个地区的记录数组。例如，通过`historyObservations.get("179900")` 就能关联取得 Greensboro 的季度记录。
+
+在 `scanMbieCsv()` 内，把原先的数组 `historyObservations` 结构替换成 Map结构
+
+```js
+const historyObservations = new Map();
+```
+
+扫描 CSV 时，先沿用已有的住宅类型和卧室分类筛选。记录属于 Waikato大区，按编号找到它的数组并加入当前季度的数据；第一次遇到某个编号时，先为它创建空数组。这样，同一地区的记录会积累到同一个数组中。
+
+在 `scanMbieCsv()` 内，  循环末尾，原来只判断 `sa2Id === initialSa2Id` 的代码改为：
+
+```js
+if (waikatoSa2Ids.has(sa2Id)) {
+  let observations = historyObservations.get(sa2Id);
+
+  if (!observations) {
+    observations = [];
+    historyObservations.set(sa2Id, observations);
+  }
+
+  observations.push({
+    period,
+    geometricMeanRent: sourceNumber(record, "Geometric Mean Rent"),
+    reportedBonds,
+  });
+}
+```
+
+CSV 扫描结束后，对各地区的数据进行排序。Map 中每个值都是一个地区的记录数组，分别遍历这些数组，按日期升序排列：
+
+```js
+for (const observations of historyObservations.values()) {
+  observations.sort((left, right) =>
+    left.period.localeCompare(right.period),
+  );
+}
+```
+
+函数继续返回三项结果，其中 `historyObservations` 现在是整个历史 Map：
+
+```js
+return { mbieWaikatoSa2Ids, currentMetrics, historyObservations };
+```
+
+`main()` 继续把历史 Map 传给摘要和文件写入函数。选择某个地区的数据，由使用它的函数按编号读取。
+
+在 `buildCheckSummary()` 内，找到初始地区的地图 feature 后，取得它的历史数组：
+
+```js
+const initialHistory = historyObservations.get(initialSa2Id) ?? [];
+```
+
+本节扩大了历史收集范围，还需要核对 Map 中有多少地区、一共收集了多少条记录。地区数直接使用 `historyObservations.size`，记录总数则遍历各地区数组并累加长度。在 `buildCheckSummary()` 的 `initialHistory` 声明之后、`return` 之前加入：
+
+```js
+// 统计所有地区在当前分类下的历史记录总数。
+let totalHistoryRecords = 0;
+for (const observations of historyObservations.values()) {
+  totalHistoryRecords += observations.length;
+}
+```
+
+将这两项统计放入返回对象的 `history` 中，原有初始地区的核对字段继续保留：
+
+```js
+history: {
+  areaCount: historyObservations.size,
+  totalRecords: totalHistoryRecords,
+  sa2Id: initialSa2Id,
+  observations: initialHistory.length,
+  start: initialHistory.at(0)?.period ?? null,
+  end: initialHistory.at(-1)?.period ?? null,
+},
+```
+
+当前 `writeOutputFiles()` 仍保存初始地区文件，`historyData` 中的 `observations` 同样从 Map 取得：
+
+```js
+observations: historyObservations.get(initialSa2Id) ?? [],
+```
+
+运行并验证历史收集结果：
+
+```bash
+node --check data/scripts/prepare-map-chart-sample.mjs
+node data/scripts/prepare-map-chart-sample.mjs
+```
+
+`main()` 已经打印 `buildCheckSummary()` 返回的摘要，运行后查看其中的 `history`。使用当前源文件和 `ALL / ALL` 分类，应得到：
+
+| 字段 | 预期值 | 含义 |
+|---|---|---|
+| `areaCount` | 222 | Map 中有历史记录的 SA2 数量 |
+| `totalRecords` | 3958 | 这些地区的季度记录总数 |
+| `observations` | 26 | Greensboro 的历史记录数 |
+
+这样，摘要同时核对整区历史的收集范围和原有初始地区记录。当前历史文件仍只保存 Greensboro；各地区记录在 Map 中，由后续整理和写入使用。
+
+#### 6.3 按季度整理各地区的历史
+
+各地区的记录收集完成后，还需要按时间整理。不同地区可能缺少不同季度，例如有一月和七月的记录，却没有四月的记录。整理时需要保留四月的位置，并用 `null` 表示缺失，才能在图表中看出这段数据中断。
+
+这部分分为两步：先收集 CSV 中的全部季度，再按这些季度整理每个地区的记录。
+
+季度范围收集：
+
+`scanMbieCsv()` 已经逐行读取 CSV，可以同时收集每行的 `TimeFrame`。相同季度会出现很多次，用 Set 保存日期就能自动去重。在函数的 `historyObservations` 声明后、`parser` 前定义：
+
+```js
+const periods = new Set();
+```
+
+接着在循环开头读取日期时，将它加入集合。日期收集放在地区和分类筛选之前，保留整个源文件包含的季度：
+
+```js
+const period = sourceValue(record, "TimeFrame");
+periods.add(period);
+```
+
+CSV 读取结束后，把 Set 转成数组并排序，得到从早到晚的季度列表。日期统一使用 `YYYY-MM-DD` 格式，可以直接按字符串排序。在各地区历史排序代码后、`return` 前加入：
+
+```js
+const sortedPeriods = [...periods].sort();
+```
+
+季度列表与各地区记录一起交给主流程，因此 `scanMbieCsv()` 的返回对象增加 `sortedPeriods`：
+
+```js
+return {
+  mbieWaikatoSa2Ids,
+  currentMetrics,
+  historyObservations,
+  sortedPeriods,
+};
+```
+
+返回类型注释相应增加 `sortedPeriods: string[]`。
+
+历史记录整理功能封装：
+
+接着定义 `buildHistories()` 整理历史。它需要三项数据：`mapFeatures` 确定处理哪些地区，`historyObservations` 提供各地区已有的记录，`sortedPeriods` 确定季度顺序。
+
+函数逐个处理地图中的地区，先取得该地区的记录，再建立“日期对应记录”的 Map。随后按季度列表依次查找：有记录就保留，没有记录就为这个季度放入数值为 `null` 的占位。完全没有当前分类观测的地区保留空数组。
+
+函数定义放在 `buildMapFeatures()` 结束后、`buildCheckSummary()` 之前：
+
+```js
+// 按地图可选地区整理历史数组，保留缺失季度。
+function buildHistories(mapFeatures, historyObservations, sortedPeriods) {
+  const histories = {};
+
+  for (const feature of mapFeatures) {
+    const areaObservations = historyObservations.get(feature.id) ?? [];
+    const observedQuarters = new Map(
+      areaObservations.map((observation) => [
+        observation.period,
+        observation,
+      ]),
+    );
+
+    histories[feature.id] = observedQuarters.size === 0
+      ? []
+      : sortedPeriods.map((period) =>
+          observedQuarters.get(period) ?? {
+            period,
+            geometricMeanRent: null,
+            reportedBonds: null,
+          },
+        );
+  }
+
+  return histories;
+}
+```
+
+外层 `for` 按地区遍历，内层的数组 `.map()` 按季度排列记录，`observedQuarters.get(period)` 负责查找这个季度的数据。来源中已有的空值继续保留，补入的占位也只表示缺失，不算新的官方观测。
+
+最后返回 `histories` 对象，以 SA2 编号作为属性名，保存各地区整理好的数组。比如，`histories["179900"]` 就是 Greensboro 的季度历史。
+
+#### 6.4 保存大区历史文件
+
+历史数据整理好后，就可以保存到文件中。`histories` 已经按编号区分各个 SA2，因此将整个 Waikato 的历史集中保存为一份 `waikato-history.json`，读取时仍然按地区编号取得对应数组。
+
+写出文件功能调整：
+
+`writeOutputFiles()` 原来接收 Greensboro 的历史数组，现在改为接收整个大区的 `histories` 和季度列表 `sortedPeriods`。历史文件同时保存大区名称、住宅类型、卧室分类、指标名称和季度范围，读取文件时就能确认这些记录使用了哪些条件。
+
+地图文件继续使用已有的 `mapFeatures`。调整后的写入函数如下：
+
+```js
+/**
+ * 保存地图数据和大区历史数据，返回文件路径与覆盖范围。
+ * @param {object[]} mapFeatures 地图可选地区的 features
+ * @param {Object<string, object[]>} histories 按 SA2 编号保存的季度历史
+ * @param {string[]} sortedPeriods 按时间升序排列的季度日期
+ * @returns {Promise<object>} 文件路径、地区数量和季度范围
+ */
+async function writeOutputFiles(mapFeatures, histories, sortedPeriods) {
+  const mapData = {
+    type: "FeatureCollection",
+    features: mapFeatures,
+  };
+
+  const historyData = {
+    region: regionName,
+    dwellingType,
+    bedroomCategory,
+    metric: "geometricMeanRent",
+    periods: sortedPeriods,
+    histories,
+  };
+
+  const mapFileUrl = new URL("waikato.geo.json", outputDirectoryUrl);
+  const historyFileUrl = new URL("waikato-history.json", outputDirectoryUrl);
+
+  await mkdir(outputDirectoryUrl, { recursive: true });
+  await writeFile(mapFileUrl, JSON.stringify(mapData), "utf8");
+  await writeFile(historyFileUrl, JSON.stringify(historyData), "utf8");
+
+  return {
+    mapFile: fileURLToPath(mapFileUrl),
+    mapFeatures: mapData.features.length,
+    historyFile: fileURLToPath(historyFileUrl),
+    historyAreas: Object.keys(histories).length,
+    periods: sortedPeriods.length,
+    start: sortedPeriods.at(0),
+    end: sortedPeriods.at(-1),
+  };
+}
+```
+
+写入完成后，函数返回文件路径、地区数量和季度范围，供主流程打印核对。`historyAreas` 统计文件中的 SA2 数量，其中也包括当前分类下历史数组为空的地区。
+
+主流程调用调整：
+
+扫描 CSV 时，主流程接收历史 Map，并增加接收 `sortedPeriods`。生成地图 features 后，将它们一起交给 `buildHistories()` 整理各地区历史，再把结果传给 `writeOutputFiles()` 保存。
+
+摘要函数继续从历史 Map 中取得 Greensboro 的记录，核对原始记录的数量和时间范围。完整的主流程为：
+
+```js
+async function main() {
+  // 1. 读取边界，并建立当前大区的 SA2 编号集合。
+  const geometryFeatures = readStatsNzRows().map(toGeometryFeature);
+  const waikatoSa2Ids = new Set(geometryFeatures.map((feature) => feature.id));
+
+  // 2. 扫描 CSV，取得地图指标、各地区历史和季度范围。
+  const {
+    mbieWaikatoSa2Ids,
+    currentMetrics,
+    historyObservations,
+    sortedPeriods,
+  } = await scanMbieCsv(waikatoSa2Ids);
+
+  // 3. 分别整理地图 features 和各地区季度历史。
+  const mapFeatures = buildMapFeatures(
+    geometryFeatures,
+    mbieWaikatoSa2Ids,
+    currentMetrics,
+  );
+  const histories = buildHistories(
+    mapFeatures,
+    historyObservations,
+    sortedPeriods,
+  );
+
+  // 4. 保留原有的数据核对摘要。
+  const checkSummary = buildCheckSummary({
+    geometryFeatures,
+    mbieWaikatoSa2Ids,
+    mapFeatures,
+    currentMetrics,
+    historyObservations,
+  });
+  console.log(JSON.stringify(checkSummary));
+
+  // 5. 写出地图与大区历史文件，再打印生成摘要。
+  const writeResult = await writeOutputFiles(
+    mapFeatures,
+    histories,
+    sortedPeriods,
+  );
+  console.log(JSON.stringify(writeResult));
+}
+```
+
+原有的 `await main();` 保留一次。脚本顶部的历史文件说明也相应更新为 `waikato-history.json`，表示文件包含 Waikato 各 SA2 的季度历史。
+
+运行并核对生成结果：
+
+```bash
+node --check data/scripts/prepare-map-chart-sample.mjs
+node data/scripts/prepare-map-chart-sample.mjs
+```
+
+
+
+#### 6.5 接入大区历史数据
+
+`waikato-history.json` 已经保存整个大区的历史。页面需要先读取这份文件，再用地图保存的 `selectedSa2Id` 找到对应地区的数组。切换地区时只改变取出的数组，不重新下载历史文件。
+
+历史数据类型：
+
+`src/features/explore/sample-data.ts` 负责读取样例数据。原来的 `HistoryData` 只描述一个地区，现在需要描述大区文件中的 `histories`。先把单条季度记录单独定义为 `HistoryObservation`，放在 `MapData` 类型之后，再定义大区结构：
+
+```ts
+export type HistoryObservation = {
+  period: string;
+  geometricMeanRent: number | null;
+  reportedBonds: number | null;
+};
+
+type HistoryData = {
+  region: string;
+  dwellingType: string;
+  bedroomCategory: string;
+  metric: "geometricMeanRent";
+  periods: string[];
+  histories: Record<string, HistoryObservation[]>;
+};
+```
+
+`Record<string, HistoryObservation[]>` 描述的是 JSON 中的普通对象：属性名是 SA2 编号，属性值是该地区的季度数组。因此，可以通过 `history.histories["179900"]` 取得 Greensboro 的历史。
+
+读取大区文件：
+
+同一文件的 `loadSampleData()` 继续并行读取地图和历史，历史请求改为大区文件：
+
+```ts
+const [mapResponse, historyResponse] = await Promise.all([
+  fetch("/data/spike/map-chart/waikato.geo.json", { signal }),
+  fetch("/data/spike/map-chart/waikato-history.json", { signal }),
+]);
+```
+
+请求状态仍由已有的 `useQuery` 管理。加载提示、失败提示和重试按钮继续使用现有逻辑。
+
+按地图选择取得历史：
+
+在 `src/pages/MapChartPage.tsx` 中，空边界意味着无法选择地图地区；某个地区没有历史则只影响它的历史显示。因此，数据加载后的空数据判断只检查地图：
+
+```tsx
+if (data.map.features.length === 0) {
+  return <p>No map boundaries are available for this sample.</p>;
+}
+```
+
+`selectedArea` 已经根据 `selectedSa2Id` 找到地区名称和当前指标。紧接着，用同一个编号取得历史数组：
+
+```tsx
+const selectedArea = data.map.features.find(
+  (feature) => feature.id === selectedSa2Id,
+);
+
+// 从已加载的大区文件按编号取出历史，没有记录时使用空数组。
+const selectedHistory = data.history.histories[selectedSa2Id] ?? [];
+```
+
+这样，点击事件只需要继续调用已有的 `setSelectedSa2Id(id)`。React 重新渲染页面时，`selectedArea` 和 `selectedHistory` 会一起变成新地区的数据，不需要再保存一份历史选择状态。
+
+页面底部原来的文件摘要只显示初始地区，现在用选中地区的信息核对数据是否对应。在已有地区信息卡片后显示：
+
+```tsx
+{selectedArea && (
+  <div className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+    <h2 className="text-xl font-semibold">
+      Rent history · {selectedArea.properties.name}
+    </h2>
+    <p>SA2 {selectedSa2Id}</p>
+    <p>
+      History classification: {data.history.dwellingType} /{" "}
+      {data.history.bedroomCategory}
+    </p>
+    <p>Quarterly slots: {selectedHistory.length}</p>
+    {selectedHistory.length === 0 && (
+      <p>No history observations are available for this area and classification.</p>
+    )}
+  </div>
+)}
+```
+
+运行页面后，先核对 Greensboro 的名称、编号和 26 个季度位置，再点击其他地区，确认名称和编号随选择变化。这里统计的是数组长度，其中可能包含空值占位，并不等于实际有租金的季度数。Network 中应请求 `waikato-history.json`，切换地区时不再请求单个地区文件。
+
+#### 6.6 绘制历史图表并验证联动
+
+页面已经能取得选中地区的季度数组。接下来将 `period` 作为横轴、`geometricMeanRent` 作为纵轴，观察租金随季度的变化。地图显示的是当前季度的 Median Rent，历史图表显示的是 Geometric Mean Rent；两者使用同一地区和 `ALL / ALL` 分类，但指标名称需要分别标明。
+
+引入图表组件：
+
+当前需要绘制折线，因此安装技术栈中选定的 Recharts。按照[官方安装说明](https://github.com/recharts/recharts#installation)，同时安装与项目 React 版本一致的 `react-is`：
+
+```bash
+npm install recharts react-is@19.2.8
+npm ls recharts react-is
+```
+
+本次安装的 Recharts 为 `3.10.1`，直接依赖的 `react-is` 为 `19.2.8`，与 React 一致。
+
+历史图表属于 Explore 功能。在 `src/features/explore/RentHistoryChart.tsx` 中组织这部分显示，页面负责提供选中的数据，组件负责画图及显示季度记录。
+
+组件需要地区编号、名称、分类和历史数组。先引入 Recharts 组件及已有记录类型，并定义参数。日期在数据中仍保留原值，`formatQuarter()` 只负责把标签显示为 `2020 Q1` 这样的形式：
+
+```tsx
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+import type { HistoryObservation } from "@/features/explore/sample-data";
+
+type RentHistoryChartProps = {
+  sa2Id: string;
+  areaName: string;
+  dwellingType: string;
+  bedroomCategory: string;
+  observations: HistoryObservation[];
+};
+
+function formatQuarter(period: string) {
+  const year = period.slice(0, 4);
+  const quarter = Math.ceil(Number(period.slice(5, 7)) / 3);
+  return `${year} Q${quarter}`;
+}
+```
+
+区分空历史和缺失租金：
+
+`observations.length` 是季度位置数；`observedRentCount` 只统计租金不为 `null` 的位置。判断使用 `!== null`，数值为 `0` 的真实记录也会保留。
+
+接着在同一文件定义组件主体。空数组直接显示提示；有季度记录时显示数量，并为季度趋势和季度记录各留出显示位置：
+
+```tsx
+export function RentHistoryChart({
+  sa2Id,
+  areaName,
+  dwellingType,
+  bedroomCategory,
+  observations,
+}: RentHistoryChartProps) {
+  // 区分季度位置与实际有租金的记录，缺失季度仍留在原数组中。
+  const observedRentCount = observations.filter(
+    (observation) => observation.geometricMeanRent !== null,
+  ).length;
+
+  return (
+    <section className="space-y-4 rounded-xl border bg-card p-4 sm:p-6">
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold">Rent history · {areaName}</h2>
+        <p className="text-sm">
+          SA2 {sa2Id} · Dwelling type: {dwellingType} · Bedroom category:{" "}
+          {bedroomCategory}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Geometric Mean Rent · NZD per week
+        </p>
+      </div>
+
+      {observations.length === 0 ? (
+        <p>No history observations are available for this area and classification.</p>
+      ) : (
+        <>
+          <p className="text-sm">
+            {observations.length} quarters · {observedRentCount} rent observations
+          </p>
+          {/* 季度趋势 */}
+
+          {/* 季度记录 */}
+        </>
+      )}
+    </section>
+  );
+}
+```
+
+绘制季度趋势：
+
+有季度数组不代表一定有租金值。如果全部为 `null`，需要提示没有可绘制的租金；否则把完整数组交给折线图。在组件主体的 `季度趋势` 位置加入：
+
+```tsx
+{observedRentCount === 0 ? (
+  <p>No rent values are available for these quarters.</p>
+) : (
+  <>
+    {/* 使用完整季度数组：null 形成断点，圆点保留孤立的观测。 */}
+    <div className="h-80 w-full min-w-0">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={observations} margin={{ top: 16, right: 16, bottom: 12, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="period"
+            tickFormatter={formatQuarter}
+            minTickGap={28}
+            interval="preserveStartEnd"
+          />
+          <YAxis width={64} tickFormatter={(value) => `$${value}`} />
+          <Tooltip
+            labelFormatter={(label) => formatQuarter(String(label))}
+            formatter={(value) => [`NZ$${value}`, "Geometric Mean Rent"]}
+          />
+          <Line
+            type="linear"
+            dataKey="geometricMeanRent"
+            stroke="#2f6f9f"
+            strokeWidth={2}
+            dot={{ r: 3 }}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+    <p className="text-sm text-muted-foreground">
+      Gaps indicate missing rent observations.
+    </p>
+  </>
+)}
+```
+
+外层容器提供高度，`ResponsiveContainer` 随可用宽度调整图表。横轴通过 `dataKey="period"` 读取日期，折线通过 `dataKey="geometricMeanRent"` 读取租金。保留完整数组并设置 `connectNulls={false}`，可以让缺失季度形成断点；圆点则让没有相邻线段的单次观测仍然可见。
+
+显示季度记录：
+
+图表便于观察趋势，具体租金和 Reported Bonds 还需要逐条核对。表格直接遍历同一个 `observations`，不另行取数或筛掉空值。在组件主体的 `季度记录` 位置加入：
+
+```tsx
+{/* 表格与图表共用同一数组，便于核对租金及 Reported Bonds。 */}
+<details>
+  <summary className="cursor-pointer">Quarterly records</summary>
+  <div className="mt-3 overflow-x-auto">
+    <table className="w-full text-left text-sm">
+      <caption className="pb-3 text-left">
+        {areaName} · {sa2Id} · {dwellingType} / {bedroomCategory}
+      </caption>
+      <thead>
+        <tr className="border-b">
+          <th className="px-2 py-2">Quarter</th>
+          <th className="px-2 py-2">Geometric Mean Rent (NZD/week)</th>
+          <th className="px-2 py-2">Reported Bonds</th>
+        </tr>
+      </thead>
+      <tbody>
+        {observations.map((observation) => (
+          <tr key={observation.period} className="border-b">
+            <td className="px-2 py-2">{formatQuarter(observation.period)}</td>
+            <td className="px-2 py-2">
+              {observation.geometricMeanRent === null
+                ? "No observation"
+                : `NZ$${observation.geometricMeanRent}`}
+            </td>
+            <td className="px-2 py-2">
+              {observation.reportedBonds ?? "No observation"}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</details>
+```
+
+`details` 让读者按需展开记录。缺失租金和押金数量显示 `No observation`，不会被转换成零。
+
+连接页面与图表：
+
+组件可以接收历史数组后，回到 `src/pages/MapChartPage.tsx`，在现有业务模块导入处加入：
+
+```tsx
+import { RentHistoryChart } from "@/features/explore/RentHistoryChart";
+```
+
+页面底部的历史摘要由这个组件承担。已有地区信息卡片后保留以下历史视图，原摘要不再重复显示：
+
+```tsx
+{selectedArea && (
+  <RentHistoryChart
+    sa2Id={selectedSa2Id}
+    areaName={selectedArea.properties.name}
+    dwellingType={data.history.dwellingType}
+    bedroomCategory={data.history.bedroomCategory}
+    observations={selectedHistory}
+  />
+)}
+```
+
+数据流保持为：地图点击更新 `selectedSa2Id` → 页面取得对应名称和历史数组 → `RentHistoryChart` 同时更新标题、折线和表格。
+
+核对联动：
+
+打开 `/spike/map-chart`，初始地区应为 Greensboro。展开 Quarterly records，核对首个季度 `2020 Q1` 的租金为 `NZ$388`、Reported Bonds 为 `393`，最后一个季度 `2026 Q2` 的租金为 `NZ$395`、Reported Bonds 为 `171`。
+
+点击 Coromandel，标题和表格编号应一起变为 `166700`。它有 26 个季度位置，其中 16 个有租金；缺失位置在表格中显示 `No observation`，折线在这些位置断开。缩小到手机宽度，图表应随容器缩小，表格可以在自己的容器内横向滚动。
+
+请求失败仍通过现有错误面板处理。在 Chrome 的 Network request blocking 中临时屏蔽 `*waikato-history.json*` 后刷新，应出现失败提示；取消屏蔽并点击 Retry loading data，应恢复初始地区的历史。
+
+固定关键行为：
+
+地区切换会同时影响图表和表格，因此组件测试需要验证两者是否使用同一地区的数据，同时覆盖断点、孤立观测、空历史和失败重试。在 `src/pages/MapChartPage.test.tsx` 中，地图用按钮发出同样的选区事件；数据读取、页面状态和折线绘制仍使用实际实现。jsdom 没有页面布局，测试只为图表提供固定尺寸。
+
+<details>
+<summary>地图与历史联动的组件测试代码</summary>
+
+```tsx
+import { cloneElement, type ReactElement, type ReactNode } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { MapChartPage } from "@/pages/MapChartPage";
+
+// 用按钮发出地图的选区事件；历史请求、页面状态与 Recharts 折线仍实际运行。
+vi.mock("react-map-gl/maplibre", () => ({
+  default: ({ children, onClick }: {
+    children: ReactNode;
+    onClick: (event: { features: { id: string }[] }) => void;
+  }) => (
+    <div>
+      <button onClick={() => onClick({ features: [{ id: "166700" }] })}>Select Coromandel</button>
+      <button onClick={() => onClick({ features: [{ id: "166800" }] })}>Select Empty Area</button>
+      {children}
+    </div>
+  ),
+  Source: ({ children }: { children: ReactNode }) => children,
+  Layer: () => null,
+  NavigationControl: () => null,
+}));
+vi.mock("maplibre-gl", () => ({ setWorkerUrl: vi.fn() }));
+
+// jsdom 没有页面布局，为真实折线提供固定尺寸。
+vi.mock("recharts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("recharts")>(),
+  ResponsiveContainer: ({ children }: {
+    children: ReactElement<{ width: number; height: number }>;
+  }) => cloneElement(children, { width: 640, height: 320 }),
+}));
+
+const periods = ["2020-01-01", "2020-04-01", "2020-07-01", "2020-10-01", "2021-01-01"];
+
+function area(sa2Id: string, name: string) {
+  return {
+    type: "Feature",
+    id: sa2Id,
+    geometry: { type: "Polygon", coordinates: [[[175, -38], [176, -38], [175, -37], [175, -38]]] },
+    properties: { sa2Id, name, medianRent: 350, reportedBonds: 171 },
+  };
+}
+
+function history(values: (number | null)[]) {
+  return values.map((geometricMeanRent, index) => ({
+    period: periods[index],
+    geometricMeanRent,
+    reportedBonds: geometricMeanRent === null ? null : 12,
+  }));
+}
+
+function serveSample(coromandelValues: (number | null)[] = [400, 410, null, 430, 440]) {
+  const fetchMock = vi.fn(async (input: string) => {
+    if (input.endsWith("waikato.geo.json")) {
+      return Response.json({
+        type: "FeatureCollection",
+        features: [area("179900", "Greensboro"), area("166700", "Coromandel"), area("166800", "Empty Area")],
+      });
+    }
+    if (input.endsWith("waikato-history.json")) {
+      return Response.json({
+        region: "Waikato Region",
+        dwellingType: "ALL",
+        bedroomCategory: "ALL",
+        metric: "geometricMeanRent",
+        periods,
+        histories: {
+          "179900": history([388, 314, 323, 322, 403]),
+          "166700": history(coromandelValues),
+          "166800": [],
+        },
+      });
+    }
+    throw new Error(`Unexpected data request: ${input}`);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><MapChartPage /></QueryClientProvider>);
+}
+
+beforeEach(() => vi.stubEnv("VITE_MAPTILER_KEY", "test-key"));
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+describe("map history selection", () => {
+  it("switches the chart and table together, preserves gaps and handles an empty area", async () => {
+    const fetchMock = serveSample();
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "Rent history · Greensboro" })).toBeInTheDocument();
+    expect(screen.getByText("5 quarters · 5 rent observations")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Coromandel" }));
+    expect(screen.getByRole("heading", { name: "Rent history · Coromandel" })).toBeInTheDocument();
+    expect(screen.getByText("5 quarters · 4 rent observations")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Quarterly records"));
+    const table = screen.getByRole("table");
+    const missingQuarter = within(table).getByText("2020 Q3").closest("tr")!;
+    expect(within(missingQuarter).getAllByText("No observation")).toHaveLength(2);
+    expect(within(table).getByText("NZ$430")).toBeInTheDocument();
+    // 两个 M 表示缺失季度两侧各有独立线段，没有跨空值连接。
+    const path = document.querySelector(".recharts-line-curve");
+    expect(path?.getAttribute("d")?.match(/M/g)).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Empty Area" }));
+    expect(screen.getByText("No history observations are available for this area and classification.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select Coromandel" })).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("keeps an isolated zero-valued observation as a visible point", async () => {
+    serveSample([null, null, 0, null, null]);
+    renderPage();
+    await screen.findByRole("heading", { name: "Rent history · Greensboro" });
+    fireEvent.click(screen.getByRole("button", { name: "Select Coromandel" }));
+    expect(screen.getByText("5 quarters · 1 rent observations")).toBeInTheDocument();
+    expect(document.querySelectorAll(".recharts-line-dot")).toHaveLength(1);
+    fireEvent.click(screen.getByText("Quarterly records"));
+    expect(within(screen.getByRole("table")).getByText("NZ$0")).toBeInTheDocument();
+  });
+
+  it("shows missing values without replacing them with zero", async () => {
+    serveSample([null, null, null, null, null]);
+    renderPage();
+    await screen.findByRole("heading", { name: "Rent history · Greensboro" });
+    fireEvent.click(screen.getByRole("button", { name: "Select Coromandel" }));
+    expect(screen.getByText("No rent values are available for these quarters.")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Quarterly records"));
+    const table = screen.getByRole("table");
+    expect(within(table).getAllByText("No observation")).toHaveLength(10);
+    expect(within(table).queryByText("NZ$0")).not.toBeInTheDocument();
+  });
+
+  it("recovers from a failed history request using the retry button", async () => {
+    const fetchMock = serveSample();
+    fetchMock.mockImplementationOnce(async () => Response.json({ type: "FeatureCollection", features: [] }));
+    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 503 }));
+    renderPage();
+    expect(await screen.findByText("Could not load the map and history data files.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading data" }));
+    expect(await screen.findByRole("heading", { name: "Rent history · Greensboro" })).toBeInTheDocument();
+  });
+});
+```
+
+</details>
+
+先运行这组测试，再运行项目现有检查：
+
+```bash
+npm run test -- src/pages/MapChartPage.test.tsx
+npm run check
+```
+
+本次检查通过：新增 4 项联动测试；项目共 12 项单元与组件测试通过，生产构建通过，4 项现有应用外壳浏览器测试通过。
+
+真实 Waikato 文件的浏览器核对也通过：点击地图中的 Coromandel 后，标题、折线及 26 行季度记录同步切换，切换地区没有额外请求历史文件；
+
 ### 7. 测量全国数据与 Region 分片
 
 先验证选择 Region 后只按需加载对应分片，再比较全国一次加载与 Region 分片的 data payload 大小、压缩体积、读取与解析时间、首次渲染时间和基本交互响应，并区分数据 payload 与应用 bundle，根据实际测量判断加载策略。
