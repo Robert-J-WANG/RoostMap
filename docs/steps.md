@@ -10219,7 +10219,28 @@ Step 07 的技术样例已经确认：
 
 ### 9. 记录结果并完成 Git 操作
 
-原始官方数据和 `public/data/` 生成文件继续由 `.gitignore` 排除，不进入普通功能提交。
+原始官方数据、全国测量文件和其他本地生成文件继续由 `.gitignore` 排除。技术样例页面会在运行时请求 Region 目录和当前 Region 的地图、历史文件，因此这些页面必需的静态资源需要随代码进入 Git：
+
+```text
+public/data/spike/map-chart/comparison/regions/
+├── index.json
+├── {regionCode}.geo.json
+└── {regionCode}-history.json
+```
+
+`.gitignore` 只为这个目录开放例外：
+
+```bash
+# Raw and generated data
+data/raw/
+public/data/*
+
+# Keep directories traversable, then include only deployed Region data
+!public/data/**/
+!public/data/spike/map-chart/comparison/regions/*.json
+```
+
+Vite 构建时会将其中的文件复制到 `dist/data/spike/map-chart/comparison/regions/`，GitHub runner 因而可以生成包含完整样例数据的部署产物。`national.geo.json`、`national-history.json`、原始官方文件和其他未被页面请求的文件不进入本次提交。
 
 提交前重新执行本次分支使用的检查：
 
@@ -10232,6 +10253,8 @@ npm run lint
 npm run test
 npm run build
 npm run test:e2e
+
+test -f dist/data/spike/map-chart/comparison/regions/index.json
 
 git diff --check
 git status --short
@@ -10301,6 +10324,7 @@ git push origin --delete spike/map-chart
 ⬜ 全国数据和 16 组 Region 分片可以稳定生成
 ⬜ Region 切换、查询缓存和失败重试已经验证
 ⬜ 全国文件与 Region 分片的体积和解析成本已经测量
+⬜ 页面必需的 Region 静态数据已经进入构建产物
 ⬜ GitHub Actions 构建已经接入 VITE_MAPTILER_KEY
 ⬜ MapTiler key 已限制为允许的部署域名
 ⬜ lint、单元与组件测试、生产构建和 E2E 测试全部通过

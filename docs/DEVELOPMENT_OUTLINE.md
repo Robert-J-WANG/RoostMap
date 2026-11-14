@@ -260,7 +260,7 @@ GeoJSON、坐标系统、专题地图、时序图表、bundle 与数据 payload 
 
 **Git 边界**
 
-使用 `spike/map-chart`；样例只保留支持后续架构的最小代码。
+使用 `spike/map-chart`；提交技术样例代码和部署时实际请求的 Region 派生静态数据，不提交原始数据、全国测量文件或其他生成文件。
 
 ## Step 08 · 验证外部服务与运行边界
 

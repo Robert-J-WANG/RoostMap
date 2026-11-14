@@ -508,7 +508,7 @@ public/data/quality-report.json
 
 Region code 作为稳定分片键；无法归入普通 regional council 的官方记录使用明确的保留分片，不通过自定义城市名称重新分类。territorial authority 和 urban area 是 Region 下并列的官方导航维度，不把 urban area 强制归入某个 territorial authority；跨 Region 的同一官方 urban area 可在相关分片保留相同 code 和各自的 SA2 membership。全国索引保持紧凑，页面只加载当前 Region 所需的 summary、map、geometry 和 history。用户从搜索结果进入其他 Region 时切换分片。
 
-生成文件不作为手工维护源文件，也不提交到普通功能分支。每个成功的数据版本生成不可变 data release bundle，包含锁定的原始输入、`source-lock.json`、生成的 `public/data`、quality report、pipeline version 和 SHA-256 清单。main 部署记录 bundle id；至少保留当前和上一个成功生产版本，正式 release 将对应 bundle 作为长期 release artifact 保存。
+生成文件不作为手工维护源文件，也不提交到普通功能分支。技术验证分支可以提交运行已部署样例所必需、范围明确的派生静态数据；对应的原始输入、全国测量文件和未被页面请求的生成文件仍保存在 Git 之外。每个成功的数据版本生成不可变 data release bundle，包含锁定的原始输入、`source-lock.json`、生成的 `public/data`、quality report、pipeline version 和 SHA-256 清单。main 部署记录 bundle id；至少保留当前和上一个成功生产版本，正式 release 将对应 bundle 作为长期 release artifact 保存。
 
 ### 2.6 数据质量门禁
 
