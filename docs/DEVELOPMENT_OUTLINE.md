@@ -246,7 +246,7 @@ MBIE 记录与 Stats NZ SA2 2019 可重复关联的证据、最小 contract 和�
 **主要内容**
 
 - 使用 `react-map-gl/maplibre` 组织 React 地图组件，由 MapLibre GL JS 渲染 SA2 geometry，并验证 feature id 与租金指标一致。
-- 使用 Recharts 渲染单一区域季度历史。
+- 从 Region 历史分片选择单一 SA2 的季度记录，并使用 Recharts 渲染。
 - 验证 Region 分片、按需加载、地图交互和图表非视觉替代。
 - 测量数据体积、解析时间和基本交互性能。
 
@@ -300,7 +300,7 @@ TravelTime、Supabase、Azure Functions 和目标托管环境的可行性结论�
 **主要内容**
 
 - 定义正式 TypeScript/Zod contracts 与小型 fixture。
-- 转换一个代表性 Region 的区域摘要、geometry、地图指标和单区域历史。
+- 转换一个代表性 Region 的区域摘要、geometry、地图指标和历史分片。
 - 建立数据 repository，通过同一 contract 为页面供数。
 - 在最小页面显示来源、版本、周期、数值和缺失状态。
 
@@ -325,7 +325,7 @@ fixture、转换、contract 与页面行为测试通过；输入到 UI 的值可
 **主要内容**
 
 - 完成分类、拒绝、join、geometry、代表点、时区和同比计算。
-- 生成 manifest、地理索引、Region summary/map/geometry、SA2 history、search index 和 quality report。
+- 生成 manifest、地理索引、Region summary/map/geometry/history、search index 和 quality report。
 - 建立 source lock、SHA-256、pipeline version 与不可变 release bundle。
 - 核查主要城市、较小中心、稀疏区域和 Chatham Islands 代表样本。
 

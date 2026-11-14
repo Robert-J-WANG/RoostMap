@@ -7,7 +7,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { loadSampleData } from "@/features/explore/sample-data";
+import {
+  loadRegionData,
+  loadRegionIndex,
+  type MapData,
+} from "@/features/explore/sample-data";
 import { RentHistoryChart } from "@/features/explore/RentHistoryChart";
 
 // 地图运行环境：在创建地图前指定 Worker 地址。
@@ -45,46 +49,129 @@ const sa2BoundaryLayer: LayerProps = {
   },
 };
 
-export function MapChartPage() {
-  // 交互状态：分别保存悬停和点击选中的地区编号。
-  const [hoveredSa2Id, setHoveredSa2Id] = useState<string | null>(null);
-  const [selectedSa2Id, setSelectedSa2Id] = useState("179900");
+type MapBounds = [[number, number], [number, number]];
 
-  // 样例数据：由应用级查询客户端管理请求状态与缓存。
-  const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: ["map-chart-sample"],
-    queryFn: ({ signal }) => loadSampleData(signal),
+// GeoJSON 可能是 Polygon 或 MultiPolygon；递归访问坐标可用同一逻辑得到边界。
+function getMapBounds(map: MapData): MapBounds {
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+
+  function visitCoordinates(value: unknown) {
+    if (!Array.isArray(value)) {
+      return;
+    }
+
+    if (typeof value[0] === "number" && typeof value[1] === "number") {
+      const [longitude, latitude] = value;
+      west = Math.min(west, longitude);
+      south = Math.min(south, latitude);
+      east = Math.max(east, longitude);
+      north = Math.max(north, latitude);
+      return;
+    }
+
+    for (const child of value) {
+      visitCoordinates(child);
+    }
+  }
+
+  for (const feature of map.features) {
+    visitCoordinates(feature.geometry.coordinates);
+  }
+
+  return [[west, south], [east, north]];
+}
+
+export function MapChartPage() {
+  // 页面状态分为两个层级：Region 决定数据文件，SA2 决定当前地区。
+  const [selectedRegionCode, setSelectedRegionCode] = useState("03");
+  const [hoveredSa2Id, setHoveredSa2Id] = useState<string | null>(null);
+  const [selectedSa2Id, setSelectedSa2Id] = useState<string | null>(
+    "179900",
+  );
+
+  // 第一层查询读取 Region 目录；第二层查询只读取当前 Region 的文件。
+  const regionIndexQuery = useQuery({
+    queryKey: ["map-chart-region-index"],
+    queryFn: ({ signal }) => loadRegionIndex(signal),
+    staleTime: Infinity,
     retry: false,
   });
 
-  // 显示前置条件：地图配置、加载状态、请求错误和空数据。
+  const selectedRegion = regionIndexQuery.data?.regions.find(
+    (region) => region.regionCode === selectedRegionCode,
+  );
+
+  const regionDataQuery = useQuery({
+    queryKey: ["map-chart-region", selectedRegionCode],
+    queryFn: ({ signal }) => {
+      if (!selectedRegion) {
+        throw new Error("The selected Region was not found.");
+      }
+
+      return loadRegionData(selectedRegion, signal);
+    },
+    enabled: selectedRegion !== undefined,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  // 显示前置条件：地图配置、目录状态和当前 Region 数据状态。
   const mapTilerKey = import.meta.env.VITE_MAPTILER_KEY;
 
   if (!mapTilerKey) {
     return <p>Set VITE_MAPTILER_KEY to load the basemap.</p>;
   }
 
-  if (isPending) {
-    return <p>Loading the Waikato sample data…</p>;
-  }
-
-  if (isError) {
+  if (regionIndexQuery.isError) {
     return (
       <div className="space-y-3">
-        <p>{error.message}</p>
+        <p>{regionIndexQuery.error.message}</p>
         <button
           className="rounded-md border px-4 py-2"
-          onClick={() => void refetch()}
+          onClick={() => void regionIndexQuery.refetch()}
           type="button"
         >
-          Retry loading data
+          Retry loading Regions
         </button>
       </div>
     );
   }
 
-  if (data.map.features.length === 0) {
-    return <p>No map boundaries are available for this sample.</p>;
+  if (regionIndexQuery.isPending || !regionIndexQuery.data) {
+    return <p>Loading the Region index…</p>;
+  }
+
+  if (!selectedRegion) {
+    return <p>The selected Region is not available.</p>;
+  }
+
+  if (regionDataQuery.isError) {
+    return (
+      <div className="space-y-3">
+        <p>{regionDataQuery.error.message}</p>
+        <button
+          className="rounded-md border px-4 py-2"
+          onClick={() => void regionDataQuery.refetch()}
+          type="button"
+        >
+          Retry loading Region data
+        </button>
+      </div>
+    );
+  }
+
+  if (regionDataQuery.isPending || !regionDataQuery.data) {
+    return <p>Loading {selectedRegion.name} data…</p>;
+  }
+
+  const data = regionDataQuery.data;
+  const firstArea = data.map.features[0];
+
+  if (!firstArea) {
+    return <p>No map boundaries are available for {selectedRegion.name}.</p>;
   }
 
   // 地图事件：更新命中的编号，点击空白处保留原选择。
@@ -103,33 +190,64 @@ export function MapChartPage() {
 
   // 地区记录：根据编号从同一份 GeoJSON 读取名称和指标。
   const hoveredArea = data.map.features.find(
-    (feature) => feature.id === hoveredSa2Id,
+    (feature) => feature.properties.sa2Id === hoveredSa2Id,
   );
 
   const selectedArea = data.map.features.find(
-    (feature) => feature.id === selectedSa2Id,
-  );
+    (feature) => feature.properties.sa2Id === selectedSa2Id,
+  ) ?? firstArea;
+  const activeSa2Id = selectedArea.properties.sa2Id;
+  const mapBounds = getMapBounds(data.map);
 
   // 历史选择：从已加载的大区文件按编号取出数组，无需再次请求。
-  const selectedHistory = data.history.histories[selectedSa2Id] ?? [];
+  const selectedHistory = data.history.histories[activeSa2Id] ?? [];
 
   return (
     <section className="space-y-6">
       <title>Map and chart sample | RoostMap</title>
 
-      <div>
-        <h1 className="text-3xl font-semibold">Waikato rental data sample</h1>
+      <div className="space-y-4">
+        <label className="grid gap-2 text-sm" htmlFor="region-select">
+          <span>Region</span>
+          <select
+            id="region-select"
+            className="w-full rounded-md border bg-background px-3 py-2 sm:w-72"
+            value={selectedRegionCode}
+            onChange={(event) => {
+              setSelectedRegionCode(event.target.value);
+              setHoveredSa2Id(null);
+              setSelectedSa2Id(null);
+            }}
+          >
+            {regionIndexQuery.data.regions.map((region) => (
+              <option key={region.regionCode} value={region.regionCode}>
+                {region.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <h1 className="text-3xl font-semibold">
+          {selectedRegion.name} rental data sample
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          2026-04-01 · All dwelling types · All bedroom categories
+          {regionIndexQuery.data.period} ·{" "}
+          {data.history.dwellingType === "ALL"
+            ? "All dwelling types"
+            : data.history.dwellingType}
+          {" · "}
+          {data.history.bedroomCategory === "ALL"
+            ? "All bedroom categories"
+            : `${data.history.bedroomCategory} bedrooms`}
         </p>
       </div>
       {/* 地图：底图、SA2 图层与鼠标交互。 */}
       <div className="h-[420px] overflow-hidden rounded-xl border sm:h-[560px]">
         <Map
+          key={selectedRegionCode}
           initialViewState={{
-            longitude: 175.3,
-            latitude: -37.8,
-            zoom: 7,
+            bounds: mapBounds,
+            fitBoundsOptions: { padding: 40 },
           }}
           style={{ width: "100%", height: "100%" }}
           mapStyle={`https://api.maptiler.com/maps/streets-v4/style.json?key=${mapTilerKey}`}
@@ -158,7 +276,7 @@ export function MapChartPage() {
             <Layer
               id="sa2-selected"
               type="line"
-              filter={["==", ["id"], selectedSa2Id]}
+              filter={["==", ["id"], activeSa2Id]}
               paint={{ "line-color": "#102a2d", "line-width": 4 }}
             />
           </Source>
@@ -166,7 +284,10 @@ export function MapChartPage() {
       </div>
       {/* 图例与来源：说明租金分段、缺失值及统计口径。 */}
       <div className="space-y-2 text-sm">
-        <p>Median weekly rent · NZD · 2026-04-01 · ALL / ALL</p>
+        <p>
+          Median weekly rent · NZD · {regionIndexQuery.data.period} ·{" "}
+          {data.history.dwellingType} / {data.history.bedroomCategory}
+        </p>
         <ul className="flex flex-wrap gap-x-5 gap-y-2">
           <li>
             <span className="mr-2 inline-block h-3 w-3 bg-[#57c8b8]" />
@@ -195,38 +316,32 @@ export function MapChartPage() {
         <p>
           Hovered SA2:{" "}
           {hoveredArea
-            ? `${hoveredArea.id} · ${hoveredArea.properties.name}`
+            ? `${hoveredArea.properties.sa2Id} · ${hoveredArea.properties.name}`
             : "Move the pointer over an area"}
         </p>
-        {selectedArea && (
-          <>
-            <h2 className="text-lg font-semibold">Selected SA2</h2>
-            <p>
-              {selectedArea.id} · {selectedArea.properties.name}
-            </p>
-            <p>
-              Median weekly rent:{" "}
-              {selectedArea.properties.medianRent === null
-                ? "No observation"
-                : `NZ$${selectedArea.properties.medianRent}`}
-            </p>
-            <p>
-              Reported Bonds:{" "}
-              {selectedArea.properties.reportedBonds ?? "No observation"}
-            </p>
-          </>
-        )}
+        <h2 className="text-lg font-semibold">Selected SA2</h2>
+        <p>
+          {activeSa2Id} · {selectedArea.properties.name}
+        </p>
+        <p>
+          Median weekly rent:{" "}
+          {selectedArea.properties.medianRent === null
+            ? "No observation"
+            : `NZ$${selectedArea.properties.medianRent}`}
+        </p>
+        <p>
+          Reported Bonds:{" "}
+          {selectedArea.properties.reportedBonds ?? "No observation"}
+        </p>
       </div>
       {/* 历史视图：名称、编号、图表和表格都来自当前点击选择。 */}
-      {selectedArea && (
-        <RentHistoryChart
-          sa2Id={selectedSa2Id}
-          areaName={selectedArea.properties.name}
-          dwellingType={data.history.dwellingType}
-          bedroomCategory={data.history.bedroomCategory}
-          observations={selectedHistory}
-        />
-      )}
+      <RentHistoryChart
+        sa2Id={activeSa2Id}
+        areaName={selectedArea.properties.name}
+        dwellingType={data.history.dwellingType}
+        bedroomCategory={data.history.bedroomCategory}
+        observations={selectedHistory}
+      />
     </section>
   );
 }

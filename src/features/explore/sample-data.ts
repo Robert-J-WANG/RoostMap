@@ -11,7 +11,25 @@ type AreaProperties = {
   reportedBonds: number | null;
 };
 
-type MapData = FeatureCollection<Polygon | MultiPolygon, AreaProperties>;
+export type MapData = FeatureCollection<
+  Polygon | MultiPolygon,
+  AreaProperties
+>;
+
+export type RegionEntry = {
+  regionCode: string;
+  name: string;
+  areaCount: number;
+  mapFile: string;
+  historyFile: string;
+};
+
+type RegionIndexData = {
+  period: string;
+  dwellingType: string;
+  bedroomCategory: string;
+  regions: RegionEntry[];
+};
 
 export type HistoryObservation = {
   period: string;
@@ -28,14 +46,34 @@ type HistoryData = {
   histories: Record<string, HistoryObservation[]>;
 };
 
-export async function loadSampleData(signal: AbortSignal) {
+// Region 目录只描述可选范围及其数据文件，不读取具体地图内容。
+export async function loadRegionIndex(
+  signal: AbortSignal,
+): Promise<RegionIndexData> {
+  const response = await fetch(
+    "/data/spike/map-chart/comparison/regions/index.json",
+    { signal },
+  );
+
+  if (!response.ok) {
+    throw new Error("Could not load the Region index.");
+  }
+
+  return response.json() as Promise<RegionIndexData>;
+}
+
+// 一次加载同一 Region 的边界和历史，避免页面组合不匹配的数据文件。
+export async function loadRegionData(
+  region: RegionEntry,
+  signal: AbortSignal,
+) {
   const [mapResponse, historyResponse] = await Promise.all([
-    fetch("/data/spike/map-chart/waikato.geo.json", { signal }),
-    fetch("/data/spike/map-chart/waikato-history.json", { signal }),
+    fetch(region.mapFile, { signal }),
+    fetch(region.historyFile, { signal }),
   ]);
 
   if (!mapResponse.ok || !historyResponse.ok) {
-    throw new Error("Could not load the map and history data files.");
+    throw new Error(`Could not load the ${region.name} data files.`);
   }
 
   const map: MapData = await mapResponse.json();

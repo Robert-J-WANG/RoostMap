@@ -50,28 +50,86 @@ function history(values: (number | null)[]) {
   }));
 }
 
-function serveSample(coromandelValues: (number | null)[] = [400, 410, null, 430, 440]) {
+function serveSample(
+  coromandelValues: (number | null)[] = [400, 410, null, 430, 440],
+  options: { failWaikatoHistoryOnce?: boolean } = {},
+) {
+  let shouldFailWaikatoHistory = options.failWaikatoHistoryOnce ?? false;
+  const waikatoMap = {
+    type: "FeatureCollection",
+    features: [
+      area("179900", "Greensboro"),
+      area("166700", "Coromandel"),
+      area("166800", "Empty Area"),
+    ],
+  };
+  const waikatoHistory = {
+    region: "Waikato Region",
+    dwellingType: "ALL",
+    bedroomCategory: "ALL",
+    metric: "geometricMeanRent",
+    periods,
+    histories: {
+      "179900": history([388, 314, 323, 322, 403]),
+      "166700": history(coromandelValues),
+      "166800": [],
+    },
+  };
+  const aucklandMap = {
+    type: "FeatureCollection",
+    features: [area("101800", "Auckland sample")],
+  };
+  const aucklandHistory = {
+    ...waikatoHistory,
+    region: "Auckland Region",
+    histories: {
+      "101800": history([520, 530, 540, 550, 560]),
+    },
+  };
+
+  // fetch mock 按目录中的真实路径返回数据，避免测试依赖请求先后顺序。
   const fetchMock = vi.fn(async (input: string) => {
-    if (input.endsWith("waikato.geo.json")) {
+    if (input.endsWith("regions/index.json")) {
       return Response.json({
-        type: "FeatureCollection",
-        features: [area("179900", "Greensboro"), area("166700", "Coromandel"), area("166800", "Empty Area")],
-      });
-    }
-    if (input.endsWith("waikato-history.json")) {
-      return Response.json({
-        region: "Waikato Region",
+        period: "2026-04-01",
         dwellingType: "ALL",
         bedroomCategory: "ALL",
-        metric: "geometricMeanRent",
-        periods,
-        histories: {
-          "179900": history([388, 314, 323, 322, 403]),
-          "166700": history(coromandelValues),
-          "166800": [],
-        },
+        regions: [
+          {
+            regionCode: "03",
+            name: "Waikato Region",
+            areaCount: 3,
+            mapFile: "/data/spike/map-chart/comparison/regions/03.geo.json",
+            historyFile: "/data/spike/map-chart/comparison/regions/03-history.json",
+          },
+          {
+            regionCode: "02",
+            name: "Auckland Region",
+            areaCount: 1,
+            mapFile: "/data/spike/map-chart/comparison/regions/02.geo.json",
+            historyFile: "/data/spike/map-chart/comparison/regions/02-history.json",
+          },
+        ],
       });
     }
+
+    if (input.endsWith("regions/03.geo.json")) {
+      return Response.json(waikatoMap);
+    }
+    if (input.endsWith("regions/03-history.json")) {
+      if (shouldFailWaikatoHistory) {
+        shouldFailWaikatoHistory = false;
+        return new Response(null, { status: 503 });
+      }
+      return Response.json(waikatoHistory);
+    }
+    if (input.endsWith("regions/02.geo.json")) {
+      return Response.json(aucklandMap);
+    }
+    if (input.endsWith("regions/02-history.json")) {
+      return Response.json(aucklandHistory);
+    }
+
     throw new Error(`Unexpected data request: ${input}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -107,7 +165,7 @@ describe("map history selection", () => {
     // 两个 M 表示缺失季度两侧各有独立线段，没有跨空值连接。
     const path = document.querySelector(".recharts-line-curve");
     expect(path?.getAttribute("d")?.match(/M/g)).toHaveLength(2);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
 
     fireEvent.click(screen.getByRole("button", { name: "Select Empty Area" }));
     expect(screen.getByText("No history observations are available for this area and classification.")).toBeInTheDocument();
@@ -138,13 +196,40 @@ describe("map history selection", () => {
     expect(within(table).queryByText("NZ$0")).not.toBeInTheDocument();
   });
 
-  it("recovers from a failed history request using the retry button", async () => {
+  it("loads the selected Region and reuses an already loaded Region", async () => {
     const fetchMock = serveSample();
-    fetchMock.mockImplementationOnce(async () => Response.json({ type: "FeatureCollection", features: [] }));
-    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 503 }));
     renderPage();
-    expect(await screen.findByText("Could not load the map and history data files.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Retry loading data" }));
+
+    expect(await screen.findByRole("heading", {
+      name: "Waikato Region rental data sample",
+    })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Region"), {
+      target: { value: "02" },
+    });
+    expect(await screen.findByRole("heading", {
+      name: "Auckland Region rental data sample",
+    })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([input]) =>
+      input.endsWith("regions/02.geo.json")
+    )).toHaveLength(1);
+
+    fireEvent.change(screen.getByLabelText("Region"), {
+      target: { value: "03" },
+    });
+    expect(await screen.findByRole("heading", {
+      name: "Waikato Region rental data sample",
+    })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([input]) =>
+      input.endsWith("regions/03.geo.json")
+    )).toHaveLength(1);
+  });
+
+  it("recovers from a failed history request using the retry button", async () => {
+    serveSample(undefined, { failWaikatoHistoryOnce: true });
+    renderPage();
+    expect(await screen.findByText("Could not load the Waikato Region data files.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading Region data" }));
     expect(await screen.findByRole("heading", { name: "Rent history · Greensboro" })).toBeInTheDocument();
   });
 });
