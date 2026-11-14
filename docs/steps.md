@@ -10237,6 +10237,37 @@ git diff --check
 git status --short
 ```
 
+本地开发通过 `.env.local` 读取 `VITE_MAPTILER_KEY`，但这个文件不会进入 Git。Preview 和 Production 都在 GitHub runner 中执行 Vite 构建，Azure Static Web Apps 只接收已经生成的 `dist`，因此 MapTiler key 必须在 GitHub Actions 的构建阶段提供，不能等部署完成后再通过 Azure application settings 补入。
+
+在 GitHub 仓库的 `Settings → Secrets and variables → Actions` 中建立 repository secret：
+
+```text
+Name:  VITE_MAPTILER_KEY
+Value: MapTiler Cloud 中创建的浏览器 API key
+```
+
+Pull Request 的 `dist` 由 `.github/workflows/pull-request.yml` 中的完整检查生成，因此在该步骤传入 secret：
+
+```yaml
+- name: Run complete quality check
+  env:
+    VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
+  run: npm run check
+```
+
+Production 会从 `main` 重新构建，在 `.github/workflows/production.yml` 的构建步骤传入同一个变量：
+
+```yaml
+- name: Build production application
+  env:
+    VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
+  run: npm run build
+```
+
+`VITE_` 变量会进入浏览器产物，Actions secret 只能避免把 key 直接写进仓库，不能让它在客户端保持不可见。MapTiler Cloud 中还需要为这个 key 设置 `Allowed HTTP Origins`，加入实际部署域名；填写域名本身，不包含协议和路径。需要验证 Preview 时，也加入对应的 Preview 域名。
+
+这些设置只对之后生成的前端产物生效。配置完成后重新构建和部署，页面才能取得 key 并加载底图。
+
 git 提交和推送
 
 ```bash
@@ -10270,6 +10301,8 @@ git push origin --delete spike/map-chart
 ⬜ 全国数据和 16 组 Region 分片可以稳定生成
 ⬜ Region 切换、查询缓存和失败重试已经验证
 ⬜ 全国文件与 Region 分片的体积和解析成本已经测量
+⬜ GitHub Actions 构建已经接入 VITE_MAPTILER_KEY
+⬜ MapTiler key 已限制为允许的部署域名
 ⬜ lint、单元与组件测试、生产构建和 E2E 测试全部通过
 ⬜ 地图与图表技术样例已通过 Pull Request 合并到 main
 ```
