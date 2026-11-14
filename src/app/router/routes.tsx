@@ -4,6 +4,7 @@ import { HomePage } from "@/pages/HomePage";
 import { MethodologyPage } from "@/pages/MethodologyPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { RouteErrorPage } from "@/pages/RouteErrorPage";
+import { MapChartPage } from "@/pages/MapChartPage";
 
 export const routes = [
   {
@@ -20,6 +21,10 @@ export const routes = [
           {
             path: "methodology",
             Component: MethodologyPage,
+          },
+          {
+            path: "spike/map-chart",
+            Component: MapChartPage,
           },
           {
             path: "*",

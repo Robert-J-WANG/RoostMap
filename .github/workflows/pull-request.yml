@@ -45,6 +45,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run complete quality check
+        env:
+          VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
         run: npm run check
 
       # 保存通过检查的 dist，供 Deploy job 下载

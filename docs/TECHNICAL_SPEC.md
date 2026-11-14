@@ -302,7 +302,7 @@ Supabase 生产认证通过自定义 SMTP 发送邮箱验证、密码恢复和�
 - 构建阶段按官方 Region 分片并简化 geometry，不一次加载全国 SA2 polygons。
 - GeoJSON 使用 gzip/brotli。
 - Explore 首次只加载 manifest 和全国紧凑地理/搜索索引；存在默认或已选择 Region 时才加载该 Region 的 summary、map data 和 geometry。
-- Area Detail 按 `sa2Id` 懒加载 history。
+- Explore 或 Area Detail 需要历史图表时，加载当前 SA2 所属 Region 的 history 分片，再按 `sa2Id` 读取季度记录。
 - Compare 并行加载 2–4 个区域。
 - 静态数据使用版本化 URL 和长期缓存。
 - manifest 使用短缓存发现新版本。
@@ -442,6 +442,7 @@ export type DataManifest = {
     summaryUrl: string;
     geometryUrl: string;
     mapUrlTemplate: string;
+    historyUrl: string;
   }>;
   rentalDataStatus: "provisional" | "final";
   rentalDataNotice: string | null;
@@ -487,7 +488,7 @@ export type DataManifest = {
 public/data/manifest.json
 public/data/geographies/index.json
 public/data/areas/summary/{regionCode}.json
-public/data/areas/{sa2Id}/history.json
+public/data/areas/history/{regionCode}.json
 public/data/periods/{period}/{regionCode}/map.json
 public/data/geometry/regions/{regionCode}.geo.json
 public/data/search/areas.json
@@ -499,15 +500,15 @@ public/data/quality-report.json
 - `manifest.json`：当前数据版本和来源校验信息。
 - `geographies/index.json`：Region、territorial authority、经过验证的 urban area 和 SA2 层级，以及分片定位信息。
 - `summary/{regionCode}.json`：该 Region 内的区域身份、上级地理、时区、代表点和当前周期 metric slices。
-- `history.json`：单个 SA2 的完整季度观测。
+- `history/{regionCode}.json`：该 Region 内以 `sa2Id` 索引的完整季度观测。
 - `{regionCode}/map.json`：该 Region 当前周期按复合筛选键组织的紧凑指标。
 - `regions/{regionCode}.geo.json`：该 Region 的名称、`sa2Id`、上级地理标识和简化边界。
 - `search/areas.json`：全国 SA2 与经过验证的上级地理名称标准化搜索索引。
 - `quality-report.json`：流水线发布证据。
 
-Region code 作为稳定分片键；无法归入普通 regional council 的官方记录使用明确的保留分片，不通过自定义城市名称重新分类。territorial authority 和 urban area 是 Region 下并列的官方导航维度，不把 urban area 强制归入某个 territorial authority；跨 Region 的同一官方 urban area 可在相关分片保留相同 code 和各自的 SA2 membership。全国索引保持紧凑，Explore 只加载当前 Region 的 summary、map 和 geometry。用户从搜索结果进入其他 Region 时切换分片。
+Region code 作为稳定分片键；无法归入普通 regional council 的官方记录使用明确的保留分片，不通过自定义城市名称重新分类。territorial authority 和 urban area 是 Region 下并列的官方导航维度，不把 urban area 强制归入某个 territorial authority；跨 Region 的同一官方 urban area 可在相关分片保留相同 code 和各自的 SA2 membership。全国索引保持紧凑，页面只加载当前 Region 所需的 summary、map、geometry 和 history。用户从搜索结果进入其他 Region 时切换分片。
 
-生成文件不作为手工维护源文件，也不提交到普通功能分支。每个成功的数据版本生成不可变 data release bundle，包含锁定的原始输入、`source-lock.json`、生成的 `public/data`、quality report、pipeline version 和 SHA-256 清单。main 部署记录 bundle id；至少保留当前和上一个成功生产版本，正式 release 将对应 bundle 作为长期 release artifact 保存。
+生成文件不作为手工维护源文件，也不提交到普通功能分支。技术验证分支可以提交运行已部署样例所必需、范围明确的派生静态数据；对应的原始输入、全国测量文件和未被页面请求的生成文件仍保存在 Git 之外。每个成功的数据版本生成不可变 data release bundle，包含锁定的原始输入、`source-lock.json`、生成的 `public/data`、quality report、pipeline version 和 SHA-256 清单。main 部署记录 bundle id；至少保留当前和上一个成功生产版本，正式 release 将对应 bundle 作为长期 release artifact 保存。
 
 ### 2.6 数据质量门禁
 
@@ -981,7 +982,7 @@ Supabase：
 | 路由与状态 | React Router、TanStack Query、Zustand、React Hook Form + Zod |
 | UI | Tailwind CSS、shadcn/ui、Lucide icons |
 | 地图与图表 | react-map-gl/maplibre、MapLibre GL JS、MapTiler Cloud、Recharts |
-| 静态数据 | 全国紧凑索引 + Region 分片 + 单区域历史文件 |
+| 静态数据 | 全国紧凑索引 + Region summary/map/geometry/history 分片 |
 | API | Azure Static Web Apps managed Functions HTTP triggers；runtime 实施时按官方支持值确认 |
 | 认证与数据库 | Supabase Auth + PostgreSQL + RLS |
 | 通勤 | TravelTime，经 Functions 代理 |

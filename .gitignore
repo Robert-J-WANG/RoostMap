@@ -11,9 +11,13 @@ api/dist/
 .env.*
 !.env.example
 
-# Raw and generated production data
+# Raw and generated data
 data/raw/
-public/data/
+public/data/*
+
+# Keep directories traversable, then include only deployed Region data
+!public/data/**/
+!public/data/spike/map-chart/comparison/regions/*.json
 
 # Local Supabase state
 .supabase/

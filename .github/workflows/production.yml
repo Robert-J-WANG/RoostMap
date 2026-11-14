@@ -36,6 +36,8 @@ jobs:
         run: npm ci
 
       - name: Build production application
+        env:
+          VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
         run: npm run build
 
       # 直接发布当前 runner 已经生成的 dist
