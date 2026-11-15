@@ -182,7 +182,9 @@ Each repository document has one primary responsibility:
   baselines.
 - `README.md` is the stable public project entry point. It explains the project
   purpose, data-source overview and basic usage; it does not record Step
-  completion, milestone progress, verification results or measured data counts.
+  completion, milestone progress, verification results or measured data counts,
+  and it does not expose the internal chronological learning record as public
+  documentation.
 - source code, runtime configuration, contracts, migrations, generated
   manifests and tests define the actual implemented behaviour.
 
@@ -347,17 +349,15 @@ Core rules include:
 - publishable areas are derived from valid MBIE observations joined to Stats NZ
   SA2 2019 geometry;
 - SA2 2019 is the rental-statistics geography and business identifier;
-- Region, territorial authority and verified urban/rural fields support
-  navigation and display without changing the SA2 statistical unit;
+- Region and territorial authority fields support navigation and display
+  without changing the SA2 statistical unit;
 - a higher-geography search can return multiple independent SA2 areas;
 - do not force SA2 areas into a fabricated suburb model;
-- maps, lists, details, charts, comparisons and reports must use the same data
+- maps, lists, details, charts and comparisons must use the same data
   slice and definitions;
 - missing observations remain missing and are not silently filled from another
   dwelling or bedroom category;
 - provisional status, source limitations and observation periods stay visible;
-- commute estimates run from an SA2 internal representative point to the
-  workplace;
 - the product does not provide live rental listings or real-time availability.
 
 The two core official datasets are:
@@ -391,12 +391,15 @@ Use the stack and implementation boundaries fixed in `docs/TECHNICAL_SPEC.md`.
 ### Services and data
 
 - versioned static rental-data files;
-- Azure Static Web Apps managed Functions with HTTP triggers; select `apiRuntime` from the platform-supported values verified at the Functions feasibility step;
-- Supabase Auth and PostgreSQL;
-- TravelTime through Functions;
-- Cloudflare Turnstile for anonymous high-cost API access;
-- Supabase custom SMTP, with the production provider selected during account implementation from current deliverability, domain-verification and cost requirements;
-- Application Insights for managed Functions; add the browser SDK only when release-stage evidence justifies it and the privacy filters have been verified.
+- Azure Static Web Apps and MapTiler Cloud for V1 delivery;
+- no V1 business API, user database or account dependency;
+- Supabase Auth, PostgreSQL and RLS only when V2 cloud watchlists begin;
+- Azure Static Web Apps managed Functions in V2 only for approved privileged
+  operations such as account deletion;
+- select the Functions `apiRuntime` from the platform-supported values verified
+  when the first Functions slice begins;
+- Application Insights for V2 managed Functions; add a browser SDK only when
+  release-stage evidence justifies it and privacy filters have been verified.
 
 ### Testing and delivery
 
@@ -432,10 +435,9 @@ Before adding or replacing a dependency:
 - Use React Hook Form and Zod for the approved form boundaries.
 - Add shadcn/ui components only when the current feature needs them, and treat the generated source as project code.
 - Use semantic HTML and Tailwind directly for simple structures; do not build a second component system around raw Radix primitives.
-- Keep public filter state in the URL and keep income, exact workplace and full
-  plans out of URLs.
-- Keep unsaved sensitive drafts in memory.
-- Write plans to local storage only after an explicit Save locally action.
+- Keep V1 public filter, map and comparison state in the URL.
+- V2 cloud persistence is user-initiated and limited to the approved saved-area,
+  saved-search and release-state fields.
 - Treat loading, empty, partial-data and error states as part of the feature.
 - Use straightforward HTML and clear validation or error text for the normal
   demonstrated interface.
@@ -460,28 +462,26 @@ Extract them only when reuse, complexity or measured performance justifies it.
 - Generate national indexes and Region partitions deterministically.
 - Test representative major centres, smaller centres, sparse areas and Chatham
   Islands without turning those samples into a release whitelist.
-- Publish an immutable data release bundle and retain a verified previous bundle
-  for rollback.
+- Publish an immutable data release bundle and, when a previous verified bundle
+  exists, retain it for rollback.
 
 Do not hand-edit generated output to make a quality check pass.
 
 ## 12. API, database, privacy and security
 
-- Keep provider credentials and service-role secrets inside Functions.
+- Keep the Supabase server secret inside V2 Functions.
 - Never commit real secrets or copy them into examples, logs or test fixtures.
 - Only intentionally public configuration may use the `VITE_` prefix.
 - Validate request schemas, sizes, authentication and ownership at the boundary.
-- Apply user/IP quotas where required by the design.
-- Keep precise workplace, income, tokens and request bodies out of URLs and
-  telemetry.
-- Do not log access tokens, share tokens, exact addresses, income or secrets.
-- Preserve the SA2-to-workplace route direction and the approved arrival-time
-  semantics.
+- Do not log access tokens, saved user data or secrets.
 - Enable RLS on every user business table and test cross-user denial.
 - Keep service-only tables inaccessible to browser roles.
 - Use migrations for every database schema change.
-- Store only share-token hashes and follow the fragment plus POST resolve flow.
-- Keep local-storage and cloud persistence user-initiated.
+- Let V2 owner CRUD use Supabase Data API and RLS; do not wrap it in duplicate
+  Functions endpoints.
+- Restrict Functions to approved privileged server operations.
+- Keep V2 cloud persistence user-initiated and preserve full unauthenticated V1
+  access.
 - Do not weaken a privacy or ownership boundary to simplify a demo.
 
 ## 13. Testing, CI/CD and verification
@@ -559,7 +559,8 @@ happened.
 This is the stable public entry point. Describe the project purpose, data-source
 overview and basic usage. Do not add a current-status section, completed-Step or
 milestone summaries, CI result narratives, quality-report results or measured
-data counts.
+data counts. Do not link the internal learning notes from this public entry
+point.
 
 After an implementation change, update documentation in this order where
 applicable:

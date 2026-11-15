@@ -1,20 +1,20 @@
 # RoostMap
 
-RoostMap is a New Zealand rental-area affordability and commute analysis platform. It uses official rental and statistical geography data to help renters compare areas, understand historical rent trends and evaluate housing costs alongside commuting requirements.
+RoostMap is an independently designed portfolio and learning project being developed as a New Zealand rental-area evidence explorer. It uses official rental and statistical geography data to help renters understand observed weekly rents, historical changes and data coverage across SA2 areas.
 
-## Planned product capabilities
+RoostMap provides regional statistical evidence rather than live rental listings or a recommendation about the best place to live.
+
+## Product scope
 
 - Explore rental areas using an interactive map
-- View current rental observations and historical trends
-- Compare multiple SA2 areas
-- Estimate rental affordability from household income
-- Evaluate commuting time and cost
-- Save local or account-based plans
-- Generate private shareable reports
+- Filter a consistent data slice by dwelling type, bedroom category and optional weekly-rent limit
+- View latest rental observations, historical trends and Reported Bonds
+- Compare up to four SA2 areas using the same period and category definitions
+- Trace data periods, provisional status, sources and methodology
 
 ## Data sources
 
-The planned core data sources are:
+The core data sources are:
 
 - MBIE Rental Bond Data
 - Stats NZ Statistical Area 2 Higher Geographies 2019
@@ -28,7 +28,6 @@ The project documents have separate responsibilities:
 - [Project design](docs/PROJECT_DESIGN.md) — intended product scope, data meaning and user experience
 - [Technical specification](docs/TECHNICAL_SPEC.md) — architecture, contracts and delivery constraints
 - [Development outline](docs/DEVELOPMENT_OUTLINE.md) — implementation order and stage acceptance
-- [Development learning notes](docs/steps.md) — chronological reasoning, operations and verification
 
 ## Development
 
