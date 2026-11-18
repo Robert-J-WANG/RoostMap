@@ -107,16 +107,16 @@ git status --short --branch
 ### 4. 完成检查
 
 ```text
-⬜ React + TypeScript 应用由 Vite 官方模板创建
-⬜ 创建项目时已选择 ESLint
-⬜ package-lock.json 已生成
-⬜ 已理解 index.html → main.tsx → App.tsx 的入口关系
-⬜ npm run dev 能打开模板页面
-⬜ npm run build 成功
-⬜ npm run preview 能读取生产构建产物
-⬜ Git 历史从 main 开始
-⬜ 初始提交不包含依赖、构建产物或 secret
-⬜ 本地 main 已推送到空的远程仓库
+✅ React + TypeScript 应用由 Vite 官方模板创建
+✅ 创建项目时已选择 ESLint
+✅ package-lock.json 已生成
+✅ 已理解 index.html → main.tsx → App.tsx 的入口关系
+✅ npm run dev 能打开模板页面
+✅ npm run build 成功
+✅ npm run preview 能读取生产构建产物
+✅ Git 历史从 main 开始
+✅ 初始提交不包含依赖、构建产物或 secret
+✅ 本地 main 已推送到空的远程仓库
 ```
 
 ---
@@ -613,17 +613,17 @@ git branch -D chore/project-foundation
 ### Step 02 完成状态
 
 ```text
-⬜ 已从 main 创建独立开发分支
-⬜ Vite 示例代码、资源和样式已经清理
-⬜ 完整项目目录边界已经规划
-⬜ 前端目录已在本地建立
-⬜ TypeScript strict 和 @/* 路径别名已经生效
-⬜ .env.example 和本地 .env.local 已建立
-⬜ 项目文档、README、.gitignore 和 AGENTS.md 已归位
-⬜ npm run lint 通过
-⬜ npm run build 通过
-⬜ dev 和 preview 均能显示最小页面
-⬜ 基础配置已通过 Pull Request 合并到 main
+✅ 已从 main 创建独立开发分支
+✅ Vite 示例代码、资源和样式已经清理
+✅ 完整项目目录边界已经规划
+✅ 前端目录已在本地建立
+✅ TypeScript strict 和 @/* 路径别名已经生效
+✅ .env.example 和本地 .env.local 已建立
+✅ 项目文档、README、.gitignore 和 AGENTS.md 已归位
+✅ npm run lint 通过
+✅ npm run build 通过
+✅ dev 和 preview 均能显示最小页面
+✅ 基础配置已通过 Pull Request 合并到 main
 ```
 
 ---
@@ -1003,16 +1003,16 @@ git branch -D test/foundation
 ### Step 03 完成状态
 
 ```text
-⬜ 已从 main 创建 test/foundation 分支
-⬜ Vitest、jsdom 和 React Testing Library 已安装
-⬜ jest-dom 和测试清理已经配置
-⬜ App 组件测试通过
-⬜ Playwright 和 Chromium 已安装
-⬜ 首页浏览器 smoke test 通过
-⬜ 测试配置和测试文件参与 TypeScript 检查
-⬜ npm run check 依次通过 lint、test、build 和 E2E
-⬜ 测试报告和结果目录没有进入 Git
-⬜ 测试基础已通过 Pull Request 合并到 main
+✅ 已从 main 创建 test/foundation 分支
+✅ Vitest、jsdom 和 React Testing Library 已安装
+✅ jest-dom 和测试清理已经配置
+✅ App 组件测试通过
+✅ Playwright 和 Chromium 已安装
+✅ 首页浏览器 smoke test 通过
+✅ 测试配置和测试文件参与 TypeScript 检查
+✅ npm run check 依次通过 lint、test、build 和 E2E
+✅ 测试报告和结果目录没有进入 Git
+✅ 测试基础已通过 Pull Request 合并到 main
 ```
 
 ---
@@ -2278,20 +2278,20 @@ git branch -D feat/app-shell
 ### Step 04 完成状态
 
 ```text
-⬜ 已从 main 创建 feat/app-shell 分支
-⬜ Tailwind CSS Vite 插件已经配置
-⬜ shadcn/ui 已初始化并加入当前需要的组件
-⬜ 基础视觉 token 和页面布局规则已经建立
-⬜ 首次访问跟随系统主题，用户可以明确切换并保存 light 或 dark
-⬜ AppShell 和 RootLayout 已建立
-⬜ Home、Methodology 和 Not Found 页面已建立
-⬜ React Router 和页面标题已经配置
-⬜ 404 与页面错误边界已经建立
-⬜ 桌面与移动端布局可用
-⬜ 路由、主题工具、主题组件和 Playwright 测试已更新
-⬜ npm run check 通过
-⬜ README 已记录 Step 04 完成后的状态
-⬜ 应用外壳已通过 Pull Request 合并到 main
+✅ 已从 main 创建 feat/app-shell 分支
+✅ Tailwind CSS Vite 插件已经配置
+✅ shadcn/ui 已初始化并加入当前需要的组件
+✅ 基础视觉 token 和页面布局规则已经建立
+✅ 首次访问跟随系统主题，用户可以明确切换并保存 light 或 dark
+✅ AppShell 和 RootLayout 已建立
+✅ Home、Methodology 和 Not Found 页面已建立
+✅ React Router 和页面标题已经配置
+✅ 404 与页面错误边界已经建立
+✅ 桌面与移动端布局可用
+✅ 路由、主题工具、主题组件和 Playwright 测试已更新
+✅ npm run check 通过
+✅ README 已记录 Step 04 完成后的状态
+✅ 应用外壳已通过 Pull Request 合并到 main
 ```
 
 ## Step 05 · 建立 CI/CD 与首次公网部署
@@ -4084,26 +4084,26 @@ git status --short --branch
 ### Step 05 完成状态
 
 ```text
-⬜ 已建立 ci/initial-delivery 分支并通过初始本地检查
-⬜ 已理解 GitHub 平台、runner 与 Azure 的职责边界
-⬜ Pull Request workflow 可以响应 PR 创建和更新
-⬜ Quality job 已在远程 runner 中真实运行
-⬜ frontend-dist 可以在不同 job 之间传递
-⬜ React Router 页面回退规则已进入构建产物
-⬜ Azure Static Web Apps 资源和 Deployment Token 已建立
-⬜ Deploy job 已生成真实 Pull Request Preview
-⬜ Playwright 已支持 Local 和远程测试目标
-⬜ Deployed smoke test 已验证真实 Preview
-⬜ PR 关闭后可以自动清理 Preview
-⬜ main 的 required checks 已生效
-⬜ 失败的 Quality 检查能够阻止合并和部署
-⬜ Production workflow 已建立
-⬜ 最终 npm run check 通过
-⬜ README 已记录本步成功完成后的状态
-⬜ Pull Request 已通过 Squash Merge 进入 main
-⬜ Production deploy 和 Production smoke test 已通过
-⬜ Preview 已清理，Production URL 可以访问
-⬜ 本地 main 已同步，功能分支已清理
+✅ 已建立 ci/initial-delivery 分支并通过初始本地检查
+✅ 已理解 GitHub 平台、runner 与 Azure 的职责边界
+✅ Pull Request workflow 可以响应 PR 创建和更新
+✅ Quality job 已在远程 runner 中真实运行
+✅ frontend-dist 可以在不同 job 之间传递
+✅ React Router 页面回退规则已进入构建产物
+✅ Azure Static Web Apps 资源和 Deployment Token 已建立
+✅ Deploy job 已生成真实 Pull Request Preview
+✅ Playwright 已支持 Local 和远程测试目标
+✅ Deployed smoke test 已验证真实 Preview
+✅ PR 关闭后可以自动清理 Preview
+✅ main 的 required checks 已生效
+✅ 失败的 Quality 检查能够阻止合并和部署
+✅ Production workflow 已建立
+✅ 最终 npm run check 通过
+✅ README 已记录本步成功完成后的状态
+✅ Pull Request 已通过 Squash Merge 进入 main
+✅ Production deploy 和 Production smoke test 已通过
+✅ Preview 已清理，Production URL 可以访问
+✅ 本地 main 已同步，功能分支已清理
 ```
 
 ## Step 06 · 验证租金数据与 SA2 关联
@@ -6379,15 +6379,15 @@ git push origin --delete spike/data-join
 ### Step 06 完成状态
 
 ```text
-⬜ 两份官方源文件已取得并完成完整性核对
-⬜ MBIE 与 Stats NZ 的数据结构和关联键已经确认
-⬜ MBIE 全国数据 profiling 已完成
-⬜ 2,009 个 MBIE 六位 Location Id 全部关联到带有 geometry 的 SA2
-⬜ 226,080 条 MBIE 输入记录全部得到解释
-⬜ 代表样本和最小固定样本已经建立
-⬜ 全国关联与固定样本验证均通过
-⬜ 全国关联报告可以稳定重新生成
-⬜ 数据脚本和文档已经完成
+✅ 两份官方源文件已取得并完成完整性核对
+✅ MBIE 与 Stats NZ 的数据结构和关联键已经确认
+✅ MBIE 全国数据 profiling 已完成
+✅ 2,009 个 MBIE 六位 Location Id 全部关联到带有 geometry 的 SA2
+✅ 226,080 条 MBIE 输入记录全部得到解释
+✅ 代表样本和最小固定样本已经建立
+✅ 全国关联与固定样本验证均通过
+✅ 全国关联报告可以稳定重新生成
+✅ 数据脚本和文档已经完成
 ```
 
 ---
@@ -10314,19 +10314,456 @@ git push origin --delete spike/map-chart
 ### Step 07 完成状态
 
 ```text
-⬜ 已固定地图与历史图表使用的真实数据切片和分类条件
-⬜ Stats NZ geometry 已转换为浏览器可读取的 GeoJSON
-⬜ MBIE 租金指标已与 SA2 边界完成关联
-⬜ MapLibre 地图已显示真实 SA2 边界和当前季度租金
-⬜ 地图悬停与选择可以显示对应地区信息
-⬜ 地图选择可以驱动同一 SA2 的历史图表和季度表格
-⬜ 缺失季度、空历史和数据请求失败已有明确表现
-⬜ 全国数据和 16 组 Region 分片可以稳定生成
-⬜ Region 切换、查询缓存和失败重试已经验证
-⬜ 全国文件与 Region 分片的体积和解析成本已经测量
-⬜ 页面必需的 Region 静态数据已经进入构建产物
-⬜ GitHub Actions 构建已经接入 VITE_MAPTILER_KEY
-⬜ MapTiler key 已限制为允许的部署域名
-⬜ lint、单元与组件测试、生产构建和 E2E 测试全部通过
-⬜ 地图与图表技术样例已通过 Pull Request 合并到 main
+✅ 已固定地图与历史图表使用的真实数据切片和分类条件
+✅ Stats NZ geometry 已转换为浏览器可读取的 GeoJSON
+✅ MBIE 租金指标已与 SA2 边界完成关联
+✅ MapLibre 地图已显示真实 SA2 边界和当前季度租金
+✅ 地图悬停与选择可以显示对应地区信息
+✅ 地图选择可以驱动同一 SA2 的历史图表和季度表格
+✅ 缺失季度、空历史和数据请求失败已有明确表现
+✅ 全国数据和 16 组 Region 分片可以稳定生成
+✅ Region 切换、查询缓存和失败重试已经验证
+✅ 全国文件与 Region 分片的体积和解析成本已经测量
+✅ 页面必需的 Region 静态数据已经进入构建产物
+✅ GitHub Actions 构建已经接入 VITE_MAPTILER_KEY
+✅ MapTiler key 已限制为允许的部署域名
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ 地图与图表技术样例已通过 Pull Request 合并到 main
 ```
+
+---
+
+## Step 08 · 建立第一个正式数据纵向切片
+
+### 这一步做什么
+
+Step 06 已经确认 MBIE 租金记录可以通过六位 SA2 编号与 Stats NZ geometry 稳定关联。Step 07 又确认同一份关联结果能够同时支持地图和历史图表，并用测量结果说明浏览器应当按 Region 加载数据，而不是一次加载全国边界。
+
+但 Step 07 的文件和页面只为验证可行性而准备。页面直接读取样例目录中的 GeoJSON 和历史文件，文件结构由样例脚本临时决定，没有版本、来源记录和运行时验证；地图和图表各自假设数据的形状，同一个指标在不同文件中的含义也没有统一约束。正式产品的列表、地图和详情必须依赖同一套数据定义，样例阶段的约定不能承担这个职责。
+
+因此，本步建立第一条正式纵向切片。“纵向”指从数据源一直贯穿到用户界面：同一份数据依次经过转换、发布、读取和页面显示，每一层都使用相同的定义。
+
+本步只处理 Step 07 已经使用过的 Waikato Region，页面默认显示 MBIE 的 `ALL / ALL` 源分类。范围限定在一个 Region，是为了先让一条完整链路在真实数据上正确运行，而不把全国数据量、筛选和搜索交互混入同一次验证。
+
+这条链路中的每个环节解决不同的问题：
+
+- 浏览器在运行时取得的 JSON 先通过 contract 验证，才能进入应用；
+- 哪些记录可以发布、观测季度如何确定、同比怎样计算，这些转换规则先在答案已知的小型 fixture 上验证，再作用到真实源文件；
+- 生成的数据带有版本、来源和校验值，并由 manifest 统一指向；
+- 页面通过 repository 读取已验证的数据，列表、地图和详情使用同一条切片选择规则；
+- 页面同时说明数据周期、provisional 状态和来源，不只显示一个租金数字。
+
+整条链路是：
+
+```text
+正式数据 contract
+→ 用小型 fixture 验证转换规则
+→ 生成版本化 Waikato release
+→ manifest 驱动的数据 repository
+→ Explore 列表与地图
+→ 最小 Area Detail
+→ 数据来源、周期与 provisional 说明
+→ 替换技术样例并完成交付
+```
+
+本步完成后，从官方源记录到页面上显示的每个数值都应当能够逐项追踪，并经过测试、CI 和 Preview 验证；技术样例页面不再属于产品的一部分。
+
+### 1. 建立正式数据切片分支
+
+Step 07 已经通过 Pull Request 合并到 `main`。本步开始实现正式产品功能，而不再是可行性验证，因此分支使用 `feat` 类别；`data-first-slice` 说明这次交付的是第一条正式数据切片。
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c feat/data-first-slice
+git status --short --branch
+```
+
+`git status` 的分支行显示：
+
+```text
+## feat/data-first-slice
+```
+
+### 2. 根据验证证据固定核心数据 contract
+
+在这条链路中，转换脚本负责产出数据，页面负责读取数据。两边必须遵守同一份关于“数据是什么”的定义，否则脚本写出的字段和页面期待的字段迟早会出现偏差。因此，在生成任何正式文件之前，先固定核心数据的结构和含义。
+
+#### 2.1 检查样例阶段的数据读取方式
+
+Step 07 的页面通过 `src/features/explore/sample-data.ts` 读取样例文件。Region 目录是这样取得的：
+
+```ts
+return response.json() as Promise<RegionIndexData>;
+```
+
+地图文件则直接标注为 `MapData`：
+
+```ts
+const map: MapData = await mapResponse.json();
+```
+
+`RegionIndexData` 和 `MapData` 是 TypeScript 类型。TypeScript 只在编译阶段检查代码，编译完成后类型信息会被完全移除，浏览器运行的 JavaScript 中并不存在它们。`response.json()` 返回的值在类型上是 `any`，`as` 和类型标注都只是告诉编译器“相信这份数据就是这种形状”，并不会真的检查文件内容。
+
+因此，如果某个数据文件把租金写成字符串 `"520"`，或者缺少 `sa2Id`，代码仍然可以通过编译。错误会一直传到组件中，最后表现为排序异常、地图颜色错误或页面显示 `undefined`。这时问题出现的位置离真正的原因很远，很难判断是数据文件、读取逻辑还是组件出了错。
+
+同一个文件中还能看到第二个问题。地图属性用 `region` 表示 Region 名称，Region 目录用 `name`，历史文件又有自己的 `region` 字段。每个样例文件各自定义结构，项目中不存在一份统一的数据定义。
+
+正式数据链路因此需要满足两个要求：
+
+```text
+同一个概念在所有文件中只有一种定义
+数据进入应用时，在运行时检查它是否符合这个定义
+```
+
+#### 2.2 用 schema 描述一个 SA2
+
+满足这两个要求的常见做法是使用 schema。schema 是一个在运行时真实存在的 JavaScript 对象，它描述数据必须满足的规则，并且可以拿一份实际数据来检查是否符合这些规则。
+
+项目使用 Zod 编写 schema。先安装依赖：
+
+```bash
+npm install zod
+npm ls zod --depth=0
+```
+
+依赖树中显示：
+
+```text
+`-- zod@4.6.7
+```
+
+从数据中最基础的对象开始：一个 SA2 区域。Step 06 已经确认，MBIE 的 `Location Id` 与 Stats NZ 的六位 SA2 编号对应，因此区域身份至少包含一个六位编号和一个名称。
+
+创建 `src/data/contracts.ts`，写出第一个 schema：
+
+```ts
+import { z } from "zod";
+
+export const rentalAreaSchema = z
+  .object({
+    sa2Id: z.string().regex(/^\d{6}$/),
+    name: z.string().min(1),
+  })
+  .strict();
+```
+
+这里的每一部分都对应一条规则：
+
+```text
+z.object({...})        数据必须是包含这些字段的对象
+z.string()             字段值必须是字符串
+.regex(/^\d{6}$/)      sa2Id 必须恰好是六位数字
+.min(1)                name 不能是空字符串
+.strict()              对象中不能出现未定义的额外字段
+```
+
+`.strict()` 的作用是发现结构漂移。如果生成脚本改了字段名，例如把 `name` 写成 `areaName`，缺少 `name` 会让验证失败，多出来的 `areaName` 也会被明确报告，而不是被静默忽略。
+
+schema 通过 `parse` 检查数据。下面的代码只用于说明它的行为，不写入文件：
+
+```ts
+const area = rentalAreaSchema.parse({ sa2Id: "179900", name: "Greensboro" });
+// area 的值是验证通过的对象
+
+rentalAreaSchema.parse({ sa2Id: "unknown", name: "Greensboro" });
+// 抛出 ZodError，错误信息中包含出错字段 sa2Id
+```
+
+验证成功时，`parse` 返回通过检查的数据；验证失败时，`parse` 直接抛出错误，不返回任何值，后面使用这份数据的代码也就不会执行。数据读取逻辑因此可以把 `response.json()` 的结果视为 `unknown`，即“类型尚未确定”。TypeScript 不允许直接读取 `unknown` 值的字段，代码必须先经过 `parse` 才能使用数据，验证这一步也就无法被跳过。
+
+一个 SA2 还需要说明它属于哪个 Region 和 territorial authority。Step 06 查看 GeoPackage 时已经确认，Stats NZ 为每个 SA2 提供 regional council 和 territorial authority 的编号与名称。这四个字段与 `name` 一样不能为空，因此先把“非空字符串”提取成一个共享规则，再补全区域身份。
+
+`src/data/contracts.ts` 此时为：
+
+```ts
+import { z } from "zod";
+
+// 名称和上级地理编号都不能是空字符串。
+const nonEmptyStringSchema = z.string().min(1);
+
+export const rentalAreaSchema = z
+  .object({
+    sa2Id: z.string().regex(/^\d{6}$/),
+    name: nonEmptyStringSchema,
+    regionCode: nonEmptyStringSchema,
+    regionName: nonEmptyStringSchema,
+    territorialAuthorityCode: nonEmptyStringSchema,
+    territorialAuthorityName: nonEmptyStringSchema,
+  })
+  .strict();
+```
+
+Region 名称统一使用 `regionName`，不再出现样例文件中 `region` 和 `name` 并存的情况。
+
+#### 2.3 描述一条季度观测
+
+区域身份说明“这是哪个 SA2”。租金数据还需要说明“这个 SA2 在某个季度、某种房型下观测到了什么”。Step 06 的 profiling 已经给出了 MBIE 记录的结构和取值范围，这里把这些证据转换成规则。
+
+一条观测同样需要 `sa2Id`。如果再写一次六位数字的正则表达式，两处规则以后可能被分别修改，因此先把它提取出来。在 `rentalAreaSchema` 之前加入：
+
+```ts
+// SA2 2019 code 是所有数据文件共用的六位业务标识。
+export const sa2IdSchema = z.string().regex(/^\d{6}$/);
+```
+
+并把 `rentalAreaSchema` 中的 `sa2Id` 改为：
+
+```ts
+sa2Id: sa2IdSchema,
+```
+
+**季度。** Step 06 确认 `TimeFrame` 统一使用 `YYYY-MM-DD` 格式，每个值都是季度第一天，共 26 个季度。季度第一天只可能落在 1、4、7、10 月，因此规则可以写得比“任意日期”更严格。在 `rentalAreaSchema` 之后加入：
+
+```ts
+// MBIE 季度使用季度首日表示，只接受 1、4、7、10 月。
+export const periodSchema = z
+  .string()
+  .regex(/^\d{4}-(01|04|07|10)-01$/);
+```
+
+**分类。** Step 06 列出了完整的分类取值：6 种住宅类型和 14 种卧室取值。住宅类型都是含义明确的源分类，可以直接发布。卧室取值则需要分开看：
+
+```text
+ALL、1、2、3、4      含义明确
+5+                   表示 5 间及以上
+5、6、7、9、15        具体数量，与 5+ 的含义重叠
+0、NA                源数据说明中没有定义
+```
+
+`5+` 已经包含 5 间及以上的住宅，而 Step 06 同时观察到 `5` 与 `5+` 是两个独立存在的源分类。如果两者都作为筛选选项发布，同样是 5 间卧室的住宅可能出现在任意一个选项中，用户无法知道应该选哪一个。这些记录也不能并入 `5+`：每条记录提供的是已经计算好的中位数，多个中位数无法重新合成一个正确的中位数。
+
+因此，正式数据只发布含义明确且互不重叠的卧室分类，其余取值在生成数据时排除，并在质量报告中计数。官方 `ALL` 是 MBIE 直接提供的合计，本身已经包含这些记录，默认切片不受影响。
+
+分类使用 `z.enum`，只接受列出的值。在 `periodSchema` 之后加入：
+
+```ts
+// 发布的住宅类型，直接使用 MBIE 源值。
+export const dwellingTypeSchema = z.enum([
+  "ALL",
+  "Apartment",
+  "Boarding House",
+  "Flat",
+  "House",
+  "Room",
+]);
+
+// 发布的卧室分类；其他源值不进入浏览器数据。
+export const bedroomCategorySchema = z.enum(["ALL", "1", "2", "3", "4", "5+"]);
+```
+
+**指标。** Step 06 统计到 `Median Rent` 和 `Geometric Mean Rent` 各有 803 条 `NULL` 标记。缺失表示这一季度没有可用的统计值，不能写成 `0`，否则会被当成“租金为 0”参与排序和比较。因此指标允许为 `null`，存在时必须是非负数。`Total Bonds` 在产品中显示为 Reported Bonds，它是计数，存在时还必须是整数。
+
+在 `nonEmptyStringSchema` 之后加入两个指标规则：
+
+```ts
+// 缺失租金保留为 null；存在的租金不能小于 0。
+const nullableRentSchema = z.number().nonnegative().nullable();
+
+// Reported Bonds 是计数，存在时必须是非负整数。
+const nullableBondCountSchema = z.number().int().nonnegative().nullable();
+```
+
+现在可以组合出一条观测。字段名使用产品中的叫法，`Total Bonds` 对应 `reportedBonds`。在 `bedroomCategorySchema` 之后加入：
+
+```ts
+export const rentalObservationSchema = z
+  .object({
+    period: periodSchema,
+    sa2Id: sa2IdSchema,
+    dwellingType: dwellingTypeSchema,
+    bedrooms: bedroomCategorySchema,
+    reportedBonds: nullableBondCountSchema,
+    medianRent: nullableRentSchema,
+    geometricMeanRent: nullableRentSchema,
+  })
+  .strict();
+```
+
+区域身份与观测分开定义后，区域名称和上级地理只需要保存一次，不会在每条季度记录中重复。
+
+#### 2.4 描述页面显示的当前切片
+
+一条观测只对应一个季度。列表和地图需要回答的则是：在指定的住宅类型和卧室分类下，这个 SA2 当前的租金是多少。这里的“当前”需要定义清楚。
+
+整个数据集有一个最新季度，Step 06 确认为 `2026-04-01`。但并不是每个 SA2 在每个分类下都有这个季度的记录。如果某个 SA2 的最后一条有效记录来自更早的季度，把它和其他区域的最新季度放在一起显示，旧数值就会被误读为当前市场价格。
+
+因此，当前切片同时记录两个季度：
+
+```text
+datasetLatestPeriod    整个数据集的最新季度
+observationPeriod      这个切片最后一个 medianRent 不为 null 的季度
+```
+
+切片中的租金和 Reported Bonds 都取自 `observationPeriod`。两个季度相同，说明数值属于最新季度；两者不同，页面就必须标明它是旧观测。如果这个切片从未有过有效记录，`observationPeriod` 和各项指标都为 `null`。
+
+切片还包含 12 个月变化。它是两个季度几何平均租金之比减 1 的结果，所以是一个普通数值；任一季度缺少数据时无法计算，因此同样允许为 `null`。
+
+在 `rentalObservationSchema` 之后加入：
+
+```ts
+export const areaMetricSliceSchema = z
+  .object({
+    dwellingType: dwellingTypeSchema,
+    bedrooms: bedroomCategorySchema,
+    datasetLatestPeriod: periodSchema,
+    observationPeriod: periodSchema.nullable(),
+    medianRent: nullableRentSchema,
+    geometricMeanRent: nullableRentSchema,
+    reportedBonds: nullableBondCountSchema,
+    yearOverYearChange: z.number().nullable(),
+  })
+  .strict();
+```
+
+Zod 4 的 `z.number()` 本身会拒绝 `Infinity` 和 `NaN`。比值的分母如果为 0，JavaScript 会得到这类值，它们不是有效的变化率，因此同样无法通过验证。
+
+一个 SA2 在不同分类组合下有不同的切片。把区域身份和它的全部切片组合起来，就是列表和地图读取一个区域时需要的完整信息：
+
+```ts
+export const areaSummarySchema = rentalAreaSchema.extend({
+  metricSlices: z.array(areaMetricSliceSchema).min(1),
+});
+```
+
+`extend` 在 `rentalAreaSchema` 的基础上增加字段，并保留原来的 `.strict()` 设置，因此不需要重复书写区域身份的规则。
+
+#### 2.5 从 schema 推导 TypeScript 类型
+
+组件和函数仍然需要 TypeScript 类型来获得编译期检查。如果再手写一套 type，它与 schema 可能逐渐不一致：schema 已经允许 `null`，type 却没有改，编译器就无法发现问题。
+
+Zod 可以从 schema 推导类型，规则只需要维护一份。在文件末尾加入：
+
+```ts
+export type RentalArea = z.infer<typeof rentalAreaSchema>;
+export type RentalObservation = z.infer<typeof rentalObservationSchema>;
+export type AreaMetricSlice = z.infer<typeof areaMetricSliceSchema>;
+export type AreaSummary = z.infer<typeof areaSummarySchema>;
+```
+
+`z.infer` 只在编译阶段工作。例如，`AreaMetricSlice["medianRent"]` 会被推导为 `number | null`，代码在使用前必须处理 `null` 的情况。
+
+#### 2.6 用测试固定 contract 的边界
+
+schema 中的每条规则都来自前面的证据。测试的作用是把这些规则变成可以重复执行的检查：以后任何人修改 schema，只要放宽或改错了规则，测试就会失败。
+
+测试只覆盖有明确依据的边界：
+
+```text
+有效的观测可以通过
+不符合格式的 SA2 编号和季度被拒绝
+不发布的卧室取值被拒绝
+缺失指标保持为 null
+字符串形式的租金被拒绝，不会被静默转换成数字
+```
+
+创建 `src/data/contracts.test.ts`：
+
+```ts
+import { describe, expect, it } from "vitest";
+
+import {
+  areaMetricSliceSchema,
+  bedroomCategorySchema,
+  periodSchema,
+  rentalObservationSchema,
+  sa2IdSchema,
+} from "@/data/contracts";
+
+const validObservation = {
+  period: "2026-04-01",
+  sa2Id: "179900",
+  dwellingType: "ALL",
+  bedrooms: "ALL",
+  reportedBonds: 12,
+  medianRent: 520,
+  geometricMeanRent: 510,
+};
+
+describe("data contracts", () => {
+  it("accepts a valid observation", () => {
+    expect(rentalObservationSchema.parse(validObservation)).toEqual(
+      validObservation,
+    );
+  });
+
+  it("rejects unsupported id and period formats", () => {
+    expect(sa2IdSchema.safeParse("unknown").success).toBe(false);
+    expect(periodSchema.safeParse("2026-02-01").success).toBe(false);
+  });
+
+  it("accepts only published bedroom categories", () => {
+    expect(bedroomCategorySchema.safeParse("5+").success).toBe(true);
+    expect(bedroomCategorySchema.safeParse("5").success).toBe(false);
+    expect(bedroomCategorySchema.safeParse("NA").success).toBe(false);
+  });
+
+  it("keeps missing metrics as null", () => {
+    const slice = areaMetricSliceSchema.parse({
+      dwellingType: "ALL",
+      bedrooms: "ALL",
+      datasetLatestPeriod: "2026-04-01",
+      observationPeriod: null,
+      medianRent: null,
+      geometricMeanRent: null,
+      reportedBonds: null,
+      yearOverYearChange: null,
+    });
+
+    expect(slice.medianRent).toBeNull();
+    expect(slice.observationPeriod).toBeNull();
+  });
+
+  it("rejects a rent stored as a string", () => {
+    const result = rentalObservationSchema.safeParse({
+      ...validObservation,
+      medianRent: "520",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+```
+
+`safeParse` 与 `parse` 使用相同的规则，区别是它不抛出错误，而是返回一个包含 `success` 的结果对象，适合在测试中直接判断验证是否通过。
+
+运行 contract 测试：
+
+```bash
+npm run test -- src/data/contracts.test.ts
+```
+
+结果为：
+
+```text
+✓ src/data/contracts.test.ts (5 tests)
+  ✓ data contracts (5)
+    ✓ accepts a valid observation
+    ✓ rejects unsupported id and period formats
+    ✓ accepts only published bedroom categories
+    ✓ keeps missing metrics as null
+    ✓ rejects a rent stored as a string
+
+Test Files  1 passed (1)
+     Tests  5 passed (5)
+```
+
+5 个测试全部通过，说明 schema 中的编号与季度格式、发布分类、缺失值和数值类型规则都按证据设定的方式工作。这个结论只针对单条观测和单个切片：目前还没有任何从真实源文件转换得到的数据经过这些 schema 的检查。
+
+### 3. 用小型 fixture 确定转换规则
+
+### 4. 生成第一个版本化 Waikato release
+
+### 5. 建立 manifest 驱动的数据 repository
+
+### 6. 用同一数据切片连接 Explore 列表与地图
+
+### 7. 建立最小 Area Detail 数据链路
+
+### 8. 让页面表达数据来源、周期与 provisional 状态
+
+### 9. 更新公开说明并移除技术样例
+
+### 10. 验证完整纵向链路并完成 Git 操作
+
+### Step 08 完成状态
