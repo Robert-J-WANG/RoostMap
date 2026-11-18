@@ -38,7 +38,7 @@ Versioned Node.js data pipeline
         │
         ├── contracts and quality report
         ├── national geography/search index
-        └── Region summary/map/geometry/history partitions
+        └── Region summary/geometry/history partitions
                         │
                         ▼
 Azure Static Web Apps / CDN
@@ -82,7 +82,7 @@ Authenticated browser
 - React、TypeScript strict 和 Vite。
 - React Router 负责集中路由。
 - TanStack Query 负责静态数据请求；V2 扩展为云端 server state。
-- Zustand 只负责地图交互和 compare tray 等客户端交互状态。
+- Zustand 只负责不进入 URL 的跨组件临时交互状态，例如地图与列表共享的 hover 高亮。
 - React Hook Form 与 Zod 只在真实表单边界出现时使用。
 - `react-map-gl/maplibre`、MapLibre GL JS 和 MapTiler Cloud。
 - Recharts。
@@ -97,7 +97,6 @@ Authenticated browser
 
 - Active Region / partition。
 - Map centre and zoom。
-- Dataset latest period。
 - Dwelling Type。
 - Bedroom Category。
 - Optional Maximum Weekly Rent。
@@ -105,7 +104,7 @@ Authenticated browser
 - Selected SA2。
 - Compared SA2 ids，最多四个。
 
-URL state 必须可验证、可复制和可恢复。V1 不收集私人输入。
+URL state 必须可验证、可复制和可恢复。V1 不收集私人输入。地图和排名始终使用当前 manifest 的 `latestPeriod`，因此数据周期不进入 URL。
 
 #### TanStack Query
 
@@ -113,7 +112,7 @@ V1：
 
 - Manifest。
 - Geography/search index。
-- Region summary、map 和 geometry。
+- Region summary 和 geometry。
 - Area history。
 
 V2 扩展：
@@ -124,11 +123,9 @@ V2 扩展：
 
 #### Zustand
 
-- 地图交互状态。
-- 当前选择。
-- Compare tray。
+- 不进入 URL 的跨组件临时交互状态，例如地图与列表共享的 hover 高亮。
 
-可以由 URL 或 TanStack Query 表达的状态不重复进入 Zustand。
+选中 SA2 和比较列表只存在于 URL。可以由 URL 或 TanStack Query 表达的状态不重复进入 Zustand。
 
 ### 1.5 项目目录边界
 
@@ -185,7 +182,7 @@ src/
 
 - 构建阶段按官方 Region 分片并简化 geometry，不一次加载全国 SA2 polygons。
 - GeoJSON 和 JSON 通过托管平台 gzip/brotli。
-- Explore 首次加载 manifest 和紧凑地理/搜索索引；确定 Region 后再加载该 Region 的 summary、map 和 geometry。
+- Explore 首次加载 manifest 和紧凑地理/搜索索引；确定 Region 后再加载该 Region 的 summary 和 geometry，地图着色与列表使用同一 summary。
 - Area Detail 和 Compare 需要历史时再加载相关 Region history。
 - 同一资源由 TanStack Query 去重和缓存；不额外建立自定义浏览器缓存层。
 - 使用真实构建产物和数据 payload 测量后再优化，不提前加入 worker、IndexedDB 或自定义二进制格式。
@@ -213,6 +210,7 @@ export type RentalArea = {
 - 搜索使用官方 SA2、Region 和 territorial authority 名称。
 - 上级地理搜索返回其包含的多个独立 SA2，不合并 geometry 或租金指标。
 - 同名 SA2 使用 Region 和 territorial authority 标签消歧。
+- 部分 territorial authority 跨越多个 Region；搜索结果按 "territorial authority · Region" 成对显示，选择后进入对应 Region 分片。
 - Region 和 territorial authority 入口由官方上级地理字段生成；代表性城市只用于质量验收，不作为发布白名单。
 
 ### 2.2 分类规范
@@ -220,7 +218,11 @@ export type RentalArea = {
 `Dwelling Type` 和 `Number Of Beds` 使用官方源文件中的分类值。
 
 - 原始类别只做精确、版本化映射。
-- 完整源值 profiling 后再确定发布分类。
+- 发布分类由完整源值 profiling 确定，在 Zod contract 中使用枚举：
+  - `dwellingType`：`ALL`、`Apartment`、`Boarding House`、`Flat`、`House`、`Room`。
+  - `bedrooms`：`ALL`、`1`、`2`、`3`、`4`、`5+`。
+- 其他卧室源值（`0`、`5`、`6`、`7`、`9`、`15`、`NA`）作为不支持的分类排除，并在质量报告中计数。
+- `bedrooms = "1"` 时，任一同比目标季度不早于 `2024-10-01` 的 `yearOverYearChange` 为 `null`；该分界季度作为 pipeline 常量记录在 quality report 中。
 - 指定切片缺失时显示缺失，不回退到其他类别。
 - 有效记录复合键为 `period + sa2Id + dwellingType + bedrooms`。
 - 重复复合键使构建失败。
@@ -274,6 +276,7 @@ export type DataManifest = {
   latestPeriod: string;
   historyStartPeriod: string;
   geographyVersion: "SA2_2019";
+  geographyIndexUrl: string;
   areaCount: number;
   partitionCount: number;
   partitions: Array<{
@@ -282,7 +285,6 @@ export type DataManifest = {
     areaCount: number;
     summaryUrl: string;
     geometryUrl: string;
-    mapUrl: string;
     historyUrl: string;
   }>;
   rentalDataStatus: "provisional" | "final";
@@ -297,6 +299,8 @@ export type DataManifest = {
   }>;
 };
 ```
+
+`observationPeriod` 是该切片最后一个 `medianRent` 非空的季度；`medianRent`、`geometricMeanRent` 和 `reportedBonds` 取自该季度。没有有效观测时这些字段均为 `null`。
 
 `generatedAt` 来自锁定的 release metadata，不读取流水线实际运行时钟。`retrievedAt` 同样记录在 source lock 中。因此相同的锁定输入、pipeline version 和 release metadata 必须生成字节一致的 manifest 与数据文件。
 
@@ -313,16 +317,15 @@ export type DataManifest = {
 → 通过 sa2Id 关联租金和边界
 → 以成功关联且存在有效租金观测的 SA2 建立全国可发布集合
 → 验证 Region 和 territorial authority 层级
-→ 转换 geometry 到 WGS84 / EPSG:4326
-→ 修复并验证 polygon geometry
+→ 验证 geometry 为 EPSG:4326 的 Polygon / MultiPolygon，坐标范围有效且环闭合；无效即失败，不自动修复
 → 计算 12 个月变化
 → 建立全国上级地理与 SA2 搜索索引
-→ 按官方 Region 分片并简化 GeoJSON
+→ 按官方 Region 分片 GeoJSON；是否简化 geometry 由实测体积决定
 → 生成版本化静态数据
 → 生成质量报告
 ```
 
-原始官方数据保存在 Git 之外。小型 fixture、`data/source-lock.json` 和数据 contract 进入 Git。每次成功数据发布保存不可变 data release bundle，避免来源变化或暂时不可用时无法回滚。
+原始官方数据保存在 Git 之外。小型 fixture、`data/source-lock.json` 和数据 contract 进入 Git。通过门禁的 data release bundle 由独立 `data/*` 分支和 PR 提交到 `public/data/releases/{version}/`；Git 历史保存以往版本，来源变化或暂时不可用时仍可回滚。
 
 ### 2.5 构建输出
 
@@ -332,25 +335,23 @@ public/data/releases/{version}/manifest.json
 public/data/releases/{version}/geographies/index.json
 public/data/releases/{version}/areas/summary/{regionCode}.json
 public/data/releases/{version}/areas/history/{regionCode}.json
-public/data/releases/{version}/maps/{regionCode}.json
 public/data/releases/{version}/geometry/regions/{regionCode}.geo.json
 public/data/releases/{version}/search/areas.json
 public/data/releases/{version}/quality-report.json
 ```
 
-- 顶层 `manifest.json`：当前数据版本、来源和版本化分片入口；发布时用已验证版本替换，回滚时恢复上一个已验证 manifest。
+- 顶层 `manifest.json`：当前数据版本、来源和版本化分片入口；发布时随 data PR 指向新版本，回滚时 revert 该 PR 恢复上一个已验证 manifest。
 - `releases/{version}/manifest.json`：随不可变 bundle 保存的同版本 manifest。
 - `geographies/index.json`：Region、territorial authority 和分片定位。
-- `summary/{regionCode}.json`：区域身份、上级地理和当前 metric slices。
+- `summary/{regionCode}.json`：区域身份、上级地理和当前 metric slices；列表、地图着色和详情共用这一份当前指标，不另外生成地图指标文件。
 - `history/{regionCode}.json`：以 `sa2Id` 索引的季度观测。
-- `maps/{regionCode}.json`：当前 `datasetLatestPeriod` 下该 Region 的紧凑地图指标；历史季度由 history 分片提供，不单独生成历史地图文件。
-- `regions/{regionCode}.geo.json`：简化边界和稳定 feature id。
+- `regions/{regionCode}.geo.json`：Region 边界和稳定 feature id；浏览器按 `sa2Id` 与 summary 连接。
 - `search/areas.json`：全国标准化搜索索引。
 - `quality-report.json`：流水线发布证据。
 
 `version` 是不可变 release 标识，顶层 manifest 中的所有资源 URL 必须指向同一个版本目录。Region code 是稳定分片键。无法归入普通 regional council 的官方记录使用明确保留分片，不通过自定义城市名称重新分类。生成文件不作为手工维护源文件；大型生产数据不进入普通功能提交。
 
-每个成功 data release bundle 包含锁定输入、source lock、生成数据、quality report、pipeline version 和 SHA-256 清单。保留当前成功生产版本；存在更早的成功生产版本时，同时保留上一个版本用于回滚。
+每个成功 data release bundle 包含 source lock、生成数据、quality report、pipeline version 和 SHA-256 清单。原始官方文件不进入 bundle，由 source lock 记录 URL、日期和 SHA-256。工作树只保留当前版本目录；上一个版本保存在 Git 历史中，回滚通过 revert 对应 data PR 完成。
 
 ### 2.6 数据质量门禁
 
@@ -367,8 +368,8 @@ public/data/releases/{version}/quality-report.json
 - GeoJSON feature id 唯一，geometry 可加载。
 - 分片 area counts 与 manifest 一致，跨分片不存在重复 `sa2Id`。
 - 租金和 Reported Bonds 数值范围合法。
-- 缺失率、拒绝数和记录数变化产生差异报告。
-- 所有输出通过 Zod contract。
+- 缺失率、拒绝数和记录数进入 quality report；数据更新 PR 通过该报告的 diff 审查变化。
+- 所有输出通过 Zod contract；由 Vitest contract 测试读取生成文件并使用 `src/data/contracts.ts` 验证，pipeline 脚本保持 Node.js `.mjs`。
 - source lock 记录 URL、日期、许可证、状态、SHA-256、pipeline version 和质量摘要。
 
 ## 3. V2 身份、数据库与 Functions
@@ -586,7 +587,7 @@ Main：
 
 ```text
 Required checks passed
-→ Resolve approved data version
+→ Read the committed current manifest
 → Verify bundle manifest and SHA-256
 → Build application
 → Deploy Azure Static Web Apps
@@ -653,7 +654,7 @@ V2 增加：
 回滚：
 
 - 前端：重新部署稳定 commit 或 release。
-- 数据：部署上一个已验证 immutable bundle。
+- 数据：revert 对应 data PR，重新部署上一个已验证 immutable bundle。
 - V2 Functions：重新部署兼容版本。
 - V2 database：使用 backward-compatible migration 和 forward-fix，不依赖 destructive rollback。
 
@@ -676,7 +677,7 @@ V2 增加：
 
 - MBIE 与 SA2 2019 可重复关联，全国发布集合不依赖城市白名单。
 - Region、territorial authority 和分片可重复生成。
-- 主要城市、较小中心、稀疏区域和 Chatham Islands 代表样本通过人工核查。
+- 主要城市、较小中心和稀疏区域代表样本通过人工核查；Chatham Islands 等没有 MBIE 观测的 SA2 被正确排除，并可在质量报告中查到。
 - 所有发布数据可追踪来源、许可证、状态、校验值和 pipeline version。
 - 地图、列表、详情和比较口径一致，缺失季度没有被填补。
 - 数据更新通过自动 PR、质量门禁和部署流程。
@@ -717,10 +718,10 @@ V2 增加：
 | 前端 | React + TypeScript strict + Vite |
 | 包管理 | npm + `package-lock.json` |
 | 本地/CI Node | Node.js 24 LTS，当前基线 24.21.0 |
-| 路由与状态 | React Router、TanStack Query；Zustand 仅用于地图与比较交互 |
+| 路由与状态 | React Router、TanStack Query；Zustand 仅用于不进入 URL 的临时交互状态 |
 | UI | Tailwind CSS、按需 shadcn/ui、Lucide icons |
 | 地图与图表 | react-map-gl/maplibre、MapLibre GL JS、MapTiler Cloud、Recharts |
-| 静态数据 | 全国紧凑索引 + Region summary/map/geometry/history 分片 |
+| 静态数据 | 全国紧凑索引 + Region summary/geometry/history 分片，通过 data PR 版本化提交 |
 | V2 认证与数据库 | Supabase Auth + PostgreSQL + RLS |
 | V2 API | Azure Static Web Apps managed Functions，仅用于账户删除等已批准特权操作 |
 | V2 云端数据 | Saved areas、saved searches、user release state |

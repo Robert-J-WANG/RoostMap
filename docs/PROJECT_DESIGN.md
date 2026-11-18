@@ -157,6 +157,8 @@ Geometry
 - 搜索上级地理名称时返回其包含的多个独立 SA2；同名 SA2 使用 Region 和 territorial authority 消歧。
 - 可发布区域由“存在有效 MBIE 观测且成功关联 SA2 geometry”的固定规则生成。
 - Dwelling Type 与 Bedroom Category 只按官方源值和版本化 contract 映射。
+- V1 发布的 Dwelling Type 为 `ALL`、`Apartment`、`Boarding House`、`Flat`、`House` 和 `Room`；发布的 Bedroom Category 为 `ALL`、`1`、`2`、`3`、`4` 和 `5+`。
+- 源数据中零星出现或含义不明的卧室值（`0`、`5`、`6`、`7`、`9`、`15` 和 `NA`）不发布，排除数量进入质量报告；中位数无法合并重算，因此这些值不并入 `5+`。源分类 `ALL` 仍是包含全部记录的官方合计。
 - 默认切片为 contract 中明确表示全部住宅类型和全部卧室的源分类；指定切片缺失时不回退到其他类别。
 
 ### 2.3 数据解释边界
@@ -180,7 +182,7 @@ Geometry
 - Observation Period。
 - Provisional Status 与官方可比性说明。
 
-地图和排名只使用同一 `datasetLatestPeriod`。详情可以显示切片最后一次有效观测，但必须标记实际 `observationPeriod`，不能把旧值表述为当前市场价。
+地图和排名只使用同一 `datasetLatestPeriod`。详情可以显示切片最后一次有效观测，但必须标记实际 `observationPeriod`，不能把旧值表述为当前市场价。有效观测指 Median Rent 非空的季度记录。
 
 ### 3.2 历史趋势
 
@@ -198,6 +200,13 @@ Geometry
 - 当前季度和四个季度前都有有效值；任一目标季度缺失时保持 `null`。
 - 中间季度不参与公式，其缺失不影响两个目标季度之间的计算。
 - 不跨类别填补数据。
+
+1 卧分类可比性：
+
+- 从 `2024-10-01` 起，MBIE 源数据中 `1` 卧的 Reported Bonds 和租金出现与全部类别不一致的跳升，判断为源分类变化而不是市场变化。
+- Bedroom Category 为 `1` 时，只要当前季度或四个季度前任一目标季度不早于 `2024-10-01`，12 个月变化保持 `null`。
+- `1` 卧的最新观测和历史仍然显示，但同时显示固定的可比性说明；Methodology 记录判断依据。
+- 其他卧室类别沿用数据集整体的 provisional 说明。
 
 ### 3.3 Reported Bonds
 
@@ -244,7 +253,8 @@ V1 排序：
 | 4 个以上历史点 | 显示趋势线 |
 | 中间季度缺失 | 折线断开 |
 | 无法计算同比 | 显示 `N/A` |
-| 指标被抑制 | 显示 `Insufficient reported bonds` |
+
+MBIE 不发布 bonds 少于 5 的组合，个别已发布记录的租金也可能为空。产品不单独区分这些情况，统一按缺失观测显示，并在 Methodology 说明隐私抑制规则。
 
 ## 4. V1 用户体验与数据可视化
 
@@ -352,7 +362,6 @@ Home、Explore、Area Detail 和 Compare 同时提供简短上下文说明，不
 
 - 桌面地图与列表分屏；移动端地图/列表切换。
 - 移动筛选器使用空间充足的面板。
-- 支持 `prefers-reduced-motion`。
 - Tooltip 不作为传达关键信息的唯一方式。
 - 表单 label、说明和错误正确关联。
 - 页面 title、heading、landmark、文字对比和键盘操作清楚。

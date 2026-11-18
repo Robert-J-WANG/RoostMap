@@ -302,6 +302,11 @@ Understand the problem
 
 ### Learning-note organisation
 
+Before planning, drafting, expanding, revising or reviewing any part of
+`docs/steps.md`, read and follow `.claude/skills/roostmap-learning-notes/SKILL.md`.
+It defines the shared outline-first workflow, Step structure, narrative rules
+and quality gate for every Step.
+
 Every section added to `docs/steps.md` must be a learning note that follows a
 real development thought process along one coherent engineering through-line.
 It must not read like an operation manual, a collection of independent setup

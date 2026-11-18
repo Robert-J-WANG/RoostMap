@@ -266,12 +266,12 @@ GeoJSON、坐标系统、专题地图、时序图表、bundle 与数据 payload 
 **主要内容**
 
 - 根据 Step 06–07 证据固定 V1 TypeScript/Zod contracts。
-- 转换一个代表性 Region 的 summary、map、geometry 和 history。
+- 转换一个代表性 Region 的 summary、geometry 和 history，并作为首个版本化数据切片提交，使 Preview 可以读取。
 - 建立 manifest、data repository 和统一 slice selector。
 - 用同一数据切片驱动区域列表、地图选择和最小详情。
 - 显示来源、数据周期、observation period、provisional 和缺失状态。
 - 使 Home 与 Methodology 的公开说明和 V1 产品定位一致。
-- 用正式数据页面替代公开导航中的 spike 页面。
+- 用正式数据页面替代 spike 页面，并移除 spike 路由及其静态数据。
 
 **知识点**
 
@@ -294,9 +294,9 @@ fixture、transform、contract 和页面测试通过；源值可逐项追踪到 
 **主要内容**
 
 - 完成分类、拒绝、join、geometry、同比和缺失处理。
-- 生成 manifest、geography/search index、Region current map/summary/geometry/history 和 quality report。
+- 生成 manifest、geography/search index、Region summary/geometry/history 和 quality report。
 - 建立 source lock、SHA-256、pipeline version 和 immutable release bundle。
-- 核查主要城市、较小中心、稀疏区域和 Chatham Islands。
+- 核查主要城市、较小中心和稀疏区域，并确认 Chatham Islands 等没有 MBIE 观测的区域被正确排除。
 
 **知识点**
 
@@ -319,7 +319,7 @@ contracts 和质量门禁通过；分片计数一致、无重复 SA2、geometry 
 **主要内容**
 
 - 将通过门禁的全国数据打包为 immutable bundle，并由 current manifest 指向该版本。
-- 保留 source lock、quality report 和 SHA-256；存在上一个可用 bundle 时保留它用于回滚。
+- 保留 source lock、quality report 和 SHA-256；bundle 通过 data PR 提交，回滚通过 revert 该 PR 完成。
 - 完成来源、许可证、指标、缺失值、provisional 和数据质量说明。
 - 在 Preview 验证应用能够读取批准的数据版本。
 
