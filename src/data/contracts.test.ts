@@ -1,61 +1,73 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  areaMetricSliceSchema,
-  bedroomCategorySchema,
-  periodSchema,
-  rentalObservationSchema,
-  sa2IdSchema,
-} from "@/data/contracts";
+import { areaWithCurrentRentSchema } from "@/data/contracts";
 
-const validObservation = {
-  period: "2026-04-01",
+// 一行符合 contract 的区域列表数据，各测试在它的基础上修改单个字段。
+const validRow = {
   sa2Id: "179900",
-  dwellingType: "ALL",
-  bedrooms: "ALL",
-  reportedBonds: 12,
-  medianRent: 520,
-  geometricMeanRent: 510,
+  name: "Greensboro",
+  regionCode: "03",
+  regionName: "Waikato Region",
+  territorialAuthorityCode: "016",
+  territorialAuthorityName: "Hamilton City",
+  currentRent: {
+    datasetLatestPeriod: "2026-04-01",
+    observationPeriod: "2026-04-01",
+    medianRent: 350,
+    reportedBonds: 171,
+    yearOverYearChange: 0.0128,
+  },
 };
 
 describe("data contracts", () => {
-  it("accepts a valid observation", () => {
-    expect(rentalObservationSchema.parse(validObservation)).toEqual(
-      validObservation,
-    );
+  it("accepts an area with its current rent", () => {
+    expect(areaWithCurrentRentSchema.parse(validRow)).toEqual(validRow);
   });
 
   it("rejects unsupported id and period formats", () => {
-    expect(sa2IdSchema.safeParse("unknown").success).toBe(false);
-    expect(periodSchema.safeParse("2026-02-01").success).toBe(false);
+    // 不是六位数字的 SA2 编号。
+    expect(
+      areaWithCurrentRentSchema.safeParse({ ...validRow, sa2Id: "unknown" })
+        .success,
+    ).toBe(false);
+    // 2 月不是季度首月。
+    expect(
+      areaWithCurrentRentSchema.safeParse({
+        ...validRow,
+        currentRent: { ...validRow.currentRent, datasetLatestPeriod: "2026-02-01" },
+      }).success,
+    ).toBe(false);
   });
 
-  it("accepts only published bedroom categories", () => {
-    expect(bedroomCategorySchema.safeParse("5+").success).toBe(true);
-    expect(bedroomCategorySchema.safeParse("5").success).toBe(false);
-    expect(bedroomCategorySchema.safeParse("NA").success).toBe(false);
-  });
-
-  it("keeps missing metrics as null", () => {
-    const slice = areaMetricSliceSchema.parse({
-      dwellingType: "ALL",
-      bedrooms: "ALL",
-      datasetLatestPeriod: "2026-04-01",
-      observationPeriod: null,
-      medianRent: null,
-      geometricMeanRent: null,
-      reportedBonds: null,
-      yearOverYearChange: null,
+  it("keeps missing rent values as null", () => {
+    const row = areaWithCurrentRentSchema.parse({
+      ...validRow,
+      currentRent: {
+        datasetLatestPeriod: "2026-04-01",
+        observationPeriod: null,
+        medianRent: null,
+        reportedBonds: null,
+        yearOverYearChange: null,
+      },
     });
 
-    expect(slice.medianRent).toBeNull();
-    expect(slice.observationPeriod).toBeNull();
+    expect(row.currentRent.medianRent).toBeNull();
+    expect(row.currentRent.observationPeriod).toBeNull();
   });
 
   it("rejects a rent stored as a string", () => {
-    const result = rentalObservationSchema.safeParse({
-      ...validObservation,
-      medianRent: "520",
+    const result = areaWithCurrentRentSchema.safeParse({
+      ...validRow,
+      currentRent: { ...validRow.currentRent, medianRent: "350" },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects fields outside the contract", () => {
+    const result = areaWithCurrentRentSchema.safeParse({
+      ...validRow,
+      areaName: "Greensboro",
     });
 
     expect(result.success).toBe(false);

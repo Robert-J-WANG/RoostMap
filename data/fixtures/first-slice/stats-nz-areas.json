@@ -1,0 +1,34 @@
+[
+  {
+    "SA22019_V1_00": "900001",
+    "SA22019_V1_00_NAME": "Fixture Area A",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  },
+  {
+    "SA22019_V1_00": "900002",
+    "SA22019_V1_00_NAME": "Fixture Area B",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  },
+  {
+    "SA22019_V1_00": "900003",
+    "SA22019_V1_00_NAME": "Fixture Area C",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  },
+  {
+    "SA22019_V1_00": "900004",
+    "SA22019_V1_00_NAME": "Fixture Area D",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  }
+]
