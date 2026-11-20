@@ -7,10 +7,10 @@ import { describe, expect, it } from "vitest";
 import { areaWithCurrentRentSchema } from "@/data/contracts";
 
 import {
+  buildAreasWithCurrentRent,
   buildCurrentRent,
-  buildRegionCurrentRents,
-  toArea,
-  toQuarterlyRent,
+  convertToArea,
+  convertToQuarterlyRent,
 } from "./first-slice.mjs";
 
 /* -------------- 读取 fixture -------------- */
@@ -24,7 +24,7 @@ const mbieRecords = parse(
 );
 
 // Stats NZ（区域） fixture：每条记录使用 GeoPackage 的原字段名。
-const statsNzRows = JSON.parse(
+const statsNzRecords = JSON.parse(
   readFileSync(
     new URL("../fixtures/first-slice/stats-nz-areas.json", import.meta.url),
     "utf8",
@@ -33,39 +33,39 @@ const statsNzRows = JSON.parse(
 
 /* -------------- 辅助函数 -------------- */
 
-// 从 MBIE（租金） fixture 中取出一个 SA2 的 ALL / ALL 记录，并转换成季度租金记录。
+// 从 fixture 中取出一个 SA2 的 ALL / ALL 记录，以 2026-04-01 作为数据集最新季度计算当前租金。
 // fixture 中每个 SA2 的记录已按季度从旧到新书写，所以不需要再排序。
-const quarterlyRentsOf = (sa2Id) =>
-  mbieRecords
+function calculateCurrentRentFromFixture(sa2Id) {
+  const quarterlyRents = mbieRecords
     .filter(
-      (row) =>
-        row["Location Id"] === sa2Id &&
-        row["Dwelling Type"] === "ALL" &&
-        row["Number Of Beds"] === "ALL",
+      (record) =>
+        record["Location Id"] === sa2Id &&
+        record["Dwelling Type"] === "ALL" &&
+        record["Number Of Beds"] === "ALL",
     )
-    .map((row) => toQuarterlyRent(row));
+    .map((record) => convertToQuarterlyRent(record));
 
-// 以 2026-04-01 作为数据集最新季度，计算一个 SA2 的当前租金。
-const currentRentOf = (sa2Id) =>
-  buildCurrentRent(quarterlyRentsOf(sa2Id), "2026-04-01");
+  return buildCurrentRent(quarterlyRents, "2026-04-01");
+}
 
 // 以 2026-04-01 作为数据集最新季度，转换整个 fixture Region。
-const regionCurrentRents = buildRegionCurrentRents({
-  statsNzRows,
+const areasWithCurrentRent = buildAreasWithCurrentRent({
+  statsNzRecords,
   mbieRecords,
   datasetLatestPeriod: "2026-04-01",
 });
 
 /* -------------- 测试 -------------- */
 
-describe("first data slice", () => {
+describe("rent conversion", () => {
   // Area C 在 2026-04-01 的记录同时包含数字文本 6 和两个 NULL。
   it("converts an MBIE（租金） record into a quarterly rent", () => {
-    const record = mbieRecords.find(
-      (row) => row["Location Id"] === "900003" && row.TimeFrame === "2026-04-01",
+    const areaCRecord = mbieRecords.find(
+      (record) =>
+        record["Location Id"] === "900003" && record.TimeFrame === "2026-04-01",
     );
 
-    expect(toQuarterlyRent(record)).toEqual({
+    expect(convertToQuarterlyRent(areaCRecord)).toEqual({
       period: "2026-04-01",
       reportedBonds: 6,
       medianRent: null,
@@ -74,8 +74,8 @@ describe("first data slice", () => {
   });
 
   // 字段名换成 contract 中的名称，Region 编号 "03" 仍是文本。
-  it("converts a Stats NZ（区域） row into an area", () => {
-    expect(toArea(statsNzRows[0])).toEqual({
+  it("converts a Stats NZ（区域） record into an area", () => {
+    expect(convertToArea(statsNzRecords[0])).toEqual({
       sa2Id: "900001",
       name: "Fixture Area A",
       regionCode: "03",
@@ -87,18 +87,18 @@ describe("first data slice", () => {
 
   it("uses the latest observed quarter as the current rent", () => {
     // Area A：最新季度有租金，直接使用最新季度。
-    expect(currentRentOf("900001")).toMatchObject({
+    expect(calculateCurrentRentFromFixture("900001")).toMatchObject({
       observationPeriod: "2026-04-01",
       medianRent: 540,
       reportedBonds: 33,
     });
     // Area B：最后一条记录在 2025-10-01，当前租金停在这个旧季度。
-    expect(currentRentOf("900002")).toMatchObject({
+    expect(calculateCurrentRentFromFixture("900002")).toMatchObject({
       observationPeriod: "2025-10-01",
       medianRent: 470,
     });
     // Area C：最新季度租金为 NULL，往前使用 2026-01-01；Bonds 也取这个季度的 9。
-    expect(currentRentOf("900003")).toMatchObject({
+    expect(calculateCurrentRentFromFixture("900003")).toMatchObject({
       observationPeriod: "2026-01-01",
       medianRent: 400,
       reportedBonds: 9,
@@ -107,43 +107,49 @@ describe("first data slice", () => {
 
   it("calculates the 12-month change only when both quarters exist", () => {
     // Area A：525 / 500 - 1 = 0.05。
-    expect(currentRentOf("900001").yearOverYearChange).toBe(0.05);
+    expect(calculateCurrentRentFromFixture("900001").yearOverYearChange).toBe(0.05);
     // Area B：2026-04-01 没有记录。
-    expect(currentRentOf("900002").yearOverYearChange).toBeNull();
+    expect(calculateCurrentRentFromFixture("900002").yearOverYearChange).toBeNull();
     // Area C：2026-04-01 的 Geometric Mean Rent 为 NULL。
-    expect(currentRentOf("900003").yearOverYearChange).toBeNull();
+    expect(calculateCurrentRentFromFixture("900003").yearOverYearChange).toBeNull();
   });
 
   // 900004 没有 MBIE（租金） 记录；-99 和 900099 不在这个 Region 中。
-  it("publishes only Region areas that appear in the MBIE（租金） records", () => {
-    expect(regionCurrentRents.map((area) => area.sa2Id)).toEqual([
+  it("publishes only Region areas with a valid MBIE（租金） rent", () => {
+    expect(areasWithCurrentRent.map((area) => area.sa2Id)).toEqual([
       "900001",
       "900002",
       "900003",
     ]);
   });
 
-  // 整个 Region 一起转换时，Area B 的当前租金与单独计算 Area B 的结果相同。
+  // 整个 Region 一起转换时，Area B 的当前租金与 3.2 的手工答案一致。
   it("attaches the current rent to each published area", () => {
-    const areaB = regionCurrentRents.find((area) => area.sa2Id === "900002");
+    const areaB = areasWithCurrentRent.find((area) => area.sa2Id === "900002");
 
-    expect(areaB.currentRent).toEqual(currentRentOf("900002"));
+    expect(areaB.currentRent).toEqual({
+      datasetLatestPeriod: "2026-04-01",
+      observationPeriod: "2025-10-01",
+      medianRent: 470,
+      reportedBonds: 12,
+      yearOverYearChange: null,
+    });
   });
 
   // 真实 CSV 按季度从新到旧排列：源记录顺序颠倒时，结果不变。
   it("does not depend on the order of the source records", () => {
-    const reversedResult = buildRegionCurrentRents({
-      statsNzRows: [...statsNzRows].reverse(),
+    const reversedResult = buildAreasWithCurrentRent({
+      statsNzRecords: [...statsNzRecords].reverse(),
       mbieRecords: [...mbieRecords].reverse(),
       datasetLatestPeriod: "2026-04-01",
     });
 
-    expect(reversedResult).toEqual(regionCurrentRents);
+    expect(reversedResult).toEqual(areasWithCurrentRent);
   });
 
   // 每个可发布区域都符合第 2 节定义的列表中的一行。
   it("produces rows that satisfy the contract", () => {
-    for (const row of regionCurrentRents) {
+    for (const row of areasWithCurrentRent) {
       areaWithCurrentRentSchema.parse(row);
     }
   });

@@ -10341,7 +10341,7 @@ Step 06 已经确认 MBIE（租金） 租金记录可以通过六位 SA2 编号�
 
 但 Step 07 的文件和页面只为验证可行性而准备。页面直接读取样例目录中的 GeoJSON 和历史文件，文件结构由样例脚本临时决定，没有版本、来源记录和运行时验证；地图和图表各自假设数据的形状，同一个指标在不同文件中的含义也没有统一约束。正式产品的列表、地图和详情必须依赖同一套数据定义，样例阶段的约定不能承担这个职责。
 
-因此，本步建立第一条正式纵向切片。“纵向”指从数据源一直贯穿到用户界面：同一份数据依次经过转换、发布、读取和页面显示，每一层都使用相同的定义。
+因此，本步建立第一条正式纵向切片。纵向切片指产品中范围很小、但从数据源一直贯穿到用户界面的一段完整功能：同一份数据依次经过转换、发布、读取和页面显示，每一层都使用相同的定义。
 
 本步只处理 Step 07 已经使用过的 Waikato Region，页面只显示每个区域在 MBIE（租金） `ALL / ALL` 源分类下的当前租金。范围限定在一个 Region 和一种分类，是为了先让一条完整链路在真实数据上正确运行，而不把全国数据量、筛选和搜索交互混入同一次验证。
 
@@ -10379,7 +10379,7 @@ git status --short --branch
 
 ### 2. 定义区域列表需要的数据 contract
 
-在这条链路中，转换脚本负责产出数据，页面负责读取数据。两边必须遵守同一份关于“数据是什么”的定义，否则脚本写出的字段和页面期待的字段迟早会出现偏差。因此，在生成任何正式文件之前，先确定页面需要的数据，并把它的结构和含义固定下来。
+在这条链路中，转换脚本负责产出数据，页面负责读取数据。两边必须遵守同一份关于“数据是什么”的定义，否则脚本写出的字段和页面期待的字段迟早会出现偏差。这份由产出数据的一方和读取数据的一方共同遵守的定义，称为数据 contract。因此，在生成任何正式文件之前，先确定页面需要的数据，并把它的结构和含义固定下来。
 
 #### 2.1 检查样例阶段的数据读取方式
 
@@ -10416,7 +10416,7 @@ const map: MapData = await mapResponse.json();
 这是哪个区域          SA2 编号、名称、所属 Region 和 territorial authority
 现在的租金是多少      Median Rent
 有多少记录支撑        Reported Bonds
-这个数值来自哪个季度
+这个数值来自哪个季度  数值所在的季度
 一年来变化了多少      12 个月变化
 ```
 
@@ -10586,7 +10586,7 @@ schema 中的每条规则都来自前面的证据。测试把这些规则变成�
 
 测试先准备一行符合定义的数据，每个测试只修改其中一个字段，这样失败时就能确定是哪条规则在起作用。名称、上级地理名称、Median Rent 和 Reported Bonds 使用 Step 07 核对过的 Greensboro；编号和变化率只需要是符合规则的值。
 
-修改单个字段用到展开写法：`{ ...validRow, sa2Id: "unknown" }` 先把 `validRow` 的全部字段复制到新对象中，再用后面写出的字段覆盖同名字段，`validRow` 本身不会被修改。判断数据是否被拒绝时使用 `safeParse`：它与 `parse` 使用相同的规则，但不抛出错误，而是返回一个包含 `success` 的结果对象，适合在测试中直接判断验证是否通过。
+修改单个字段用到展开写法：`{ ...validRow, sa2Id: "unknown" }` 先把 `validRow` 的全部字段复制到新对象中，再用后面写出的字段覆盖同名字段，`validRow` 本身不会被修改。`toEqual` 逐个比较两个对象的全部字段和值。判断数据是否被拒绝时使用 `safeParse`：它与 `parse` 使用相同的规则，但不抛出错误，而是返回一个包含 `success` 的结果对象，适合在测试中直接判断验证是否通过。
 
 按这个思路，在 `src/data/contracts.test.ts` 中为上面五条边界各写一个测试：
 
@@ -10721,7 +10721,7 @@ grep -E '^(2025-04-01|2026-04-01),179900,ALL,ALL,' data/raw/mbie/Detailed-Quarte
 2025-04-01,179900,ALL,ALL,213,1608,186,350,390,560,280,0.3983
 ```
 
-上面的数据按 CSV 表头的顺序，每行依次是季度、`Location Id`、住宅类型、卧室、Total Bonds、Active Bonds、Closed Bonds、Median Rent、Geometric Mean Rent，以及转换中不使用的三个字段。
+记录中的值按 CSV 表头的顺序排列，转换只用到其中 7 个字段：季度、`Location Id`、住宅类型、卧室、Total Bonds（第 5 列）、Median Rent（第 8 列）和 Geometric Mean Rent（第 9 列）。
 
 这两行只有编号 `179900` 和租金，没有区域名称，也没有上级地理。这些信息在 Stats NZ（区域） 的 GeoPackage 中，Step 06 已经确认两边可以通过 SA2 编号连接。查询 Greensboro 的区域信息：
 
@@ -10761,11 +10761,11 @@ yearOverYearChange         395 / 390 - 1 ≈ 0.0128
 从上面的原始记录手工得到这一行，需要做出几个判断：
 
 ```text
-1. 改字段名    两份源文件的字段名换成 contract 中的字段名
-2. 选记录      MBIE（租金） 的 16 条记录中只使用 ALL / ALL 这一条
-3. 转换数值    CSV 中的 "350" 是文字，要变成数字 350
-4. 选当前季度  使用最新季度 2026-04-01 的记录
-5. 算同比      用 2026-04-01 和四个季度前 2025-04-01 的 Geometric Mean Rent
+1. 改字段名        两份源文件的字段名换成 contract 中的字段名
+2. 选记录          MBIE（租金） 的 16 条记录中只使用 ALL / ALL 这一条
+3. 转换数值        CSV 中的 "350" 是文字，要变成数字 350
+4. 选当前季度      使用最新季度 2026-04-01 的记录
+5. 算 12 个月变化  用 2026-04-01 和四个季度前 2025-04-01 的 Geometric Mean Rent
 ```
 
 Greensboro 是一个情况完整的区域，每个判断都很直接。真正容易出错的是不完整的区域，而前面的步骤已经观察到这些情况真实存在：
@@ -10777,15 +10777,16 @@ Greensboro 是一个情况完整的区域，每个判断都很直接。真正容
                       有 ALL / ALL 记录，另外 60 个没有
 ```
 
-这些情况会让上面的判断变得不再直接，例如最新季度没有记录时，当前租金应该取哪个季度？租金是 `NULL` 时，同比还能不能算？这些问题必须有明确的规则：
+这些情况会让上面的判断变得不再直接，例如最新季度没有记录时，当前租金应该取哪个季度？租金是 `NULL` 时，12 个月变化还能不能算？这些问题必须有明确的规则：
 
 ```text
-可发布区域    这个 Region 中在 MBIE（租金） 出现过任意记录的 SA2；-99 等非 SA2 编号不参与
-当前租金      只看 ALL / ALL 记录；从最新季度往前，找到最后一个 Median Rent 不为 NULL 的季度
-同比          只比较数据集最新季度和四个季度前；任一季度缺少几何平均租金时为 null
+可发布区域     这个 Region 中至少有一条 Median Rent 不为 NULL 的记录的 SA2，
+               任意住宅类型和卧室数都算；-99 等非 SA2 编号不参与
+当前租金       只看 ALL / ALL 记录；从最新季度往前，找到最后一个 Median Rent 不为 NULL 的季度
+12 个月变化    只比较数据集最新季度和四个季度前；任一季度缺少几何平均租金时为 null
 ```
 
-“当前租金”的规则来自第 2.2 节对 `observationPeriod` 的定义；“可发布区域”和“同比”的规则来自项目设计。同比使用数据集最新季度，而不是各区域当前租金所在的季度，所有区域才处在同一个比较区间，变化率才能放在一起比较。
+“当前租金”的规则来自第 2.2 节对 `observationPeriod` 的定义；“可发布区域”和“12 个月变化”的规则来自项目设计。12 个月变化使用数据集最新季度，而不是各区域当前租金所在的季度，所有区域才处在同一个比较区间，变化率才能放在一起比较。
 
 #### 3.2 用答案已知的小样本覆盖每个判断
 
@@ -10795,7 +10796,7 @@ Greensboro 是一个情况完整的区域，每个判断都很直接。真正容
 
 Step 06 的 `data/fixtures/data-join/` 只包含 `Location Id`，没有季度、分类和租金，无法覆盖这些规则，所以这里需要一组新的 fixture。
 
-两个 fixture 都保持源文件的形状，只是行数很少：字段名、文字形式的数值、`NULL` 标记和 `-99` 编号都与源文件相同，转换代码在测试中读到的记录就和真实数据一样。
+MBIE（租金） 和 Stats NZ（区域） 各需要一个 fixture，两者都保持源文件的形状，只是行数很少：字段名、文字形式的数值、`NULL` 标记和 `-99` 编号都与源文件相同，转换代码在测试中读到的记录就和真实数据一样。
 
 先设计样本，让每个区域对应一种情况：
 
@@ -10810,7 +10811,7 @@ Step 06 的 `data/fixtures/data-join/` 只包含 `Location Id`，没有季度、
 
 fixture 中的数值是为这些情况构造的，不代表真实租金。编号使用 `9000xx`：Stats NZ（区域） 2019 的 SA2 编号介于 `100100` 和 `400016` 之间，这些编号不会与真实区域混淆。数据集最新季度固定为 `2026-04-01`。
 
-转换只使用 MBIE（租金） 源文件 12 个字段中的 7 个，因此 MBIE（租金） fixture 只保留这 7 个字段，字段名与源文件完全一致。按照上面的设计，`data/fixtures/first-slice/mbie-records.csv` 的内容是：
+转换只使用 3.1 列出的 7 个字段，因此 MBIE（租金） fixture 只保留这 7 个字段，字段名与源文件完全一致。按照上面的设计，`data/fixtures/first-slice/mbie-records.csv` 的内容是：
 
 ```csv
 TimeFrame,Location Id,Dwelling Type,Number Of Beds,Total Bonds,Median Rent,Geometric Mean Rent
@@ -10867,19 +10868,20 @@ Stats NZ（区域） 一侧使用 3.1 查询中的 6 个字段，字段名与 Ge
 按照 3.1 的规则，手工得到的正确答案是：
 
 ```text
-可发布区域    900001、900002、900003
-              900004 没有 MBIE（租金） 记录；-99 和 900099 不是这个 Region 的 SA2
+可发布区域     900001、900002、900003
+               900004 没有 MBIE（租金） 记录；-99 和 900099 不是这个 Region 的 SA2
 
 900001  当前租金 2026-04-01，Median Rent 540，Reported Bonds 33
         House / 3 记录不参与计算
-        同比 525 / 500 - 1 = 0.05
+        12 个月变化 525 / 500 - 1 = 0.05
 
-900002  当前租金 2025-10-01，Median Rent 470，这是旧季度的租金
-        2026-04-01 没有记录，同比为 null
+900002  当前租金 2025-10-01，Median Rent 470，Reported Bonds 12
+        这是旧季度的租金
+        2026-04-01 没有记录，12 个月变化为 null
 
 900003  2026-04-01 的租金为 NULL，往前找到 2026-01-01
         当前租金 2026-01-01，Median Rent 400，Reported Bonds 9
-        2026-04-01 没有几何平均租金，同比为 null
+        2026-04-01 没有几何平均租金，12 个月变化为 null
 ```
 
 Area C 的 Reported Bonds 是 `9`，不是最新季度那条记录中的 `6`：当前租金中的每个数值都来自同一个季度，不能把不同季度的数值拼在一起。
@@ -10901,30 +10903,30 @@ CSV 解析后，每个字段都是字符串，而计算需要数字或 `null`。
 
 转换代码与 Step 06、Step 07 的数据脚本一样，使用 Node.js 的 `.mjs` 模块。与那些脚本不同的是，它不读取文件，只接收已经读出的记录并返回结果。这样的函数只依赖输入：相同的输入总是得到相同的输出，测试可以直接把 fixture 交给它，而不需要真实源文件。
 
-因此，两种记录各定义一个转换函数：`toQuarterlyRent` 和 `toArea`。把文本转换成数字或 `null` 的判断在三个数值字段上都要用，单独封装成工具函数 `toNullableNumber`。这些函数放在 `data/pipeline/first-slice.mjs`：
+因此，两种记录各定义一个转换函数：`convertToQuarterlyRent` 和 `convertToArea`。把文本转换成数字或 `null` 的判断在三个数值字段上都要用，单独封装成工具函数 `parseNullableNumber`。这些函数放在 `data/pipeline/first-slice.mjs`：
 
 ```js
-function toNullableNumber(value) {
+function parseNullableNumber(value) {
   return value === "NULL" || value === "" ? null : Number(value);
 }
 
-export function toQuarterlyRent(record) {
+export function convertToQuarterlyRent(record) {
   return {
     period: record.TimeFrame,
-    reportedBonds: toNullableNumber(record["Total Bonds"]),
-    medianRent: toNullableNumber(record["Median Rent"]),
-    geometricMeanRent: toNullableNumber(record["Geometric Mean Rent"]),
+    reportedBonds: parseNullableNumber(record["Total Bonds"]),
+    medianRent: parseNullableNumber(record["Median Rent"]),
+    geometricMeanRent: parseNullableNumber(record["Geometric Mean Rent"]),
   };
 }
 
-export function toArea(row) {
+export function convertToArea(record) {
   return {
-    sa2Id: row.SA22019_V1_00,
-    name: row.SA22019_V1_00_NAME,
-    regionCode: row.REGC2019_V1_00,
-    regionName: row.REGC2019_V1_00_NAME,
-    territorialAuthorityCode: row.TA2019_V1_00,
-    territorialAuthorityName: row.TA2019_V1_00_NAME,
+    sa2Id: record.SA22019_V1_00,
+    name: record.SA22019_V1_00_NAME,
+    regionCode: record.REGC2019_V1_00,
+    regionName: record.REGC2019_V1_00_NAME,
+    territorialAuthorityCode: record.TA2019_V1_00,
+    territorialAuthorityName: record.TA2019_V1_00_NAME,
   };
 }
 ```
@@ -10934,11 +10936,11 @@ export function toArea(row) {
 两个函数写好以后，要用 3.2 的样本确认转换结果。每个函数用一条记录检查即可，但这条记录要覆盖函数中所有需要判断的地方：
 
 ```text
-toQuarterlyRent  使用 Area C 在 2026-04-01 的记录
+convertToQuarterlyRent  使用 Area C 在 2026-04-01 的记录
                  它同时包含数字文本 6 和两个 NULL，一次就能检查两种转换
                  预期 reportedBonds 为 6，medianRent 和 geometricMeanRent 为 null
 
-toArea           使用第一条 Stats NZ（区域） 记录，即 Area A
+convertToArea           使用第一条 Stats NZ（区域） 记录，即 Area A
                  预期 6 个字段换成 contract 字段名，regionCode 仍是文本 "03"
 ```
 
@@ -10964,7 +10966,7 @@ const mbieRecords = parse(
   { columns: true, skip_empty_lines: true },
 );
 
-const statsNzRows = JSON.parse(
+const statsNzRecords = JSON.parse(
   readFileSync(
     new URL("../fixtures/first-slice/stats-nz-areas.json", import.meta.url),
     "utf8",
@@ -10977,19 +10979,20 @@ fixture 读出来以后就可以写测试。测试要用到 Vitest 的 `describe
 ```js
 import { describe, expect, it } from "vitest";
 
-import { toArea, toQuarterlyRent } from "./first-slice.mjs";
+import { convertToArea, convertToQuarterlyRent } from "./first-slice.mjs";
 ```
 
-两个测试各取一条 fixture 记录交给被测函数，再与上面列出的期望结果比较。`toEqual` 比较两个对象的全部字段和值：转换多出或漏掉一个字段，或者把 `NULL` 转成了 `NaN`，测试都会失败。
+两个测试各取一条 fixture 记录交给被测函数，再与上面列出的期望结果比较。使用 `toEqual` 比较时，转换多出或漏掉一个字段，或者把 `NULL` 转成了 `NaN`，测试都会失败。
 
 ```js
-describe("first data slice", () => {
+describe("rent conversion", () => {
   it("converts an MBIE（租金） record into a quarterly rent", () => {
-    const record = mbieRecords.find(
-      (row) => row["Location Id"] === "900003" && row.TimeFrame === "2026-04-01",
+    const areaCRecord = mbieRecords.find(
+      (record) =>
+        record["Location Id"] === "900003" && record.TimeFrame === "2026-04-01",
     );
 
-    expect(toQuarterlyRent(record)).toEqual({
+    expect(convertToQuarterlyRent(areaCRecord)).toEqual({
       period: "2026-04-01",
       reportedBonds: 6,
       medianRent: null,
@@ -10997,8 +11000,8 @@ describe("first data slice", () => {
     });
   });
 
-  it("converts a Stats NZ（区域） row into an area", () => {
-    expect(toArea(statsNzRows[0])).toEqual({
+  it("converts a Stats NZ（区域） record into an area", () => {
+    expect(convertToArea(statsNzRecords[0])).toEqual({
       sa2Id: "900001",
       name: "Fixture Area A",
       regionCode: "03",
@@ -11030,35 +11033,35 @@ npm run test -- data/pipeline/first-slice.test.mjs
 
 ```text
 ✓ data/pipeline/first-slice.test.mjs (2 tests)
-  ✓ first data slice (2)
+  ✓ rent conversion (2)
     ✓ converts an MBIE（租金） record into a quarterly rent
-    ✓ converts a Stats NZ（区域） row into an area
+    ✓ converts a Stats NZ（区域） record into an area
 
 Test Files  1 passed (1)
      Tests  2 passed (2)
 ```
 
-Vitest 找到了 `data/` 下的测试，两条源记录都按预期转换。这个结果只说明单条记录的转换正确，还没有涉及当前租金、同比或区域筛选。
+Vitest 找到了 `data/` 下的测试，两条源记录都按预期转换。这个结果只说明单条记录的转换正确，还没有涉及当前租金、12 个月变化或区域筛选。
 
 #### 3.4 计算一个区域的当前租金
 
-单条记录已经可以转换成季度租金记录。区域列表需要的却是第 2 节的当前租金 `CurrentRent`：它把一个区域的全部季度租金记录归结为一组当前数值。其中的季度、Median Rent 和 Reported Bonds 按 3.1 的“当前租金”规则选出，`yearOverYearChange` 按“同比”规则计算。
+单条记录已经可以转换成季度租金记录。区域列表需要的却是第 2 节的当前租金 `CurrentRent`：它把一个区域的全部季度租金记录归结为一组当前数值。其中的季度、Median Rent 和 Reported Bonds 按 3.1 的“当前租金”规则选出，`yearOverYearChange` 按“12 个月变化”规则计算。
 
 计算当前租金的函数命名为 `buildCurrentRent`。先确定它接收什么，再逐条实现这两条规则。
 
 **函数的输入。** `buildCurrentRent` 接收两个参数。
 
-第一个参数 `quarterlyRents` 是一个区域全部 `ALL / ALL` 季度租金记录组成的数组。它由 3.3 的 `toQuarterlyRent` 的结果组成：
+第一个参数 `quarterlyRents` 是一个区域全部 `ALL / ALL` 季度租金记录组成的数组。它由 3.3 的 `convertToQuarterlyRent` 的结果组成：
 
 ```text
 一个区域的多条 MBIE（租金） 记录
-   │  逐条调用 toQuarterlyRent
+   │  逐条调用 convertToQuarterlyRent
    ▼
 多个季度租金记录：只保留 ALL / ALL，按季度从旧到新排列
    │  组成 quarterlyRents 数组
    ▼
 buildCurrentRent
-   │  应用当前租金和同比规则
+   │  应用当前租金和 12 个月变化规则
    ▼
 这个区域的当前租金
 ```
@@ -11104,21 +11107,24 @@ export function buildCurrentRent(quarterlyRents, datasetLatestPeriod) {
 }
 ```
 
-**同比。** 规则是比较两个固定季度的 Geometric Mean Rent：`datasetLatestPeriod`，以及四个季度前。实现时要依次解决三个问题。
+**12 个月变化。** 规则是比较两个固定季度的 Geometric Mean Rent：`datasetLatestPeriod`，以及四个季度前。实现时要依次解决三个问题。
 
-第一个问题是四个季度前是哪个季度。季度使用 `YYYY-MM-DD` 格式，四个季度前就是上一年的同一季度，只要把年份减 1：`2026-04-01` 变成 `2025-04-01`。这个计算与具体区域无关，可以封装成工具函数 `sameQuarterLastYear`：
+第一个问题是四个季度前是哪个季度。季度使用 `YYYY-MM-DD` 格式，四个季度前就是上一年的同一季度，只要把年份减 1：`2026-04-01` 变成 `2025-04-01`。这个计算与具体区域无关，可以封装成工具函数 `getSameQuarterLastYear`：
 
 ```js
-function sameQuarterLastYear(period) {
+function getSameQuarterLastYear(period) {
   const year = Number(period.slice(0, 4));
   return `${year - 1}${period.slice(4)}`;
 }
 ```
 
-第二个问题是怎样读取某个季度的租金。用数组的 `find` 方法，从 `quarterlyRents` 中找出 `period` 等于这个季度的记录。读取会遇到两种缺失：Area B 在 `2026-04-01` 没有记录，`find` 返回 `undefined`；Area C 在 `2026-04-01` 有记录，但租金为 `null`。用前面的 `?.` 和 `??`，两种情况都会得到 `null`。因此，先调用 `sameQuarterLastYear` 得到去年的同一季度，再用 `find` 分别取出两个季度的记录，读出它们的几何平均租金：
+第二个问题是怎样读取某个季度的租金。用数组的 `find` 方法，从 `quarterlyRents` 中找出 `period` 等于这个季度的记录。读取会遇到两种缺失：Area B 在 `2026-04-01` 没有记录，`find` 返回 `undefined`；Area C 在 `2026-04-01` 有记录，但租金为 `null`。用前面的 `?.` 和 `??`，两种情况都会得到 `null`。因此，先调用 `getSameQuarterLastYear` 得到去年的同一季度，再用 `find` 分别取出两个季度的记录，读出它们的几何平均租金：
 
 ```js
-  const lastYearPeriod = sameQuarterLastYear(datasetLatestPeriod);
+export function buildCurrentRent(quarterlyRents, datasetLatestPeriod) {
+  // 当前租金：用 findLast 找到 latestObservedQuarter……
+
+  const lastYearPeriod = getSameQuarterLastYear(datasetLatestPeriod);
   const currentQuarter = quarterlyRents.find(
     (quarterlyRent) => quarterlyRent.period === datasetLatestPeriod,
   );
@@ -11127,6 +11133,11 @@ function sameQuarterLastYear(period) {
   );
   const currentGeometricMeanRent = currentQuarter?.geometricMeanRent ?? null;
   const lastYearGeometricMeanRent = lastYearQuarter?.geometricMeanRent ?? null;
+
+  return {
+    // datasetLatestPeriod、observationPeriod、medianRent、reportedBonds……
+  };
+}
 ```
 
 第三个问题是浮点误差。两个租金都存在时，计算 `当前 / 去年 - 1`。`525 / 500 - 1` 在 JavaScript 中得到 `0.050000000000000044`，而不是 `0.05`。变化率在页面上以百分比显示，保留 4 位小数已经精确到 0.01 个百分点，所以结果四舍五入到 4 位小数。这个处理同样与具体区域无关，也封装成工具函数 `roundChange`：
@@ -11137,55 +11148,62 @@ function roundChange(value) {
 }
 ```
 
-有了两个季度的租金和 `roundChange`，返回结果中就可以加上同比：两个租金都存在时计算变化率，否则为 `null`。
+有了两个季度的租金和 `roundChange`，返回结果中就可以加上 12 个月变化：两个租金都存在时计算变化率，否则为 `null`。
 
 ```js
+export function buildCurrentRent(quarterlyRents, datasetLatestPeriod) {
+  // 当前租金：用 findLast 找到 latestObservedQuarter……
+
+  // 12 个月变化：读出 currentGeometricMeanRent 和 lastYearGeometricMeanRent……
+
+  return {
+    // datasetLatestPeriod、observationPeriod、medianRent、reportedBonds……
     yearOverYearChange:
       currentGeometricMeanRent !== null && lastYearGeometricMeanRent !== null
         ? roundChange(currentGeometricMeanRent / lastYearGeometricMeanRent - 1)
         : null,
+  };
+}
 ```
 
-**测试。** 测试对照 3.2 中三个区域的手工答案。测试要为每个区域准备 `quarterlyRents` 数组。fixture 中每个区域的记录已经按季度从旧到新书写，所以只要从 `mbieRecords` 中筛出这个区域的 `ALL / ALL` 记录，再逐条交给 `toQuarterlyRent`，就得到符合要求的输入。Area A 的 `House / 3` 记录在筛选时被去掉。
+**测试。** 测试对照 3.2 中三个区域的手工答案。每个区域都要先准备 `buildCurrentRent` 的输入：从 `mbieRecords` 中筛出这个区域的 `ALL / ALL` 记录，再逐条交给 `convertToQuarterlyRent`。fixture 中每个区域的记录已经按季度从旧到新书写，筛选后的顺序就符合要求；Area A 的 `House / 3` 记录在筛选时被去掉。
 
-这项准备工作由两个辅助函数完成：`quarterlyRentsOf` 为一个区域准备 `quarterlyRents`，`currentRentOf` 再用它和数据集最新季度 `2026-04-01` 计算这个区域的当前租金。
-
-当前租金的测试只检查与当前季度有关的字段，所以使用 `toMatchObject`：它只比较列出的字段，其余字段不参与比较。同比的测试使用 `toBe`，它要求两个值完全相同，`toBe(0.05)` 能够通过，就说明四舍五入消除了浮点误差。
-
-两个辅助函数都建立在已经读出的 `mbieRecords` 上，测试文件也要导入 `buildCurrentRent`：
+三个区域在两个测试中都要这样准备输入，再调用 `buildCurrentRent`。因此把这两步写成测试文件中的一个函数 `calculateCurrentRentFromFixture`：传入一个 SA2 编号，它以 `2026-04-01` 作为数据集最新季度，返回这个区域的当前租金。函数中调用了 `buildCurrentRent`，测试文件也要导入它。
 
 ```js
-const quarterlyRentsOf = (sa2Id) =>
-  mbieRecords
+function calculateCurrentRentFromFixture(sa2Id) {
+  const quarterlyRents = mbieRecords
     .filter(
-      (row) =>
-        row["Location Id"] === sa2Id &&
-        row["Dwelling Type"] === "ALL" &&
-        row["Number Of Beds"] === "ALL",
+      (record) =>
+        record["Location Id"] === sa2Id &&
+        record["Dwelling Type"] === "ALL" &&
+        record["Number Of Beds"] === "ALL",
     )
-    .map((row) => toQuarterlyRent(row));
+    .map((record) => convertToQuarterlyRent(record));
 
-const currentRentOf = (sa2Id) =>
-  buildCurrentRent(quarterlyRentsOf(sa2Id), "2026-04-01");
+  return buildCurrentRent(quarterlyRents, "2026-04-01");
+}
 ```
 
-用这两个函数，当前租金和同比各写一个测试：
+当前租金的测试只检查与当前季度有关的字段，所以使用 `toMatchObject`：它只比较列出的字段，其余字段不参与比较。12 个月变化的测试使用 `toBe`，它要求两个值完全相同，`toBe(0.05)` 能够通过，就说明四舍五入消除了浮点误差。
+
+用这个函数，当前租金和 12 个月变化各写一个测试：
 
 ```js
 it("uses the latest observed quarter as the current rent", () => {
   // Area A：最新季度有租金，直接使用最新季度。
-  expect(currentRentOf("900001")).toMatchObject({
+  expect(calculateCurrentRentFromFixture("900001")).toMatchObject({
     observationPeriod: "2026-04-01",
     medianRent: 540,
     reportedBonds: 33,
   });
   // Area B：最后一条记录在 2025-10-01，当前租金停在这个旧季度。
-  expect(currentRentOf("900002")).toMatchObject({
+  expect(calculateCurrentRentFromFixture("900002")).toMatchObject({
     observationPeriod: "2025-10-01",
     medianRent: 470,
   });
   // Area C：最新季度租金为 NULL，往前使用 2026-01-01；Bonds 也取这个季度的 9。
-  expect(currentRentOf("900003")).toMatchObject({
+  expect(calculateCurrentRentFromFixture("900003")).toMatchObject({
     observationPeriod: "2026-01-01",
     medianRent: 400,
     reportedBonds: 9,
@@ -11194,11 +11212,11 @@ it("uses the latest observed quarter as the current rent", () => {
 
 it("calculates the 12-month change only when both quarters exist", () => {
   // Area A：525 / 500 - 1 = 0.05。
-  expect(currentRentOf("900001").yearOverYearChange).toBe(0.05);
+  expect(calculateCurrentRentFromFixture("900001").yearOverYearChange).toBe(0.05);
   // Area B：2026-04-01 没有记录。
-  expect(currentRentOf("900002").yearOverYearChange).toBeNull();
+  expect(calculateCurrentRentFromFixture("900002").yearOverYearChange).toBeNull();
   // Area C：2026-04-01 的 Geometric Mean Rent 为 NULL。
-  expect(currentRentOf("900003").yearOverYearChange).toBeNull();
+  expect(calculateCurrentRentFromFixture("900003").yearOverYearChange).toBeNull();
 });
 ```
 
@@ -11212,7 +11230,7 @@ npm run test -- data/pipeline/first-slice.test.mjs
 
 ```text
 ✓ data/pipeline/first-slice.test.mjs (4 tests)
-  ✓ first data slice (4)
+  ✓ rent conversion (4)
     ……（3.3 的 2 个测试省略）
     ✓ uses the latest observed quarter as the current rent
     ✓ calculates the 12-month change only when both quarters exist
@@ -11221,56 +11239,75 @@ Test Files  1 passed (1)
      Tests  4 passed (4)
 ```
 
-新增的两个测试通过，三个区域的当前租金和同比都与 3.2 的手工答案一致。这个结果只说明一个区域的租金记录已经整理好时，计算是正确的；测试中的 `quarterlyRents` 由测试代码准备，还没有从一个 Region 的全部记录中自动整理出来。
+新增的两个测试通过，三个区域的当前租金和 12 个月变化都与 3.2 的手工答案一致。这个结果只说明一个区域的租金记录已经整理好时，计算是正确的；测试中的 `quarterlyRents` 由测试代码准备，还没有从一个 Region 的全部记录中自动整理出来。
 
 #### 3.5 整理一个 Region 的全部记录
 
-3.4 的测试中，每个区域的 `quarterlyRents` 都由测试代码中的 `quarterlyRentsOf` 准备：指定一个 SA2 编号，从 fixture 中筛出它的 `ALL / ALL` 记录，再逐条交给 `toQuarterlyRent`。
+3.4 的测试中，`buildCurrentRent` 的输入由测试代码准备：指定一个 SA2 编号，从 fixture 中筛出它的记录。真实转换中没有人逐个指定 SA2 编号。它拿到的是一个 Region 的全部源记录，要自己找出哪些区域可以发布，并为每个区域整理出 `quarterlyRents`。
 
-真实转换中没有人逐个指定 SA2 编号。它拿到的是一个 Region 的全部源记录，要自己找出发布哪些区域，并为每个区域整理出 `quarterlyRents`。完成这项工作的函数命名为 `buildRegionCurrentRents`，它接收三个值：
+完成这项工作的函数命名为 `buildAreasWithCurrentRent`，它接收三个值：
 
 ```text
-statsNzRows          这个 Region 全部 SA2 的 Stats NZ（区域） 记录
+statsNzRecords       这个 Region 全部 SA2 的 Stats NZ（区域） 记录
 mbieRecords          MBIE（租金） 记录，包含所有 SA2、所有住宅类型和卧室数
 datasetLatestPeriod  数据集最新季度，原样交给 buildCurrentRent
 ```
 
+参数写成 `{ statsNzRecords, mbieRecords, datasetLatestPeriod }`，表示调用时传入一个对象，函数从中取出这三个同名字段，作为三个变量使用：
+
 ```js
-export function buildRegionCurrentRents({ statsNzRows, mbieRecords, datasetLatestPeriod }) {
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
   // ...
 }
 ```
 
-它返回可发布区域的列表，每个元素就是第 2 节定义的列表中的一行 `AreaWithCurrentRent`：`toArea` 得到的区域信息，加上 `buildCurrentRent` 计算出的 `currentRent`。
+它返回可发布区域的列表，每个元素就是第 2 节定义的列表中的一行 `AreaWithCurrentRent`：`convertToArea` 得到的区域信息，加上 `buildCurrentRent` 计算出的 `currentRent`。
 
-`buildRegionCurrentRents` 调用 3.3 和 3.4 已经测试过的三个函数，自己只负责判断记录属于哪个 SA2、分组、排序和组合结果。下面按这个顺序分四部分写出它。
+单条记录的转换和一个区域的当前租金，3.3 和 3.4 的函数已经能够完成。这个函数负责把它们组织起来，分四部分：
 
-**1. 确定这个 Region 的 SA2。** 先把 Stats NZ（区域） 记录逐条交给 `toArea`。数组的 `map` 方法会把数组中的每个元素依次交给一个函数，再把每次的返回值按原顺序组成新数组。`statsNzRows.map((row) => toArea(row))` 中，`row` 依次是 `statsNzRows` 的每一条记录，得到的 `areas` 就是区域信息组成的数组。
+```text
+1. 确定这个 Region 的 SA2
+2. 按 SA2 收集租金记录
+3. 确定可发布区域
+4. 计算每个可发布区域的当前租金
+```
 
-MBIE（租金） 记录中混有其他 Region 的编号，以及 `-99` 这类非 SA2 编号，读取时要逐条判断编号是否属于这个 Region。因此把这个 Region 的 SA2 编号放进 Step 06 用过的 `Set`，判断时调用它的 `has` 即可。
+**1. 确定这个 Region 的 SA2。** 先把 Stats NZ（区域） 记录逐条交给 `convertToArea`。数组的 `map` 方法会把数组中的每个元素依次交给一个函数，再把每次的返回值按原顺序组成新数组。`statsNzRecords.map((record) => convertToArea(record))` 中，`record` 依次是 `statsNzRecords` 的每一条记录，得到的 `areas` 就是区域信息组成的数组。
 
-因此，函数的第一部分先转换区域记录，再把编号放进 `Set`：
+MBIE（租金） 记录中混有其他 Region 的编号，以及 `-99` 这类非 SA2 编号，只有属于这个 Region 的记录才需要处理。因此把这个 Region 的 SA2 编号放进 Step 06 用过的 `Set`，判断一条记录是否属于这个 Region 时，调用它的 `has` 即可。函数的第一部分是：
 
 ```js
-export function buildRegionCurrentRents({ statsNzRows, mbieRecords, datasetLatestPeriod }) {
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
   // 1. 确定这个 Region 的 SA2
-  const areas = statsNzRows.map((row) => toArea(row));
+  const areas = statsNzRecords.map((record) => convertToArea(record));
   const regionSa2Ids = new Set(areas.map((area) => area.sa2Id));
 }
 ```
 
-参数写成 `{ statsNzRows, mbieRecords, datasetLatestPeriod }`，表示调用时传入一个对象，函数从中取出这三个同名字段，作为三个变量使用。
-
-**2. 按 SA2 收集租金记录。** `quarterlyRentsOf` 每处理一个 SA2，都要把全部记录从头筛选一遍。真实数据有 226,080 条记录，Waikato 有 222 个可发布 SA2，这样要检查五千多万次。因此这里只读一遍 MBIE（租金） 记录，每读到一条，就放进它所属 SA2 的列表。“SA2 编号 → 季度租金记录列表”的对应关系用 Step 06 用过的 `Map` 保存。
-
-放进列表时，要区分 3.1 的两条规则，因为它们看的记录范围不同：
+**2. 按 SA2 收集租金记录。** 有了这个 Region 的 SA2 编号，接下来要从 MBIE（租金） 记录中，为每个 SA2 找出两样东西：
 
 ```text
-可发布区域   出现过任意住宅类型和卧室数的记录
-当前租金     只看 ALL / ALL 记录
+能否发布        至少有一条 Median Rent 不为 NULL 的记录，任意住宅类型和卧室数都算
+当前租金的输入  它的 ALL / ALL 季度租金记录
 ```
 
-所以读到一条属于这个 Region 的记录时，先确保这个 SA2 在 `Map` 中有一个列表；只有 `ALL / ALL` 记录才转换成季度租金记录，放进列表。这样，`Map` 中有没有这个 SA2，回答它能否发布；它的列表就是计算当前租金的输入。Area A 的 `House / 3` 记录能证明 Area A 出现过，但不进入它的列表。
+做法是把 MBIE（租金） 记录从头到尾读一遍，每读到一条属于这个 Region 的记录，就分别检查这两件事：
+
+- 记录的 Median Rent 不为 `NULL`，就把它的 SA2 编号放进一个 `Set`，命名为 `publishableSa2Ids`。同一个编号放进去多次，`Set` 中也只保留一个。判断时使用 3.3 的 `parseNullableNumber`，`NULL` 和空字符串都视为缺失。
+- 记录属于 `ALL / ALL`，就转换成季度租金记录，放进这个 SA2 的列表。“SA2 编号 → 这个 SA2 的季度租金记录列表”这种对应关系，用 Step 06 用过的 `Map` 保存，命名为 `quarterlyRentsBySa2Id`。某个 SA2 第一次出现 `ALL / ALL` 记录时，先为它建立一个空列表。
+
+以 fixture 为例，读完后两者的内容是：
+
+```text
+publishableSa2Ids       "900001"、"900002"、"900003"
+
+quarterlyRentsBySa2Id
+"900001" → [900001 的 ALL / ALL 季度租金记录]
+"900002" → [900002 的 ALL / ALL 季度租金记录]
+"900003" → [900003 的 ALL / ALL 季度租金记录]
+```
+
+900004 没有任何 MBIE（租金） 记录，两者中都没有它。Area A 的 `House / 3` 记录有租金，它让 900001 进入 `publishableSa2Ids`，但不进入 900001 的列表。
 
 判断 `ALL / ALL` 要用到两个固定的分类值，先把它们定义成常量，代码中就能看出这两个 `"ALL"` 的含义：
 
@@ -11279,10 +11316,14 @@ const defaultDwellingType = "ALL";
 const defaultBedrooms = "ALL";
 ```
 
-有了 `Set` 和这两个常量，函数的第二部分逐条读取 MBIE（租金） 记录，把属于这个 Region 的记录放进 `Map`：
+有了 `regionSa2Ids` 和这两个常量，函数的第二部分逐条读取 MBIE（租金） 记录，分别更新 `publishableSa2Ids` 和 `quarterlyRentsBySa2Id`：
 
 ```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2：得到 areas 和 regionSa2Ids……
+
   // 2. 按 SA2 收集租金记录
+  const publishableSa2Ids = new Set();
   const quarterlyRentsBySa2Id = new Map();
 
   for (const record of mbieRecords) {
@@ -11292,42 +11333,61 @@ const defaultBedrooms = "ALL";
       continue;
     }
 
-    if (!quarterlyRentsBySa2Id.has(sa2Id)) {
-      quarterlyRentsBySa2Id.set(sa2Id, []);
+    if (parseNullableNumber(record["Median Rent"]) !== null) {
+      publishableSa2Ids.add(sa2Id);
     }
 
     if (
       record["Dwelling Type"] === defaultDwellingType &&
       record["Number Of Beds"] === defaultBedrooms
     ) {
-      quarterlyRentsBySa2Id.get(sa2Id).push(toQuarterlyRent(record));
+      if (!quarterlyRentsBySa2Id.has(sa2Id)) {
+        quarterlyRentsBySa2Id.set(sa2Id, []);
+      }
+      quarterlyRentsBySa2Id.get(sa2Id).push(convertToQuarterlyRent(record));
     }
   }
+}
 ```
 
 `continue` 结束这一次循环，直接读取下一条记录。
 
-**3. 确定可发布区域。** 读完全部记录后，`areas` 中在 `Map` 里存在的 SA2，就是可发布区域，用 `filter` 留下它们。可发布区域再按 SA2 编号排序，输出顺序就不依赖 Stats NZ（区域） 记录的排列。SA2 编号是文本，使用 Step 06 用过的 `localeCompare` 比较。函数的第三部分因此是：
+**3. 确定可发布区域。** 读完全部记录后，`areas` 中在 `publishableSa2Ids` 里的 SA2 就是可发布区域，用 `filter` 留下它们。可发布区域再按 SA2 编号排序，输出顺序就不依赖 Stats NZ（区域） 记录的排列。SA2 编号是文本，使用 Step 06 用过的 `localeCompare` 比较。函数的第三部分因此是：
 
 ```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2：得到 areas 和 regionSa2Ids……
+
+  // 2. 按 SA2 收集租金记录：得到 publishableSa2Ids 和 quarterlyRentsBySa2Id……
+
   // 3. 确定可发布区域
   const publishedAreas = areas
-    .filter((area) => quarterlyRentsBySa2Id.has(area.sa2Id))
+    .filter((area) => publishableSa2Ids.has(area.sa2Id))
     .sort((left, right) => left.sa2Id.localeCompare(right.sa2Id));
+}
 ```
 
 **4. 计算每个可发布区域的当前租金。** 每个区域的列表交给 `buildCurrentRent` 之前，还要按季度排序。`buildCurrentRent` 要求 `quarterlyRents` 从旧到新排列，fixture 是按这个顺序书写的，真实 CSV 却不是：3.1 的输出中，Greensboro 的 `2026-04-01` 记录排在 `2025-04-01` 之前。不排序的话，`buildCurrentRent` 会把最旧的租金当成当前租金。季度是 `YYYY-MM-DD` 格式的文本，文本顺序就是时间顺序，所以同样使用 `localeCompare`。
 
+一个可发布区域也可能没有任何 `ALL / ALL` 记录：它的有效租金全部来自其他分类，`Map` 中就没有它的列表，`get` 得到 `undefined`。这时用 `?? []` 换成空列表，`buildCurrentRent` 中的 `findLast` 和 `find` 都找不到记录，当前租金中的数值都为 `null`。
+
 最后把区域信息和当前租金组合成列表中的一行：`{ ...area, currentRent: ... }` 中的 `...` 是第 2.6 节测试中用过的展开写法，它把 `area` 的全部字段复制到新对象中，再加上 `currentRent`。
 
-函数的最后一部分对每个可发布区域先排序，再调用 `buildCurrentRent` 得到当前租金，最后和区域信息组合成一行：
+函数的最后一部分对每个可发布区域先排序，再调用 `buildCurrentRent` 得到当前租金，最后和区域信息组合成一行，返回全部结果：
 
 ```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2：得到 areas 和 regionSa2Ids……
+
+  // 2. 按 SA2 收集租金记录：得到 publishableSa2Ids 和 quarterlyRentsBySa2Id……
+
+  // 3. 确定可发布区域：得到 publishedAreas……
+
   // 4. 计算每个可发布区域的当前租金
   const areasWithCurrentRent = [];
 
   for (const area of publishedAreas) {
-    const quarterlyRents = quarterlyRentsBySa2Id.get(area.sa2Id);
+    const quarterlyRents = quarterlyRentsBySa2Id.get(area.sa2Id) ?? [];
     quarterlyRents.sort((left, right) => left.period.localeCompare(right.period));
 
     areasWithCurrentRent.push({
@@ -11337,17 +11397,18 @@ const defaultBedrooms = "ALL";
   }
 
   return areasWithCurrentRent;
+}
 ```
 
 **测试。** 可发布区域和 Area B 的当前租金对照 3.2 的手工答案。排序用另一种方式检查：两份源记录都颠倒顺序，季度变成从新到旧，转换结果必须与原顺序完全相同。
 
 颠倒顺序要用数组的 `reverse`。它会直接修改原数组，而两份源记录还要被其他测试使用，所以先用 `[...数组]` 复制一份再颠倒，这里的 `...` 把原数组的全部元素展开到新数组中。
 
-这些测试都使用同一个 Region 的转换结果，所以导入 `buildRegionCurrentRents` 后只调用一次，把结果保存为 `regionCurrentRents`：
+这些测试都使用同一个 Region 的转换结果，所以导入 `buildAreasWithCurrentRent` 后只调用一次，把结果保存为 `areasWithCurrentRent`：
 
 ```js
-const regionCurrentRents = buildRegionCurrentRents({
-  statsNzRows,
+const areasWithCurrentRent = buildAreasWithCurrentRent({
+  statsNzRecords,
   mbieRecords,
   datasetLatestPeriod: "2026-04-01",
 });
@@ -11357,8 +11418,8 @@ const regionCurrentRents = buildRegionCurrentRents({
 
 ```js
 // 900004 没有 MBIE（租金） 记录；-99 和 900099 不在这个 Region 中。
-it("publishes only Region areas that appear in the MBIE（租金） records", () => {
-  expect(regionCurrentRents.map((area) => area.sa2Id)).toEqual([
+it("publishes only Region areas with a valid MBIE（租金） rent", () => {
+  expect(areasWithCurrentRent.map((area) => area.sa2Id)).toEqual([
     "900001",
     "900002",
     "900003",
@@ -11366,19 +11427,25 @@ it("publishes only Region areas that appear in the MBIE（租金） records", ()
 });
 
 it("attaches the current rent to each published area", () => {
-  const areaB = regionCurrentRents.find((area) => area.sa2Id === "900002");
+  const areaB = areasWithCurrentRent.find((area) => area.sa2Id === "900002");
 
-  expect(areaB.currentRent).toEqual(currentRentOf("900002"));
+  expect(areaB.currentRent).toEqual({
+    datasetLatestPeriod: "2026-04-01",
+    observationPeriod: "2025-10-01",
+    medianRent: 470,
+    reportedBonds: 12,
+    yearOverYearChange: null,
+  });
 });
 
 it("does not depend on the order of the source records", () => {
-  const reversedResult = buildRegionCurrentRents({
-    statsNzRows: [...statsNzRows].reverse(),
+  const reversedResult = buildAreasWithCurrentRent({
+    statsNzRecords: [...statsNzRecords].reverse(),
     mbieRecords: [...mbieRecords].reverse(),
     datasetLatestPeriod: "2026-04-01",
   });
 
-  expect(reversedResult).toEqual(regionCurrentRents);
+  expect(reversedResult).toEqual(areasWithCurrentRent);
 });
 ```
 
@@ -11392,9 +11459,9 @@ npm run test -- data/pipeline/first-slice.test.mjs
 
 ```text
 ✓ data/pipeline/first-slice.test.mjs (7 tests)
-  ✓ first data slice (7)
+  ✓ rent conversion (7)
     ……（3.3 和 3.4 的 4 个测试省略）
-    ✓ publishes only Region areas that appear in the MBIE（租金） records
+    ✓ publishes only Region areas with a valid MBIE（租金） rent
     ✓ attaches the current rent to each published area
     ✓ does not depend on the order of the source records
 
@@ -11408,11 +11475,11 @@ Test Files  1 passed (1)
 
 前面的测试检查规则选出的数值是否正确。转换结果还要满足第 2 节的 contract，例如编号必须是六位数字、租金必须是数字或 `null`、不能出现定义之外的字段。两类检查互相补充：规则测试能发现“数值选错了”，contract 能发现“形状或类型错了”。
 
-`src/data/contracts.ts` 中的 schema 可以直接在转换测试中使用。Vitest 读取 `vite.config.ts` 中的 `@/` 别名，因此 `data/` 下的测试也能写 `import { areaWithCurrentRentSchema } from "@/data/contracts";`。最后一个测试遍历 `regionCurrentRents`，对每一行调用 `parse`：数据不符合 contract 时抛出错误，测试随之失败；全部数据通过时，测试正常结束。
+`src/data/contracts.ts` 中的 schema 可以直接在转换测试中使用。Vitest 读取 `vite.config.ts` 中的 `@/` 别名，因此 `data/` 下的测试也能写 `import { areaWithCurrentRentSchema } from "@/data/contracts";`。最后一个测试遍历 `areasWithCurrentRent`，对每一行调用 `parse`：数据不符合 contract 时抛出错误，测试随之失败；全部数据通过时，测试正常结束。
 
 ```js
 it("produces rows that satisfy the contract", () => {
-  for (const row of regionCurrentRents) {
+  for (const row of areasWithCurrentRent) {
     areaWithCurrentRentSchema.parse(row);
   }
 });
@@ -11428,12 +11495,12 @@ npm run test -- data/pipeline/first-slice.test.mjs
 
 ```text
 ✓ data/pipeline/first-slice.test.mjs (8 tests)
-  ✓ first data slice (8)
+  ✓ rent conversion (8)
     ✓ converts an MBIE（租金） record into a quarterly rent
-    ✓ converts a Stats NZ（区域） row into an area
+    ✓ converts a Stats NZ（区域） record into an area
     ✓ uses the latest observed quarter as the current rent
     ✓ calculates the 12-month change only when both quarters exist
-    ✓ publishes only Region areas that appear in the MBIE（租金） records
+    ✓ publishes only Region areas with a valid MBIE（租金） rent
     ✓ attaches the current rent to each published area
     ✓ does not depend on the order of the source records
     ✓ produces rows that satisfy the contract
