@@ -38,7 +38,7 @@ Versioned Node.js data pipeline
         │
         ├── contracts and quality report
         ├── national geography/search index
-        └── Region summary/geometry/history partitions
+        └── Region current-rents/geometry/rent-history partitions
                         │
                         ▼
 Azure Static Web Apps / CDN
@@ -112,8 +112,8 @@ V1：
 
 - Manifest。
 - Geography/search index。
-- Region summary 和 geometry。
-- Area history。
+- Region current rents 和 geometry。
+- Region rent history。
 
 V2 扩展：
 
@@ -182,8 +182,8 @@ src/
 
 - 构建阶段按官方 Region 分片并简化 geometry，不一次加载全国 SA2 polygons。
 - GeoJSON 和 JSON 通过托管平台 gzip/brotli。
-- Explore 首次加载 manifest 和紧凑地理/搜索索引；确定 Region 后再加载该 Region 的 summary 和 geometry，地图着色与列表使用同一 summary。
-- Area Detail 和 Compare 需要历史时再加载相关 Region history。
+- Explore 首次加载 manifest 和紧凑地理/搜索索引；确定 Region 后再加载该 Region 的 current rents 和 geometry，地图着色与列表使用同一份 current rents。
+- Area Detail 和 Compare 需要历史时再加载相关 Region rent history。
 - 同一资源由 TanStack Query 去重和缓存；不额外建立自定义浏览器缓存层。
 - 使用真实构建产物和数据 payload 测量后再优化，不提前加入 worker、IndexedDB 或自定义二进制格式。
 
@@ -192,7 +192,8 @@ src/
 ### 2.1 统一位置模型
 
 ```ts
-export type RentalArea = {
+// 一个 SA2 的区域信息：编号、名称，以及所属 Region 和 territorial authority。
+export type Area = {
   sa2Id: string;
   name: string;
   regionCode: string;
@@ -223,15 +224,18 @@ export type RentalArea = {
   - `bedrooms`：`ALL`、`1`、`2`、`3`、`4`、`5+`。
 - 其他卧室源值（`0`、`5`、`6`、`7`、`9`、`15`、`NA`）作为不支持的分类排除，并在质量报告中计数。
 - `bedrooms = "1"` 时，任一同比目标季度不早于 `2024-10-01` 的 `yearOverYearChange` 为 `null`；该分界季度作为 pipeline 常量记录在 quality report 中。
-- 指定切片缺失时显示缺失，不回退到其他类别。
+- 所选住宅类型和卧室数没有记录时显示缺失，不回退到其他类别。
 - 有效记录复合键为 `period + sa2Id + dwellingType + bedrooms`。
 - 重复复合键使构建失败。
 - 默认筛选使用 contract 中明确表示全部住宅类型和全部卧室的源分类。
 
 ### 2.3 标准化数据模型
 
+下列为 V1 完成时的形状。每个类型和字段在首次需要它的功能中引入，之后随功能按需扩展；尚未实现的功能不提前定义对应字段。
+
 ```ts
-export type RentalObservation = {
+// 一个 SA2、一个季度、一种住宅类型和卧室数的租金记录，直接来自一条 MBIE 记录。
+export type QuarterlyRent = {
   period: string;
   sa2Id: string;
   dwellingType: string;
@@ -241,20 +245,24 @@ export type RentalObservation = {
   geometricMeanRent: number | null;
 };
 
-export type AreaMetricSlice = {
-  dwellingType: RentalObservation["dwellingType"];
-  bedrooms: RentalObservation["bedrooms"];
+// 一个 SA2 在一种住宅类型和卧室数下的当前租金和 12 个月变化。
+export type CurrentRent = {
+  dwellingType: QuarterlyRent["dwellingType"];
+  bedrooms: QuarterlyRent["bedrooms"];
   datasetLatestPeriod: string;
   observationPeriod: string | null;
   medianRent: number | null;
-  geometricMeanRent: number | null;
   reportedBonds: number | null;
   yearOverYearChange: number | null;
 };
 
-export type AreaSummary = RentalArea & {
-  metricSlices: AreaMetricSlice[];
+// 区域信息加上它在各住宅类型和卧室数下的当前租金；列表和地图着色读取它。
+export type AreaWithCurrentRents = Area & {
+  currentRents: CurrentRent[];
 };
+
+// 一个 Region 的租金历史：以 sa2Id 为键，值是按季度从旧到新排列的租金记录。
+export type RegionRentHistory = Record<string, QuarterlyRent[]>;
 
 export type GeographyIndex = {
   regions: Array<{
@@ -283,9 +291,9 @@ export type DataManifest = {
     id: string;
     name: string;
     areaCount: number;
-    summaryUrl: string;
+    currentRentsUrl: string;
     geometryUrl: string;
-    historyUrl: string;
+    rentHistoryUrl: string;
   }>;
   rentalDataStatus: "provisional" | "final";
   rentalDataNotice: string | null;
@@ -300,7 +308,7 @@ export type DataManifest = {
 };
 ```
 
-`observationPeriod` 是该切片最后一个 `medianRent` 非空的季度；`medianRent`、`geometricMeanRent` 和 `reportedBonds` 取自该季度。没有有效观测时这些字段均为 `null`。
+`datasetLatestPeriod` 是整个 MBIE 数据集的最新季度。`observationPeriod` 是该住宅类型和卧室数最后一个 `medianRent` 非空的季度；`medianRent` 和 `reportedBonds` 取自该季度；Geometric Mean Rent 只用于历史趋势和 12 个月变化，不作为当前租金字段发布。没有有效观测时这些字段均为 `null`。
 
 `generatedAt` 来自锁定的 release metadata，不读取流水线实际运行时钟。`retrievedAt` 同样记录在 source lock 中。因此相同的锁定输入、pipeline version 和 release metadata 必须生成字节一致的 manifest 与数据文件。
 
@@ -333,8 +341,8 @@ export type DataManifest = {
 public/data/manifest.json
 public/data/releases/{version}/manifest.json
 public/data/releases/{version}/geographies/index.json
-public/data/releases/{version}/areas/summary/{regionCode}.json
-public/data/releases/{version}/areas/history/{regionCode}.json
+public/data/releases/{version}/areas/current-rents/{regionCode}.json
+public/data/releases/{version}/areas/rent-history/{regionCode}.json
 public/data/releases/{version}/geometry/regions/{regionCode}.geo.json
 public/data/releases/{version}/search/areas.json
 public/data/releases/{version}/quality-report.json
@@ -343,9 +351,9 @@ public/data/releases/{version}/quality-report.json
 - 顶层 `manifest.json`：当前数据版本、来源和版本化分片入口；发布时随 data PR 指向新版本，回滚时 revert 该 PR 恢复上一个已验证 manifest。
 - `releases/{version}/manifest.json`：随不可变 bundle 保存的同版本 manifest。
 - `geographies/index.json`：Region、territorial authority 和分片定位。
-- `summary/{regionCode}.json`：区域身份、上级地理和当前 metric slices；列表、地图着色和详情共用这一份当前指标，不另外生成地图指标文件。
-- `history/{regionCode}.json`：以 `sa2Id` 索引的季度观测。
-- `regions/{regionCode}.geo.json`：Region 边界和稳定 feature id；浏览器按 `sa2Id` 与 summary 连接。
+- `current-rents/{regionCode}.json`：`AreaWithCurrentRents[]`，即区域信息和当前租金；列表、地图着色和详情共用这一份当前租金，不另外生成地图指标文件。
+- `rent-history/{regionCode}.json`：`RegionRentHistory`，即以 `sa2Id` 为键的季度租金记录。
+- `regions/{regionCode}.geo.json`：Region 边界和稳定 feature id；浏览器按 `sa2Id` 与 current rents 连接。
 - `search/areas.json`：全国标准化搜索索引。
 - `quality-report.json`：流水线发布证据。
 
@@ -470,7 +478,7 @@ Authorization: Bearer <supabase-jwt>
 - 只有两个版本不同时才显示更新入口。
 - 用户上次查看的版本和 latest period 来自 `user_release_state`；当前值来自静态 manifest。
 - 每个 saved area 以 `last_seen_latest_period` 和自身 `saved_observation_period` 中较晚者作为 baseline。
-- 关注区域的指标使用当前发布的同一静态 history contract，按 baseline 和 current latest period 读取和比较。
+- 关注区域的指标使用当前发布的同一静态 rent history contract，按 baseline 和 current latest period 读取和比较。
 - 没有 last seen state 时只建立当前基线，不生成变化结论。
 - baseline 与 current latest period 相同时不生成该区域的变化结论。
 - 两个版本的 latest period 相同时只显示数据修订说明，不计算虚构的期间变化。
@@ -721,7 +729,7 @@ V2 增加：
 | 路由与状态 | React Router、TanStack Query；Zustand 仅用于不进入 URL 的临时交互状态 |
 | UI | Tailwind CSS、按需 shadcn/ui、Lucide icons |
 | 地图与图表 | react-map-gl/maplibre、MapLibre GL JS、MapTiler Cloud、Recharts |
-| 静态数据 | 全国紧凑索引 + Region summary/geometry/history 分片，通过 data PR 版本化提交 |
+| 静态数据 | 全国紧凑索引 + Region current-rents/geometry/rent-history 分片，通过 data PR 版本化提交 |
 | V2 认证与数据库 | Supabase Auth + PostgreSQL + RLS |
 | V2 API | Azure Static Web Apps managed Functions，仅用于账户删除等已批准特权操作 |
 | V2 云端数据 | Saved areas、saved searches、user release state |

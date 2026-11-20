@@ -265,17 +265,17 @@ GeoJSON、坐标系统、专题地图、时序图表、bundle 与数据 payload 
 
 **主要内容**
 
-- 根据 Step 06–07 证据固定 V1 TypeScript/Zod contracts。
-- 转换一个代表性 Region 的 summary、geometry 和 history，并作为首个版本化数据切片提交，使 Preview 可以读取。
-- 建立 manifest、data repository 和统一 slice selector。
-- 用同一数据切片驱动区域列表、地图选择和最小详情。
+- 根据 Step 06–07 证据，只为本步页面定义 TypeScript/Zod contracts：区域信息和默认分类（`ALL / ALL`）的当前租金。
+- 转换一个代表性 Region 的 current rents 和 geometry，并作为首个版本化数据切片提交，使 Preview 可以读取。
+- 建立 manifest 和 data repository。
+- 用同一份当前租金驱动区域列表、地图选择和最小详情。
 - 显示来源、数据周期、observation period、provisional 和缺失状态。
 - 使 Home 与 Methodology 的公开说明和 V1 产品定位一致。
 - 用正式数据页面替代 spike 页面，并移除 spike 路由及其静态数据。
 
 **知识点**
 
-数据 contract、静态 repository、纵向切片、来源追踪和 UI 数据状态。
+数据 contract、按需演进的数据模型、静态 repository、纵向切片、来源追踪和 UI 数据状态。
 
 **测试与验收**
 
@@ -294,7 +294,8 @@ fixture、transform、contract 和页面测试通过；源值可逐项追踪到 
 **主要内容**
 
 - 完成分类、拒绝、join、geometry、同比和缺失处理。
-- 生成 manifest、geography/search index、Region summary/geometry/history 和 quality report。
+- 扩展 contracts：当前租金覆盖全部发布分类，并加入租金历史。
+- 生成 manifest、geography/search index、Region current-rents/geometry/rent-history 和 quality report。
 - 建立 source lock、SHA-256、pipeline version 和 immutable release bundle。
 - 核查主要城市、较小中心和稀疏区域，并确认 Chatham Islands 等没有 MBIE 观测的区域被正确排除。
 
@@ -349,6 +350,7 @@ bundle、manifest、quality report 和 Methodology 相互一致；锁定输入�
 
 - 组合 Region 导航、搜索、地图、区域列表和详情入口。
 - 同步 URL、视口、选择、Dwelling Type、Bedroom Category、Maximum Weekly Rent、图层和排序。
+- 建立统一的分类选择规则，让地图、列表和详情读取同一住宅类型和卧室数的当前租金。
 - 支持最新租金、同比、Reported Bonds 和数据可用性图层/筛选。
 - 完成桌面与移动布局及 loading、empty、partial、error。
 
@@ -513,7 +515,7 @@ Authentication、authorisation、PostgreSQL migration、RLS、Data API 和 serve
 
 - 建立 `saved_searches` 和 `user_release_state`。
 - 完成 Saved 与 Account 页面。
-- 使用统一 history contract 比较 last seen 与 current data version。
+- 使用统一 rent history contract 比较 last seen 与 current data version。
 - 核查 managed Functions 当时支持的 runtime、HTTP trigger 和本地/Preview 边界。
 - 建立受保护的账户删除 Function。
 - 完成清除全部云端数据和 session 的行为。
