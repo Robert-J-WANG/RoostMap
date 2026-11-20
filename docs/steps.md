@@ -11513,6 +11513,298 @@ Test Files  1 passed (1)
 
 ### 4. 生成第一个版本化 Waikato release
 
+第 3 节的转换函数已经在 fixture 上得到正确结果，但页面还没有任何可以读取的正式文件。本节用真实源文件为 Waikato 生成一个带版本号的数据目录，其中包含当前租金、边界和 manifest，并且每个文件都能追溯到生成它的源文件。
+
+#### 4.1 锁定源文件
+
+生成的数值必须能追溯到确切的源文件。MBIE（租金） 数据处于 provisional 状态，以后重新下载同名文件，内容可能已经修订。因此，生成之前先把这次使用的源文件“锁定”：记录来源、许可证、下载日期和 SHA-256，生成脚本运行时重新计算 SHA-256，与记录不一致就停止。
+
+这些信息保存在 `data/source-lock.json`。其中 `release` 记录本次 release 的版本和生成时间：
+
+```json
+{
+  "release": {
+    "version": "2026-04-01.1",
+    "generatedAt": "2026-11-21T00:00:00.000Z"
+  },
+  "sources": [
+    {
+      "id": "mbie-rental",
+      "name": "MBIE Rental Bond Data: Detailed Quarterly Tenancy",
+      "url": "https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/",
+      "licence": "Creative Commons Attribution 3.0 New Zealand",
+      "status": "provisional",
+      "retrievedAt": "2026-10-27",
+      "path": "data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
+      "sha256": "b40a39a0ce899362df5da729ed38cf8962cc31058910693aa2301feb9d0be80e"
+    }
+  ]
+}
+```
+
+`sources` 中还有一项 `stats-sa2-2019`，字段相同，记录 Stats NZ（区域） 的来源和许可证（Creative Commons Attribution 4.0 International，来自下载文件附带的元数据）。
+
+- 版本号由数据最新季度和发布序号组成：`2026-04-01.1` 表示数据截至 `2026-04-01` 的第一次发布，同一季度重新发布时序号加 1。
+- `generatedAt` 写在锁定文件中，而不是读取运行时的系统时间。这样相同的源文件和锁定信息，每次都生成完全相同的文件。
+- Stats NZ（区域） 记录的是脚本实际读取的 `.gpkg` 文件的 SHA-256，而不是 Step 06 记录的 ZIP 下载包，因为生成脚本读取的是解压后的文件。
+
+#### 4.2 用真实源文件生成 Waikato 当前租金
+
+第 3 节的转换函数只依赖输入的记录，所以生成脚本只需负责读取文件、调用这些函数并写出结果。转换函数原来所在的 `first-slice.mjs` 现在由正式的生成脚本使用，因此改名为 `current-rents.mjs`，名字直接说明它计算什么，测试文件同步改名为 `current-rents.test.mjs`。
+
+生成脚本是 `data/pipeline/build-release.mjs`。读取源文件时先核对 SHA-256：
+
+```js
+async function readLockedSource(sourceId) {
+  const source = sourceLock.sources.find((item) => item.id === sourceId);
+  const url = new URL(source.path, repositoryRootUrl);
+  const content = await readFile(url);
+  const sha256 = createHash("sha256").update(content).digest("hex");
+
+  if (sha256 !== source.sha256) {
+    throw new Error(
+      `${sourceId} does not match data/source-lock.json: expected ${source.sha256}, got ${sha256}`,
+    );
+  }
+
+  return { url, content };
+}
+```
+
+`createHash` 来自 Node.js 的 `node:crypto`，计算结果与 Step 06 使用的 `shasum -a 256` 相同。
+
+核对通过后，脚本依次完成三件事：
+
+```js
+// 读取全部 MBIE（租金） 记录，取得数据集最新季度。
+const mbieRecords = parse(mbieFile.content, {
+  bom: true,
+  columns: true,
+  skip_empty_lines: true,
+});
+const datasetLatestPeriod = getLatestPeriod(mbieRecords);
+
+// 读取 Waikato 的全部 SA2，计算可发布区域的当前租金。
+const statsNzRecords = readRegionRecords(statsNzFile.url, regionCode);
+const areasWithCurrentRent = buildAreasWithCurrentRent({
+  statsNzRecords,
+  mbieRecords,
+  datasetLatestPeriod,
+});
+```
+
+- MBIE（租金） CSV 文件开头有 UTF-8 BOM。`bom: true` 让 `csv-parse` 去掉它，否则第一个字段名会带上这个不可见字符，`record.TimeFrame` 就读不到值。
+- 数据集最新季度由 `getLatestPeriod` 从全部记录中找出最大的 `TimeFrame`，不手写在脚本中，源文件更新后它会随之变化。季度是 `YYYY-MM-DD` 文本，文本比较的顺序就是时间顺序。
+- `readRegionRecords` 用 Step 07 使用过的 `node:sqlite` 只读打开 GeoPackage，查询 `REGC2019_V1_00 = "03"` 的 SA2，按编号排序。查询结果的字段名与 GeoPackage 相同，可以直接交给 `buildAreasWithCurrentRent`。
+
+脚本中的 Region 编号写在 `regionCodes = ["03"]` 中，每个 Region 生成一组文件。本步只生成 Waikato。
+
+当前租金写入 `areas/current-rents/03.json`，内容就是 `buildAreasWithCurrentRent` 返回的数组。
+
+#### 4.3 生成同一组区域的边界
+
+地图需要边界，而且地图上的区域必须与列表中的区域完全相同。因此边界文件只包含可发布区域：用当前租金中的 `sa2Id` 筛选 GeoPackage 记录，再逐条转换。
+
+GeoPackage 中的边界转换成 GeoJSON 的方法沿用 Step 07：去掉 GeoPackage 头部和 envelope，再用 `wkx` 解析 WKB。这部分逻辑放在 `data/pipeline/geometry.mjs`，并增加一项检查：边界必须是 `Polygon` 或 `MultiPolygon`，否则直接报错，不自动修复。
+
+```js
+export function convertToGeometryFeature(record) {
+  const sa2Id = record.SA22019_V1_00;
+  const geometry = wkx.Geometry.parse(extractGeoPackageWkb(record.geom)).toGeoJSON();
+
+  if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") {
+    throw new Error(`SA2 ${sa2Id} has unsupported geometry type ${geometry.type}`);
+  }
+
+  return {
+    type: "Feature",
+    id: sa2Id,
+    geometry,
+    properties: { sa2Id },
+  };
+}
+```
+
+feature 只保留 `sa2Id`。区域名称等信息已经在当前租金文件中，地图通过 `sa2Id` 与它连接，不在两个文件中重复保存。
+
+生成脚本中的调用：
+
+```js
+const publishedSa2Ids = new Set(areasWithCurrentRent.map((area) => area.sa2Id));
+const geometry = {
+  type: "FeatureCollection",
+  features: statsNzRecords
+    .filter((record) => publishedSa2Ids.has(record.SA22019_V1_00))
+    .map((record) => convertToGeometryFeature(record)),
+};
+```
+
+边界写入 `geometry/regions/03.geo.json`。
+
+#### 4.4 写出 manifest
+
+页面需要一个固定入口来找到当前版本的文件，这个入口就是 manifest。它只包含页面现在需要的信息：版本、生成时间、数据最新季度，以及每个 Region 的区域数量和两个文件的地址。
+
+```js
+const manifest = {
+  version,
+  generatedAt,
+  latestPeriod: datasetLatestPeriod,
+  partitions,
+};
+await writeJson(new URL("manifest.json", releaseUrl), manifest);
+await writeJson(new URL("manifest.json", publicDataUrl), manifest);
+```
+
+同一份 manifest 写到两个位置：
+
+```text
+public/data/releases/2026-04-01.1/manifest.json   随这个版本目录一起保存
+public/data/manifest.json                         页面读取的固定入口，指向当前版本
+```
+
+文件地址以 `/data/` 开头，因为 Vite 把 `public/` 目录中的文件按根路径提供，`public/data/manifest.json` 在页面中的地址就是 `/data/manifest.json`。
+
+`.gitignore` 原来忽略 `public/data/` 下的全部生成文件，现在需要提交 release，因此增加两条例外：
+
+```text
+!public/data/manifest.json
+!public/data/releases/**
+```
+
+生成命令加入 `package.json`：
+
+```json
+"data:release": "node data/pipeline/build-release.mjs"
+```
+
+运行：
+
+```bash
+npm run data:release
+```
+
+输出为：
+
+```text
+{
+  "version": "2026-04-01.1",
+  "latestPeriod": "2026-04-01",
+  "partitions": [
+    {
+      "id": "03",
+      "name": "Waikato Region",
+      "areaCount": 222,
+      "currentRentsUrl": "/data/releases/2026-04-01.1/areas/current-rents/03.json",
+      "geometryUrl": "/data/releases/2026-04-01.1/geometry/regions/03.geo.json"
+    }
+  ]
+}
+```
+
+数据最新季度是从源文件中找出的 `2026-04-01`，可发布区域 222 个，与 Step 07 核对的 Waikato 可发布数量一致。
+
+为了确认相同输入总是得到相同文件，计算全部输出的 SHA-256，再运行一次 `npm run data:release` 并重新计算：
+
+```bash
+find public/data/manifest.json public/data/releases -type f | sort | xargs shasum -a 256
+```
+
+两次结果完全相同：
+
+```text
+58b64635f674c576134df4b7c891ca231a09fc2dff7d1d3fad9032bde45d8b8b  public/data/manifest.json
+bd086972677ce2816636466c016726feee6ec0cec0dfb8d80800410edf7ba75b  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+aa347c98c35d3a698677c5a6829d078f4254123bb4ebc04d5ad5d1c3ca77846b  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+58b64635f674c576134df4b7c891ca231a09fc2dff7d1d3fad9032bde45d8b8b  public/data/releases/2026-04-01.1/manifest.json
+```
+
+两个 manifest 的 SHA-256 相同，说明顶层入口与版本目录中的 manifest 内容一致。
+
+#### 4.5 用测试检查生成的文件
+
+生成的文件要满足三点：每一行符合第 2 节的 contract；manifest、当前租金和边界描述的是同一组区域；真实数据的计算结果与 3.1 手工得到的结果一致。新增的 `data/pipeline/release.test.mjs` 读取生成的文件来检查这三点。
+
+测试按页面请求文件时使用的路径读取，例如 `/data/manifest.json`，所以先写一个读取函数，再从 manifest 中找到 Waikato 的两个文件：
+
+```js
+function readPublishedJson(path) {
+  return JSON.parse(
+    readFileSync(new URL(`../../public${path}`, import.meta.url), "utf8"),
+  );
+}
+
+const manifest = readPublishedJson("/data/manifest.json");
+const [waikato] = manifest.partitions;
+const waikatoCurrentRents = readPublishedJson(waikato.currentRentsUrl);
+const waikatoGeometry = readPublishedJson(waikato.geometryUrl);
+```
+
+其中两个测试检查文件之间的一致性和 Greensboro 的数值：
+
+```js
+it("uses the same areas in the manifest, current rents and geometry", () => {
+  const sa2Ids = waikatoCurrentRents.map((area) => area.sa2Id);
+  const featureIds = waikatoGeometry.features.map((feature) => feature.id);
+
+  expect(waikatoCurrentRents).toHaveLength(waikato.areaCount);
+  expect(featureIds).toEqual(sa2Ids);
+});
+
+it("keeps the Greensboro values from the source records", () => {
+  const greensboro = waikatoCurrentRents.find((area) => area.sa2Id === "179900");
+
+  expect(greensboro).toEqual({
+    sa2Id: "179900",
+    name: "Greensboro",
+    regionCode: "03",
+    regionName: "Waikato Region",
+    territorialAuthorityCode: "016",
+    territorialAuthorityName: "Hamilton City",
+    currentRent: {
+      datasetLatestPeriod: "2026-04-01",
+      observationPeriod: "2026-04-01",
+      medianRent: 350,
+      reportedBonds: 171,
+      yearOverYearChange: 0.0128,
+    },
+  });
+});
+```
+
+另外两个测试检查 manifest 中的文件地址都指向同一个版本目录，以及每一行都通过 `areaWithCurrentRentSchema`。Greensboro 的期望值就是 3.1 从源记录中手工得到的那一行，这个测试把手工核对的结果与真实生成的文件连接起来。
+
+运行转换测试和 release 测试：
+
+```bash
+npm run test -- data/pipeline
+```
+
+输出为：
+
+```text
+✓ data/pipeline/current-rents.test.mjs (8 tests)
+✓ data/pipeline/release.test.mjs (4 tests)
+
+Test Files  2 passed (2)
+     Tests  12 passed (12)
+```
+
+最后确认生成的文件没有被 `.gitignore` 忽略：
+
+```bash
+git status --short public/data
+```
+
+```text
+?? public/data/manifest.json
+?? public/data/releases/
+```
+
+两个位置都显示为未跟踪文件，说明它们可以提交。
+
+到这里，Waikato 已经有一个可以提交的版本化 release：222 个区域的当前租金通过 contract 检查，边界与当前租金使用同一组 SA2，Greensboro 的数值与源记录一致，相同输入生成相同文件。这个结论只覆盖 Waikato 的当前租金和边界；页面还没有读取这些文件。
+
 ### 5. 建立 manifest 驱动的数据 repository
 
 ### 6. 用同一份当前租金连接 Explore 列表与地图

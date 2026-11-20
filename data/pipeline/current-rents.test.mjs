@@ -11,7 +11,7 @@ import {
   buildCurrentRent,
   convertToArea,
   convertToQuarterlyRent,
-} from "./first-slice.mjs";
+} from "./current-rents.mjs";
 
 /* -------------- 读取 fixture -------------- */
 
