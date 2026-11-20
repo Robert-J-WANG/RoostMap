@@ -164,7 +164,7 @@ Geometry
 ### 2.3 数据解释边界
 
 - Median Rent 表示选定季度和租房类别的每周租金中位数。
-- Geometric Mean Rent 用于历史趋势和同比计算。
+- Geometric Mean Rent 用于历史趋势和 12 个月变化计算。
 - Total Bonds 在产品中显示为 Reported Bonds，只解释数据覆盖，不转换成准确度评分或房源数量。
 - 最新周期可能是 provisional；相关页面同时显示 dataset latest period、observation period 和状态说明。
 - 历史缺失值不插值，旧观测不能被表述为当前市场价格。
@@ -252,7 +252,7 @@ V1 排序：
 | 2–3 个历史点 | 显示独立数据点 |
 | 4 个以上历史点 | 显示趋势线 |
 | 中间季度缺失 | 折线断开 |
-| 无法计算同比 | 显示 `N/A` |
+| 无法计算 12 个月变化 | 显示 `N/A` |
 
 MBIE 不发布 bonds 少于 5 的组合，个别已发布记录的租金也可能为空。产品不单独区分这些情况，统一按缺失观测显示，并在 Methodology 说明隐私抑制规则。
 
@@ -322,7 +322,7 @@ Methodology 从 manifest 和版本化静态内容显示：
 - MBIE 和 Stats NZ 的来源、归属、许可证和校验值。
 - 官方发布日期、项目下载日期、latest period 和 pipeline version。
 - private bond lodgements、非实时房源、隐私抑制和 provisional 限制。
-- Median Rent、Geometric Mean、Reported Bonds 和同比公式。
+- Median Rent、Geometric Mean、Reported Bonds 和 12 个月变化公式。
 - join、分类、缺失值、分片和质量报告摘要。
 
 Home、Explore、Area Detail 和 Compare 同时提供简短上下文说明，不要求用户先阅读整页 Methodology 才能正确解释指标。

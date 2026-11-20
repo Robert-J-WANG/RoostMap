@@ -223,7 +223,7 @@ export type Area = {
   - `dwellingType`：`ALL`、`Apartment`、`Boarding House`、`Flat`、`House`、`Room`。
   - `bedrooms`：`ALL`、`1`、`2`、`3`、`4`、`5+`。
 - 其他卧室源值（`0`、`5`、`6`、`7`、`9`、`15`、`NA`）作为不支持的分类排除，并在质量报告中计数。
-- `bedrooms = "1"` 时，任一同比目标季度不早于 `2024-10-01` 的 `yearOverYearChange` 为 `null`；该分界季度作为 pipeline 常量记录在 quality report 中。
+- `bedrooms = "1"` 时，任一 12 个月变化目标季度不早于 `2024-10-01` 的 `yearOverYearChange` 为 `null`；该分界季度作为 pipeline 常量记录在 quality report 中。
 - 所选住宅类型和卧室数没有记录时显示缺失，不回退到其他类别。
 - 有效记录复合键为 `period + sa2Id + dwellingType + bedrooms`。
 - 重复复合键使构建失败。

@@ -293,7 +293,7 @@ fixture、transform、contract 和页面测试通过；源值可逐项追踪到 
 
 **主要内容**
 
-- 完成分类、拒绝、join、geometry、同比和缺失处理。
+- 完成分类、拒绝、join、geometry、12 个月变化和缺失处理。
 - 扩展 contracts：当前租金覆盖全部发布分类，并加入租金历史。
 - 生成 manifest、geography/search index、Region current-rents/geometry/rent-history 和 quality report。
 - 建立 source lock、SHA-256、pipeline version 和 immutable release bundle。
@@ -351,7 +351,7 @@ bundle、manifest、quality report 和 Methodology 相互一致；锁定输入�
 - 组合 Region 导航、搜索、地图、区域列表和详情入口。
 - 同步 URL、视口、选择、Dwelling Type、Bedroom Category、Maximum Weekly Rent、图层和排序。
 - 建立统一的分类选择规则，让地图、列表和详情读取同一住宅类型和卧室数的当前租金。
-- 支持最新租金、同比、Reported Bonds 和数据可用性图层/筛选。
+- 支持最新租金、12 个月变化、Reported Bonds 和数据可用性图层/筛选。
 - 完成桌面与移动布局及 loading、empty、partial、error。
 
 **知识点**
@@ -376,7 +376,7 @@ Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
 
 - 显示区域身份、最新观测、period、provisional 和覆盖信息。
 - 绘制 Geometric Mean Rent 与 Reported Bonds 历史。
-- 提供同比、tooltip、文字摘要和数据表。
+- 提供 12 个月变化、tooltip、文字摘要和数据表。
 - 处理旧观测、缺失季度、稀疏切片和加载失败。
 
 **知识点**
@@ -385,7 +385,7 @@ Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
 
 **测试与验收**
 
-图表、文字和数据表一致；同比公式经过单元测试；缺失季度不连线或错误表述。
+图表、文字和数据表一致；12 个月变化公式经过单元测试；缺失季度不连线或错误表述。
 
 **Git 边界**
 
