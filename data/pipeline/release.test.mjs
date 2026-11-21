@@ -3,7 +3,11 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { areaWithCurrentRentSchema } from "@/data/contracts";
+import {
+  areaWithCurrentRentSchema,
+  manifestSchema,
+  regionGeometrySchema,
+} from "@/data/contracts";
 
 // 读取 public 目录中的 JSON；参数是页面请求时使用的路径，例如 /data/manifest.json。
 function readPublishedJson(path) {
@@ -25,10 +29,12 @@ describe("data release", () => {
     }
   });
 
-  it("publishes current rents that satisfy the contract", () => {
+  it("publishes a manifest, current rents and geometry that satisfy the contract", () => {
+    manifestSchema.parse(manifest);
     for (const row of waikatoCurrentRents) {
       areaWithCurrentRentSchema.parse(row);
     }
+    regionGeometrySchema.parse(waikatoGeometry);
   });
 
   it("uses the same areas in the manifest, current rents and geometry", () => {

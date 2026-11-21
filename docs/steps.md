@@ -11807,6 +11807,264 @@ git status --short public/data
 
 ### 5. 建立 manifest 驱动的数据 repository
 
+第 4 节生成了 manifest、当前租金和边界文件，但前端还没有代码读取它们。Step 07 的 `sample-data.ts` 读取样例文件时，只用 `as` 和类型标注告诉 TypeScript“数据就是这种形状”，并不检查文件内容，这正是 2.1 指出的问题。本节建立前端的数据读取层：先读 manifest，再按其中的地址读取 Region 文件，每份数据都通过 contract 检查后才交给页面。这一层称为 data repository，页面只通过它取得数据，不直接处理文件地址和原始 JSON。
+
+#### 5.1 从 schema 推导 TypeScript 类型
+
+读取函数要声明返回值的类型。如果再手写一套 TypeScript `type`，它与 schema 描述的是同一份数据，以后只要改了一边忘了另一边，类型检查和运行时检查就会互相矛盾。
+
+Zod 可以从 schema 推导出类型：
+
+```ts
+export type AreaWithCurrentRent = z.infer<typeof areaWithCurrentRentSchema>;
+```
+
+- `typeof areaWithCurrentRentSchema` 取得 schema 这个对象的 TypeScript 类型；
+- `z.infer<...>` 从中读出“通过这个 schema 检查后的数据是什么形状”，得到的类型与手写的 `{ sa2Id: string; name: string; ...; currentRent: { medianRent: number | null; ... } }` 相同。
+
+这样，同一份 schema 承担两种检查，它们发生在不同的阶段，拦住不同的错误：
+
+```text
+         开发者这边（编译时）                    用户这边（运行时）
+写代码 ──→ TS 类型检查 ──→ 构建 ──→ 部署 ──→ 浏览器运行 ──→ schema 检查数据
+           拦住：代码错误                                   拦住：数据错误
+```
+
+- **TS 类型**只在编译时存在。编辑器的提示和 `npm run build` 中的 `tsc -b` 用它检查我们写的代码；构建时类型被删除，浏览器运行的 JavaScript 中没有它。例如组件直接写 `area.currentRent.medianRent.toFixed(0)`，TS 会提示 `medianRent` 可能为 `null`，要求先处理没有租金的区域。`npm run dev` 和 `npm run test` 只去掉类型、不做类型检查，所以类型错误要靠编辑器和 `tsc -b` 发现。
+- **schema** 是真实运行的 JavaScript，检查从外部进入的数据。例如数据文件把租金写成字符串 `"350"`，TS 无法发现，因为文件内容在运行时才读到；schema 会在数据进入页面之前拒绝它。数据文件可以在代码之外单独重新生成，所以这一道检查不能省。
+
+类型由 schema 推导而来，修改 schema 时类型自动随之改变：字段改名后，所有使用旧字段的代码都会在类型检查中报错，两种检查不会分叉。
+
+#### 5.2 为 manifest 和边界补充 contract
+
+页面要读取的三个文件中，只有当前租金已经有 contract。manifest 和边界也要在进入页面前检查，因此在 `src/data/contracts.ts` 中补充它们的 schema，并同样用 `z.infer` 导出类型。
+
+manifest 的 schema 只包含第 4 节生成的字段：
+
+```ts
+export const manifestPartitionSchema = z
+  .object({
+    id: nonEmptyStringSchema,
+    name: nonEmptyStringSchema,
+    areaCount: z.number().int().positive(),
+    currentRentsUrl: nonEmptyStringSchema,
+    geometryUrl: nonEmptyStringSchema,
+  })
+  .strict();
+
+export const manifestSchema = z
+  .object({
+    version: nonEmptyStringSchema,
+    generatedAt: z.iso.datetime(),
+    latestPeriod: periodSchema,
+    partitions: z.array(manifestPartitionSchema).min(1),
+  })
+  .strict();
+
+export type ManifestPartition = z.infer<typeof manifestPartitionSchema>;
+export type DataManifest = z.infer<typeof manifestSchema>;
+```
+
+`z.iso.datetime()` 要求 `generatedAt` 是 ISO 格式的时间，例如 `2026-11-21T00:00:00.000Z`。Region 单独定义成 `manifestPartitionSchema`，因为读取 Region 文件的函数要以一个 Region 作为参数，它需要自己的类型。
+
+边界的 schema 按 GeoJSON 的结构逐层描述：一个点是经度和纬度两个数字，一个环是点的数组，Polygon 是环的数组，MultiPolygon 是 Polygon 的数组。
+
+```ts
+const positionSchema = z.tuple([z.number(), z.number()]);
+const linearRingSchema = z.array(positionSchema);
+
+const sa2GeometrySchema = z.discriminatedUnion("type", [
+  z
+    .object({ type: z.literal("Polygon"), coordinates: z.array(linearRingSchema) })
+    .strict(),
+  z
+    .object({
+      type: z.literal("MultiPolygon"),
+      coordinates: z.array(z.array(linearRingSchema)),
+    })
+    .strict(),
+]);
+
+export const regionGeometrySchema = z
+  .object({
+    type: z.literal("FeatureCollection"),
+    features: z.array(
+      z
+        .object({
+          type: z.literal("Feature"),
+          id: sa2IdSchema,
+          geometry: sa2GeometrySchema,
+          properties: z.object({ sa2Id: sa2IdSchema }).strict(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type RegionGeometry = z.infer<typeof regionGeometrySchema>;
+```
+
+- `z.tuple([z.number(), z.number()])` 表示恰好两个数字的数组。
+- `z.literal("Polygon")` 要求值恰好是这个字符串。
+- `z.discriminatedUnion("type", [...])` 表示“二选一”：按 `type` 字段的值决定使用哪个 schema，`type` 为 `"Polygon"` 时坐标多一层或少一层都会被拒绝。
+- SA2 编号的规则原来直接写在区域信息中，现在边界也要使用，因此提取为共享的 `sa2IdSchema`。
+
+坐标结构完整描述以后，推导出的 `RegionGeometry` 与地图库使用的 GeoJSON 类型结构一致，交给地图时不需要再用 `as`。
+
+生成数据的脚本和读取数据的页面应当遵守同一份 contract。第 4 节的 release 测试原来只检查当前租金，现在改为同时检查 manifest 和边界：
+
+```js
+it("publishes a manifest, current rents and geometry that satisfy the contract", () => {
+  manifestSchema.parse(manifest);
+  for (const row of waikatoCurrentRents) {
+    areaWithCurrentRentSchema.parse(row);
+  }
+  regionGeometrySchema.parse(waikatoGeometry);
+});
+```
+
+#### 5.3 编写读取函数
+
+repository 放在 `src/data/repository.ts`。Explore 和 Area Detail 都会读取同一份数据，因此它不属于某一个页面，而放在 `src/data/` 中，与 contract 在一起。
+
+三个读取函数的步骤相同：请求文件、检查 HTTP 状态、用 schema 检查内容、返回带类型的数据。这些步骤写成一个共用的函数 `fetchJson`：
+
+```ts
+async function fetchJson<T>(
+  url: string,
+  schema: z.ZodType<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Could not load ${url} (HTTP ${response.status})`);
+  }
+
+  const result = schema.safeParse(await response.json());
+
+  if (!result.success) {
+    throw new Error(
+      `${url} does not match the data contract:\n${z.prettifyError(result.error)}`,
+    );
+  }
+
+  return result.data;
+}
+```
+
+- `<T>` 是泛型参数，代表“这次读取的数据类型”。传入 `manifestSchema` 时 `T` 就是 `DataManifest`，传入边界 schema 时就是 `RegionGeometry`，同一个函数可以返回不同的类型。
+- `fetch` 在文件不存在时不会抛出错误，而是返回 `ok` 为 `false` 的响应，所以要自己检查状态。
+- 数据不符合 contract 时，用 `safeParse` 取得错误，再抛出一个带文件地址的错误。`z.prettifyError` 把 Zod 的错误整理成逐个字段的说明，出错时能直接看到是哪个文件、哪个字段。
+- `signal` 是 `AbortSignal`。用户切换 Region 时，旧的请求不再需要，调用方可以通过它取消请求。
+
+三个读取函数只指定文件地址和 schema：
+
+```ts
+const manifestUrl = "/data/manifest.json";
+
+export function fetchManifest(signal?: AbortSignal): Promise<DataManifest> {
+  return fetchJson(manifestUrl, manifestSchema, signal);
+}
+
+export function fetchRegionCurrentRents(
+  partition: ManifestPartition,
+  signal?: AbortSignal,
+): Promise<AreaWithCurrentRent[]> {
+  return fetchJson(
+    partition.currentRentsUrl,
+    z.array(areaWithCurrentRentSchema),
+    signal,
+  );
+}
+
+export function fetchRegionGeometry(
+  partition: ManifestPartition,
+  signal?: AbortSignal,
+): Promise<RegionGeometry> {
+  return fetchJson(partition.geometryUrl, regionGeometrySchema, signal);
+}
+```
+
+只有 manifest 的地址写在代码中。两个 Region 文件的地址都从 manifest 的 Region 中取得，发布新版本时页面代码不需要修改。
+
+#### 5.4 测试读取函数
+
+读取函数要在三种情况下行为正确：正常读取、文件不存在、内容不符合 contract。测试不发出真实请求，而是用 Vitest 的 `vi.stubGlobal` 把全局的 `fetch` 换成一个模拟函数，让它返回指定的 JSON 和 HTTP 状态；每个测试结束后用 `vi.unstubAllGlobals` 恢复：
+
+```ts
+function mockFetchResponse(body: unknown, status = 200) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })),
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+```
+
+三个测试分别检查：
+
+```ts
+it("reads the manifest from its fixed address", async () => {
+  mockFetchResponse(manifest);
+
+  await expect(fetchManifest()).resolves.toEqual(manifest);
+  expect(fetch).toHaveBeenCalledWith("/data/manifest.json", {
+    signal: undefined,
+  });
+});
+
+it("reports the file address when a request fails", async () => {
+  mockFetchResponse({}, 404);
+
+  await expect(fetchManifest()).rejects.toThrow(
+    "Could not load /data/manifest.json (HTTP 404)",
+  );
+});
+
+// 租金写成了字符串 "350"，不符合 contract。
+it("rejects a data file that does not match the contract", async () => {
+  mockFetchResponse([/* Greensboro 的一行，medianRent 为 "350" */]);
+
+  await expect(
+    fetchRegionCurrentRents(manifest.partitions[0]),
+  ).rejects.toThrow(
+    "/data/releases/2026-04-01.1/areas/current-rents/03.json does not match the data contract",
+  );
+});
+```
+
+读取函数返回 Promise，所以测试使用 `async`，并用 `resolves` 和 `rejects` 检查 Promise 成功时的值和失败时的错误。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test -- --reporter=verbose
+npm run build
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ data/pipeline/release.test.mjs > data release > publishes a manifest, current rents and geometry that satisfy the contract 134ms
+✓ src/data/repository.test.ts > data repository > reads the manifest from its fixed address 16ms
+✓ src/data/repository.test.ts > data repository > reports the file address when a request fails 2ms
+✓ src/data/repository.test.ts > data repository > rejects a data file that does not match the contract 5ms
+
+Test Files  8 passed (8)
+     Tests  33 passed (33)
+```
+
+`npm run build` 中的 `tsc -b` 通过，说明三个读取函数的返回值与 `z.infer` 推导出的类型一致。构建输出中还有一条 JavaScript chunk 超过 500 kB 的提示。它关系到整个应用的打包体积，本节没有处理。
+
+release 测试用新的 schema 检查了第 4 节生成的 manifest、222 行当前租金和 222 个区域的边界，耗时 134 ms。完整检查边界坐标的成本可以接受，因此不需要简化边界 schema。
+
+这些结果说明：读取函数能取得通过 contract 检查的数据，请求失败和数据错误都会给出带文件地址的错误，生成的文件与页面使用同一份 contract。页面本身还没有使用这些函数。
+
 ### 6. 用同一份当前租金连接 Explore 列表与地图
 
 ### 7. 建立最小 Area Detail 数据链路

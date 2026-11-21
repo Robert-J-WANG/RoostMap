@@ -88,7 +88,13 @@ console.log(JSON.stringify({ version, latestPeriod: datasetLatestPeriod, partiti
 
 /* -------------- 辅助函数 -------------- */
 
-// 读取 source lock 中的一个源文件；SHA-256 与锁定值不同则停止。
+/**
+ * 读取 source lock 中的一个源文件，并确认它的 SHA-256 与锁定值相同。
+ *
+ * @param {string} sourceId source lock 中的来源编号，例如 "mbie-rental"
+ * @returns {Promise<{ url: URL, content: Buffer }>} 文件位置和文件内容
+ * @throws {Error} SHA-256 与锁定值不同时停止生成
+ */
 async function readLockedSource(sourceId) {
   const source = sourceLock.sources.find((item) => item.id === sourceId);
   const url = new URL(source.path, repositoryRootUrl);
@@ -104,7 +110,13 @@ async function readLockedSource(sourceId) {
   return { url, content };
 }
 
-// 返回 MBIE（租金） 记录中最新的季度。季度是 YYYY-MM-DD 文本，文本顺序就是时间顺序。
+/**
+ * 找出 MBIE（租金） 记录中最新的季度。
+ * 季度是 YYYY-MM-DD 文本，文本顺序就是时间顺序，因此可以直接比较。
+ *
+ * @param {Record<string, string>[]} records CSV 解析后的 MBIE（租金） 记录
+ * @returns {string} 最新季度，例如 "2026-04-01"
+ */
 function getLatestPeriod(records) {
   let latestPeriod = records[0].TimeFrame;
 
@@ -117,7 +129,13 @@ function getLatestPeriod(records) {
   return latestPeriod;
 }
 
-// 从 GeoPackage 只读查询一个 Region 的全部 SA2，按 SA2 编号排序。
+/**
+ * 从 GeoPackage 只读查询一个 Region 的全部 SA2。
+ *
+ * @param {URL} geoPackageUrl GeoPackage 文件位置
+ * @param {string} regionCode Region 编号，例如 "03"
+ * @returns {object[]} SA2 记录，按 SA2 编号排序；字段名与 GeoPackage 相同，geom 为边界字节
+ */
 function readRegionRecords(geoPackageUrl, regionCode) {
   const database = new DatabaseSync(geoPackageUrl, { readOnly: true });
 
@@ -136,7 +154,13 @@ function readRegionRecords(geoPackageUrl, regionCode) {
   }
 }
 
-// 写出紧凑 JSON；所在目录不存在时先创建。
+/**
+ * 把数据写成紧凑 JSON；所在目录不存在时先创建。
+ *
+ * @param {URL} fileUrl 输出文件位置
+ * @param {unknown} data 要写出的数据
+ * @returns {Promise<void>}
+ */
 async function writeJson(fileUrl, data) {
   await mkdir(new URL("./", fileUrl), { recursive: true });
   await writeFile(fileUrl, JSON.stringify(data));
