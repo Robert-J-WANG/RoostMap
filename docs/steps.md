@@ -12067,6 +12067,572 @@ release 测试用新的 schema 检查了第 4 节生成的 manifest、222 行当
 
 ### 6. 用同一份当前租金连接 Explore 列表与地图
 
+第 5 节的 repository 能读取经过 contract 检查的 manifest、当前租金和边界，但还没有页面使用它们。本节建立 `/explore` 页面：区域列表和地图都使用同一份当前租金文件，在其中一边选中区域，另一边同步显示。页面只显示 manifest 中的 Waikato Region，分类固定为 `ALL / ALL`，与这份 release 的内容一致。
+
+#### 6.1 用 TanStack Query 管理读取状态
+
+repository 的函数只返回 Promise。页面还需要知道请求是否仍在进行、是否失败，失败后要能重新请求；同一个文件被多个组件使用时，也不应重复下载。Step 07 已经用 TanStack Query 保存样例文件的这些状态，正式数据沿用同样的方式。
+
+在 `src/data/queries.ts` 中，为三个读取函数各写一个 hook。它们只把 repository 函数接入 TanStack Query，不包含某个页面自己的逻辑，因此与 repository 一起放在 `src/data/` 中：
+
+```ts
+export function useManifest() {
+  return useQuery({
+    queryKey: ["manifest"],
+    queryFn: ({ signal }) => fetchManifest(signal),
+    staleTime: Infinity,
+  });
+}
+
+export function useRegionCurrentRents(partition: ManifestPartition) {
+  return useQuery({
+    queryKey: ["region-current-rents", partition.currentRentsUrl],
+    queryFn: ({ signal }) => fetchRegionCurrentRents(partition, signal),
+    staleTime: Infinity,
+  });
+}
+```
+
+`useRegionGeometry(partition)` 的写法相同，查询键为 `["region-geometry", partition.geometryUrl]`。
+
+- `queryKey` 是这份数据在缓存中的名字。Region 文件的查询键使用文件地址，地址中已经包含版本号和 Region 编号，不同版本、不同 Region 的文件不会共用缓存。
+- `queryFn` 收到的 `signal` 直接交给第 5 节的读取函数。组件卸载后，TanStack Query 通过它取消不再需要的请求。
+- TanStack Query 默认认为数据一取得就已过期，窗口重新获得焦点或组件重新挂载时会再次请求。版本目录中的文件发布后不会再修改，重新请求只会得到相同内容；manifest 在页面打开期间也保持同一个版本，列表和地图因此不会读到不同版本的文件。所以三个查询都设置 `staleTime: Infinity`，读取成功后不再自动重新请求。
+
+#### 6.2 建立 Explore 页面和数据状态
+
+在 `src/app/router/routes.tsx` 中加入路由，并在导航中加入 Explore 入口：
+
+```tsx
+{
+  path: "explore",
+  Component: ExplorePage,
+},
+```
+
+```ts
+{ label: "Explore", to: "/explore" },
+```
+
+页面要依次读取三个文件：先读 manifest，才知道 Region 文件的地址。`ExplorePage` 只负责 manifest，读取失败或仍在进行时提前返回：
+
+```tsx
+export function ExplorePage() {
+  const manifestQuery = useManifest();
+
+  if (manifestQuery.isError) {
+    return (
+      <section className="space-y-6">
+        {pageTitle}
+        <DataLoadError
+          error={manifestQuery.error}
+          onRetry={() => manifestQuery.refetch()}
+        />
+      </section>
+    );
+  }
+
+  if (manifestQuery.isPending) {
+    // ……显示 Loading the data release…
+  }
+
+  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  return (
+    <section className="space-y-6">
+      {pageTitle}
+      <RegionExplorer
+        latestPeriod={manifestQuery.data.latestPeriod}
+        partition={manifestQuery.data.partitions[0]}
+      />
+    </section>
+  );
+}
+```
+
+`DataLoadError` 显示错误信息和 Retry 按钮。第 5 节的读取函数抛出的错误已经包含文件地址，这里直接显示 `error.message`；点击 Retry 时调用 `refetch()` 重新请求。
+
+manifest 就绪后，`RegionExplorer` 读取当前租金和边界。两个 hook 都写在组件开头，所以两个请求同时发出。列表只需要当前租金，地图同时需要两者；边界文件比当前租金大得多，如果整页都等边界，列表也要跟着等待。因此当前租金决定整个区域内容的状态，边界只决定地图位置显示什么：
+
+```tsx
+function RegionExplorer({ latestPeriod, partition }: RegionExplorerProps) {
+  const currentRentsQuery = useRegionCurrentRents(partition);
+  const geometryQuery = useRegionGeometry(partition);
+
+  // ……标题区、当前租金的失败和加载状态
+
+  let mapPanel: ReactNode;
+
+  if (geometryQuery.isError) {
+    mapPanel = (
+      <DataLoadError
+        error={geometryQuery.error}
+        onRetry={() => geometryQuery.refetch()}
+      />
+    );
+  } else if (geometryQuery.isPending) {
+    mapPanel = <p>Loading {partition.name} boundaries…</p>;
+  } else {
+    mapPanel = (
+      <AreaMap
+        areas={areas}
+        geometry={geometryQuery.data}
+        onSelect={selectArea}
+        selectedSa2Id={selectedSa2Id}
+      />
+    );
+  }
+
+  // ……地图、选中区域和列表
+}
+```
+
+标题区显示 Region 名称、区域数量、分类和数据最新季度，在加载、失败和完成三种状态下都显示：
+
+```tsx
+<h1 className="text-3xl font-semibold">{partition.name} rental areas</h1>
+<p className="text-muted-foreground">
+  {partition.areaCount} areas · All dwelling types · All bedroom
+  categories · Data to {latestPeriod}
+</p>
+```
+
+桌面端地图和列表左右分屏，较窄的屏幕上上下排列：
+
+```tsx
+<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+```
+
+#### 6.3 用当前租金显示区域列表
+
+列表的每一行来自当前租金文件中的一个区域。第 2 节确定了当前租金可能出现的几种情况，产品设计也规定了它们的显示方式：
+
+| 数据 | 显示 |
+|---|---|
+| 有租金 | `NZ$350/week` |
+| 租金来自旧季度 | 显示数值，并标出 `Last observed 2021-04-01`，不称为当前价格 |
+| 没有租金或 Reported Bonds | `No data`，不显示为 0 |
+| 没有 12 个月变化 | `N/A` |
+
+列表组件放在 `src/features/explore/AreaList.tsx`。每一行是一个按钮，点击时把 SA2 编号交给父组件：
+
+```tsx
+const {
+  datasetLatestPeriod,
+  observationPeriod,
+  medianRent,
+  reportedBonds,
+  yearOverYearChange,
+} = area.currentRent;
+
+// 缺失值显示为缺失，不当作 0；旧季度的租金标出季度，不称为当前价格。
+const isOlderObservation =
+  observationPeriod !== null && observationPeriod !== datasetLatestPeriod;
+```
+
+```tsx
+<span className="shrink-0 font-semibold">
+  {medianRent === null ? "No data" : `NZ$${medianRent}/week`}
+</span>
+```
+
+```tsx
+{reportedBonds === null ? "No data" : `${reportedBonds} bonds`}
+{" · 12-month change "}
+{yearOverYearChange === null
+  ? "N/A"
+  : changeFormatter.format(yearOverYearChange)}
+```
+
+```tsx
+{isOlderObservation && (
+  <span className="block text-xs text-muted-foreground">
+    Last observed {observationPeriod}
+  </span>
+)}
+```
+
+`observationPeriod` 是租金实际所在的季度，`datasetLatestPeriod` 是整个数据集的最新季度。两者不同，说明这个区域在最新季度没有租金，显示的是更早的值。
+
+12 个月变化在数据中以比例保存，例如 `0.0128`。浏览器内置的 `Intl.NumberFormat` 可以把它格式化成百分比：
+
+```ts
+const changeFormatter = new Intl.NumberFormat("en-NZ", {
+  style: "percent",
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+```
+
+`style: "percent"` 把 `0.0128` 显示为 `1.3%`；`signDisplay: "exceptZero"` 为正数加上 `+`，负数保留 `-`，0 不加符号。
+
+#### 6.4 用同一份当前租金为地图着色
+
+地图组件放在 `src/features/explore/AreaMap.tsx`，图层和地图设置沿用 Step 07 的做法。不同之处是数据来源：第 4 节生成的边界文件只有 SA2 编号，没有租金。地图要按租金着色，就要在浏览器中按 SA2 编号把当前租金放进每个区域的属性。列表和地图读取的是同一个当前租金文件，两边的数值不可能不一致。
+
+```tsx
+const mapData = useMemo(() => {
+  const medianRentBySa2Id = new Map(
+    areas.map((area) => [area.sa2Id, area.currentRent.medianRent]),
+  );
+
+  return {
+    ...geometry,
+    features: geometry.features.map((feature) => ({
+      ...feature,
+      properties: {
+        ...feature.properties,
+        medianRent: medianRentBySa2Id.get(feature.id) ?? null,
+      },
+    })),
+  };
+}, [geometry, areas]);
+```
+
+- `new Map(...)` 建立“SA2 编号 → 租金”的查找表，222 个区域只遍历一次，之后按编号直接取值。
+- 展开运算符 `...` 复制原有字段，只增加 `medianRent`，不修改从查询中取得的边界数据。
+- 地图的 Source 收到一个新的 data 对象，就会重新处理全部边界。组件每次重新渲染（例如选中另一个区域）都重新连接，会产生一个新对象。`useMemo` 只在 `geometry` 或 `areas` 改变时重新计算，其余时候返回上一次的结果。
+
+JavaScript 内置的 `Map` 在这里用于查找表，因此地图组件的默认导出改名为 `MapView`，避免两者重名：
+
+```ts
+import MapView, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
+```
+
+填色和图例使用同一组分段和颜色，写在同一个常量中：
+
+```ts
+const missingColour = "#94a3b8";
+const rentBands = [
+  { label: "Under $400", colour: "#57c8b8" },
+  { label: "$400–under $600", colour: "#e6ad5c" },
+  { label: "$600 and over", colour: "#c45d55" },
+];
+```
+
+```ts
+"fill-color": [
+  "case",
+  ["==", ["get", "medianRent"], null],
+  missingColour,
+  [
+    "step",
+    ["number", ["get", "medianRent"]],
+    rentBands[0].colour,
+    400,
+    rentBands[1].colour,
+    600,
+    rentBands[2].colour,
+  ],
+],
+```
+
+没有租金的区域使用灰色；其余区域按 400 和 600 两个阈值分成三段。图例遍历 `rentBands` 生成，再加上 `No data` 一项，标题为 `Latest observed median weekly rent`，说明颜色表示的是最近一次观测到的租金。
+
+地图打开时，用所有区域的坐标求出能容纳整个 Region 的经纬度范围，作为初始视野。边界只有 Polygon 和 MultiPolygon 两种，把 Polygon 包成只有一个元素的数组后，两者可以用同一组循环处理：
+
+```ts
+function getMapBounds(features: RegionGeometry["features"]): MapBounds {
+  let west = Infinity;
+  // ……south、east、north 同样初始化
+
+  for (const feature of features) {
+    const polygons =
+      feature.geometry.type === "Polygon"
+        ? [feature.geometry.coordinates]
+        : feature.geometry.coordinates;
+
+    for (const polygon of polygons) {
+      for (const ring of polygon) {
+        for (const [longitude, latitude] of ring) {
+          west = Math.min(west, longitude);
+          // ……south、east、north 同样更新
+        }
+      }
+    }
+  }
+
+  return [[west, south], [east, north]];
+}
+```
+
+#### 6.5 用 URL 连接列表和地图的选择
+
+列表和地图都可以选中区域，两边必须显示同一个选择。如果选择保存在某个组件的 state 中，刷新页面或复制链接后就会丢失。选择因此保存在 URL 的查询参数中，例如 `/explore?sa2=179900`。列表和地图都从 URL 读取当前选择，点击时更新 URL。
+
+```tsx
+const [searchParams, setSearchParams] = useSearchParams();
+const selectedSa2Id = searchParams.get("sa2");
+
+function selectArea(sa2Id: string) {
+  setSearchParams({ sa2: sa2Id }, { replace: true });
+}
+```
+
+- `useSearchParams` 是 React Router 读取和修改查询参数的 hook。`searchParams.get("sa2")` 没有这个参数时返回 `null`，表示还没有选中区域。
+- `replace: true` 用新地址替换当前历史记录，而不是新增一条。否则每选一个区域都会增加一条记录，后退按钮要逐个退回之前选过的区域。
+
+`selectArea` 同时交给列表和地图：列表在按钮的 `onClick` 中调用它，地图在点击事件中取出区域编号后调用它。
+
+```tsx
+function handleMapClick(event: MapLayerMouseEvent) {
+  const id = event.features?.[0]?.id;
+
+  if (typeof id === "string") {
+    onSelect(id);
+  }
+}
+```
+
+Step 07 已经为 Source 设置 `promoteId="sa2Id"`，点击事件中的 `id` 是字符串形式的 SA2 编号。
+
+选中后，列表中对应的行加上背景色，地图上加一层只绘制选中区域的轮廓：
+
+```tsx
+<Layer
+  id="sa2-selected"
+  type="line"
+  filter={["==", ["id"], selectedSa2Id ?? ""]}
+  paint={{ "line-color": "#102a2d", "line-width": 4 }}
+/>
+```
+
+列表有 222 行，选中的行常常不在可见范围内。列表上方因此加一张卡片，显示当前选中区域的名称和所属 territorial authority；没有选择时显示 `No area selected`。
+
+#### 6.6 在浏览器中检查选择并修正
+
+启动 `npm run dev` 后打开 `/explore`，页面显示 Waikato 的列表和地图，标题为 `222 areas · All dwelling types · All bedroom categories · Data to 2026-04-01`。检查选择时发现两个问题：
+
+- 点击地图上的区域后，列表中对应的行虽然高亮，但没有出现在列表的可见范围内。
+- 点击列表中的区域后，地图上看不出哪个区域被选中。Hamilton 市区的 SA2 在整个 Region 的视野中只有几个像素宽，即使有轮廓也很难看到。
+
+**列表滚动到选中的行**
+
+浏览器提供 `scrollIntoView()`，但它会滚动所有可以滚动的外层元素，包括整个页面。较窄的屏幕上列表位于地图下方，点击地图后整个页面会被拉到列表。这里只需要列表自己滚动，因此直接计算并设置列表的 `scrollTop`：
+
+```tsx
+useEffect(() => {
+  const list = listRef.current;
+  const index = areas.findIndex((area) => area.sa2Id === selectedSa2Id);
+
+  if (!list || index === -1) {
+    return;
+  }
+
+  const row = list.children[index] as HTMLElement;
+  const rowTop = row.offsetTop;
+  const rowBottom = rowTop + row.offsetHeight;
+  const isVisible =
+    rowTop >= list.scrollTop && rowBottom <= list.scrollTop + list.clientHeight;
+
+  if (!isVisible) {
+    list.scrollTop = rowTop - (list.clientHeight - row.offsetHeight) / 2;
+  }
+}, [areas, selectedSa2Id]);
+```
+
+- `useRef` 保存对 `<ul>` 元素的引用，`listRef.current` 就是浏览器中的这个元素。
+- `useEffect` 在页面更新之后运行，这时新的高亮已经显示，可以读取元素的位置。依赖数组 `[areas, selectedSa2Id]` 表示只有数据或选择改变时才重新运行。
+- `offsetTop` 是行顶部到参照元素的距离，`scrollTop` 是列表已经向上滚过的距离，`clientHeight` 是列表可见部分的高度。行的上下边都在可见范围内时不滚动；否则把它滚到列表中间。
+
+列表的高度限制和滚动条也从页面移到了 `<ul>` 上，并加上 `relative`。`offsetTop` 以最近的定位元素为参照，`<ul>` 设置 `relative` 后，每一行的 `offsetTop` 才是相对于列表的距离：
+
+```tsx
+<ul
+  className="relative max-h-[28rem] divide-y overflow-y-auto rounded-xl border bg-card lg:max-h-[560px]"
+  ref={listRef}
+>
+```
+
+**地图移动到选中的区域**
+
+react-map-gl 的地图组件可以通过 ref 取得地图对象，调用它的 `fitBounds` 把视野移动到一个经纬度范围。选中区域变化时，地图移动到这个区域，让地图视野与 URL 中的选择保持一致：
+
+```tsx
+const mapRef = useRef<MapRef>(null);
+
+useEffect(() => {
+  const selectedFeature = geometry.features.find(
+    (feature) => feature.id === selectedSa2Id,
+  );
+
+  if (selectedFeature) {
+    mapRef.current?.fitBounds(getMapBounds([selectedFeature]), selectedAreaFitOptions);
+  }
+}, [geometry, selectedSa2Id]);
+```
+
+```ts
+const selectedAreaFitOptions = { padding: 80, maxZoom: 12 };
+```
+
+`getMapBounds` 原来计算整个 Region 的范围，传入只有一个区域的数组，就得到这个区域的范围。`maxZoom: 12` 限制最大缩放级别，避免很小的区域被放得过大、看不到周围的位置。
+
+打开带 `?sa2=` 的链接时，地图在第一次渲染之后才创建，effect 第一次运行时 `mapRef.current` 还是 `null`，`fitBounds` 不会执行。所以地图的初始视野也要考虑 URL 中的选择：
+
+```tsx
+const [initialViewState] = useState(() => {
+  const selectedFeature = geometry.features.find(
+    (feature) => feature.id === selectedSa2Id,
+  );
+
+  if (selectedFeature) {
+    return {
+      bounds: getMapBounds([selectedFeature]),
+      fitBoundsOptions: selectedAreaFitOptions,
+    };
+  }
+
+  return {
+    bounds: getMapBounds(geometry.features),
+    fitBoundsOptions: { padding: 40 },
+  };
+});
+```
+
+`initialViewState` 只在地图创建时读取一次。`useState` 传入函数时，这个函数只在第一次渲染时运行，之后选中其他区域，也不会重新计算整个 Region 的范围。
+
+**选中轮廓没有显示**
+
+修改后从列表选中 Whitianga South（`167100`），地图移动到了这个区域，但区域周围仍然只有普通边界，没有深色轮廓。在浏览器中用 MapLibre 的 `querySourceFeatures` 按不同条件查询这个区域：
+
+| 筛选条件 | 结果数 |
+|---|---|
+| `["==", ["id"], "167100"]` | 0 |
+| `["==", ["id"], 167100]` | 4 |
+| `["==", ["get", "sa2Id"], "167100"]` | 4 |
+
+同一个区域被切分到多个地图瓦片中，每个瓦片返回一条，所以能匹配时结果是 4 条。第一行和第二行的差别说明：图层筛选中的 `["id"]` 读到的是 GeoJSON 原始的 `id`，并且已经被转成数字。Step 07 注意到瓦片处理可能把数字形式的字符串转成数字，但当时认为 `promoteId` 也会让图层过滤使用字符串编号；实际上 `promoteId` 只影响点击事件和查询结果中的 `id`。选中轮廓的筛选条件用字符串和数字比较，从来没有匹配到任何区域。
+
+每个区域的属性中已经保存了字符串形式的 `sa2Id`，筛选条件改为读取这个属性。同时，轮廓改为两层：下面一层较宽的白线，上面一层较窄的深色线。白线在任何填色上都能把深色线和普通边界分开：
+
+```tsx
+<Layer
+  id="sa2-selected-casing"
+  type="line"
+  filter={["==", ["get", "sa2Id"], selectedSa2Id ?? ""]}
+  paint={{ "line-color": "#ffffff", "line-width": 5 }}
+/>
+<Layer
+  id="sa2-selected"
+  type="line"
+  filter={["==", ["get", "sa2Id"], selectedSa2Id ?? ""]}
+  paint={{ "line-color": "#102a2d", "line-width": 2 }}
+/>
+```
+
+再次检查的结果：
+
+| 操作 | 结果 |
+|---|---|
+| 打开 `/explore?sa2=167100` | 地图直接显示 Whitianga South，选中轮廓清楚可见 |
+| 点击地图上的 Ohakuri | 地址变为 `?sa2=187800`，卡片显示 Ohakuri · Taupo District；地图移动到 Ohakuri；列表滚动到这一行，页面本身没有滚动 |
+| 点击列表中的 Marotiri | 地址变为 `?sa2=187700`，地图移动到 Marotiri 并显示选中轮廓 |
+| 375px 宽度下点击地图 | 地图和列表上下排列，没有横向滚动；只有列表内部滚动，页面停在顶部 |
+
+#### 6.7 测试页面行为并完成检查
+
+页面测试放在 `src/pages/ExplorePage.test.tsx`。jsdom 无法运行 MapLibre，地图组件沿用 Step 07 的模拟方式：用一个按钮代替地图，点击时发出选中 Greensboro 的事件；Source 和 Layer 不渲染任何内容。
+
+```tsx
+vi.mock("react-map-gl/maplibre", () => ({
+  default: ({ children, onClick }: {
+    children: ReactNode;
+    onClick: (event: { features: { id: string }[] }) => void;
+  }) => (
+    <div>
+      <button onClick={() => onClick({ features: [{ id: "179900" }] })} type="button">
+        Click Greensboro on the map
+      </button>
+      {children}
+    </div>
+  ),
+  Source: ({ children }: { children: ReactNode }) => children,
+  Layer: () => null,
+  NavigationControl: () => null,
+}));
+```
+
+测试数据包含三个区域，对应三种租金状态：Greensboro 有最新季度的租金；Cooks Beach-Ferry Landing 的租金来自 2021-04-01；第三个是测试用的虚构区域，没有租金。`fetch` 按请求地址返回 manifest、当前租金和边界，传入的地址在第一次请求时返回 503：
+
+```ts
+function serveRelease(failOnce: string[] = []) {
+  const failedUrls = new Set<string>();
+
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (failOnce.includes(url) && !failedUrls.has(url)) {
+      failedUrls.add(url);
+      return new Response(null, { status: 503 });
+    }
+
+    if (url === "/data/manifest.json") return Response.json(manifest);
+    if (url === currentRentsUrl) return Response.json(currentRents);
+    if (url === geometryUrl) return Response.json(geometry);
+
+    throw new Error(`Unexpected data request: ${url}`);
+  }));
+}
+```
+
+每个测试用 `createMemoryRouter` 创建独立的路由，并使用新的 `QueryClient`，关闭自动重试，让失败状态立即显示。四个测试分别检查：
+
+| 测试 | 检查内容 |
+|---|---|
+| `lists each area with its rent, period and missing values` | `NZ$350/week`、`171 bonds · 12-month change +1.3%`、`Last observed 2021-04-01`、`12-month change N/A`，以及没有租金时显示 `No data` 而不是 `NZ$0` |
+| `keeps the map and list selection in the URL` | 打开 `?sa2=167300` 时恢复选择；点击地图和列表后，卡片标题和 URL 都随之改变 |
+| `recovers from a failed current-rents request using the retry button` | 当前租金请求失败时显示带文件地址的错误，点击 Retry 后显示列表 |
+| `keeps the list available when the boundaries fail to load` | 边界请求失败时列表仍然显示，点击 Retry 后显示地图 |
+
+URL 的测试直接读取路由对象中的地址：
+
+```tsx
+it("keeps the map and list selection in the URL", async () => {
+  serveRelease();
+  const router = renderExplore("/explore?sa2=167300");
+
+  // 打开带 ?sa2= 的地址时恢复选择。
+  expect(await screen.findByRole("heading", { level: 2, name: "Cooks Beach-Ferry Landing" })).toBeInTheDocument();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Click Greensboro on the map" }));
+  expect(screen.getByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
+  expect(router.state.location.search).toBe("?sa2=179900");
+
+  fireEvent.click(screen.getByRole("button", { name: /^Area Without Rent/ }));
+  expect(screen.getByRole("heading", { level: 2, name: "Area Without Rent" })).toBeInTheDocument();
+  expect(router.state.location.search).toBe("?sa2=100100");
+});
+```
+
+列表按钮的名称是整行文字，以区域名称开头，所以用 `/^Greensboro/` 这样的正则匹配开头，避免同时匹配到地图模拟中的 `Click Greensboro on the map`。
+
+这些测试的范围有限。地图图层被模拟成不渲染任何内容，测试无法发现 6.6 中筛选条件匹配不到区域的问题；jsdom 不计算页面布局，也不运行 MapLibre，列表滚动和地图移动同样无法在这里验证。这三项只在浏览器中检查过。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+lint 没有报错。测试结果为：
+
+```text
+✓ src/pages/ExplorePage.test.tsx (4 tests) 494ms
+
+Test Files  9 passed (9)
+     Tests  37 passed (37)
+```
+
+`npm run build` 中的 `tsc -b` 通过。构建输出中仍有 JavaScript chunk 超过 500 kB 的提示：
+
+```text
+dist/assets/index-B2_Qowiq.js                              1,983.49 kB │ gzip: 564.76 kB
+```
+
+本节没有处理打包体积。
+
+这些结果说明：Explore 页面从 manifest 开始读取正式 release，列表和地图使用同一份当前租金；缺失值、旧季度租金和无法计算的 12 个月变化按产品规则显示；选择保存在 URL 中，在列表和地图之间同步；当前租金或边界读取失败时，页面显示带文件地址的错误并可以重试。页面还没有显示数据来源、provisional 状态和单个区域的详细信息。
+
 ### 7. 建立最小 Area Detail 数据链路
 
 ### 8. 让页面表达数据来源、周期与 provisional 状态

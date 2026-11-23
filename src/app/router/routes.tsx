@@ -5,6 +5,7 @@ import { MethodologyPage } from "@/pages/MethodologyPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { RouteErrorPage } from "@/pages/RouteErrorPage";
 import { MapChartPage } from "@/pages/MapChartPage";
+import { ExplorePage } from "@/pages/ExplorePage";
 
 export const routes = [
   {
@@ -17,6 +18,10 @@ export const routes = [
           {
             index: true,
             Component: HomePage,
+          },
+          {
+            path: "explore",
+            Component: ExplorePage,
           },
           {
             path: "methodology",

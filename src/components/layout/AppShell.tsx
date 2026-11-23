@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const navigationItems = [
   { label: "Home", to: "/" },
+  { label: "Explore", to: "/explore" },
   { label: "Methodology", to: "/methodology" },
   { label: "MapChart", to: "spike/map-chart" },
 ];
