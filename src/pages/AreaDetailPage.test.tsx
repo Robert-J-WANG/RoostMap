@@ -1,0 +1,93 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { AreaDetailPage } from "@/pages/AreaDetailPage";
+import { currentRentsUrl, serveRelease } from "@/test/release-fixtures";
+
+// 每个测试使用独立的路由和 QueryClient；关闭重试，让失败状态立即显示。
+function renderAreaDetail(sa2Id: string) {
+  const router = createMemoryRouter(
+    [{ path: "/areas/:sa2Id", Component: AreaDetailPage }],
+    { initialEntries: [`/areas/${sa2Id}`] },
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
+
+// 详情中的每个数值紧跟在它的标签（dt）后面。
+function getValue(label: string) {
+  return screen.getByText(label).nextElementSibling;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("Area Detail page", () => {
+  it("shows the area and its rent for the latest quarter", async () => {
+    serveRelease();
+    renderAreaDetail("179900");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
+    expect(screen.getByText("SA2 179900")).toBeInTheDocument();
+    expect(screen.getByText("Hamilton City · Waikato Region")).toBeInTheDocument();
+
+    expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$350/week");
+    expect(getValue("Observation period")).toHaveTextContent("2026-04-01");
+    expect(getValue("Dataset latest period")).toHaveTextContent("2026-04-01");
+    expect(getValue("Reported Bonds")).toHaveTextContent("171 bonds");
+    expect(getValue("12-month change")).toHaveTextContent("+1.3%");
+    expect(screen.queryByText(/earlier quarter/)).not.toBeInTheDocument();
+  });
+
+  it("marks a rent from an earlier quarter", async () => {
+    serveRelease();
+    renderAreaDetail("167300");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Cooks Beach-Ferry Landing" })).toBeInTheDocument();
+    expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$305/week");
+    expect(getValue("Observation period")).toHaveTextContent("2021-04-01");
+    expect(
+      screen.getByText("No rent is available for 2026-04-01; this value is from an earlier quarter."),
+    ).toBeInTheDocument();
+    expect(getValue("12-month change")).toHaveTextContent("N/A");
+  });
+
+  it("shows missing values without replacing them with zero", async () => {
+    serveRelease();
+    renderAreaDetail("100100");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Area Without Rent" })).toBeInTheDocument();
+    expect(getValue("Latest observed median weekly rent")).toHaveTextContent("No data");
+    expect(getValue("Observation period")).toHaveTextContent("No data");
+    expect(getValue("Reported Bonds")).toHaveTextContent("No data");
+    expect(getValue("12-month change")).toHaveTextContent("N/A");
+    expect(screen.queryByText(/NZ\$0/)).not.toBeInTheDocument();
+  });
+
+  it("shows a not-found message for an SA2 outside the release", async () => {
+    serveRelease();
+    renderAreaDetail("999999");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Area not found" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Explore" })).toHaveAttribute("href", "/explore");
+  });
+
+  it("recovers from a failed current-rents request using the retry button", async () => {
+    serveRelease([currentRentsUrl]);
+    renderAreaDetail("179900");
+
+    expect(await screen.findByText(`Could not load ${currentRentsUrl} (HTTP 503)`)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
+  });
+});

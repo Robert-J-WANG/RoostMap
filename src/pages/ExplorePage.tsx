@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
-import { Button } from "@/components/ui/button";
+import { DataLoadError } from "@/components/DataLoadError";
+import { buttonVariants } from "@/components/ui/button";
 import type { ManifestPartition } from "@/data/contracts";
 import {
   useManifest,
@@ -10,18 +11,6 @@ import {
 } from "@/data/queries";
 import { AreaList } from "@/features/explore/AreaList";
 import { AreaMap } from "@/features/explore/AreaMap";
-
-// 读取失败时显示带文件地址的错误，并允许重新请求。
-function DataLoadError({ error, onRetry }: { error: Error; onRetry: () => void }) {
-  return (
-    <div className="space-y-3 rounded-xl border p-4">
-      <p className="whitespace-pre-wrap text-sm">{error.message}</p>
-      <Button onClick={onRetry} type="button" variant="outline">
-        Retry
-      </Button>
-    </div>
-  );
-}
 
 const pageTitle = <title>Explore | RoostMap</title>;
 
@@ -157,6 +146,16 @@ function RegionExplorer({ latestPeriod, partition }: RegionExplorerProps) {
                 <p className="text-sm text-muted-foreground">
                   {selectedArea.territorialAuthorityName}
                 </p>
+                <Link
+                  className={buttonVariants({
+                    className: "mt-3",
+                    size: "sm",
+                    variant: "outline",
+                  })}
+                  to={`/areas/${selectedArea.sa2Id}`}
+                >
+                  View details
+                </Link>
               </>
             ) : (
               <>

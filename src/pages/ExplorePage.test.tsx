@@ -5,7 +5,9 @@ import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AreaDetailPage } from "@/pages/AreaDetailPage";
 import { ExplorePage } from "@/pages/ExplorePage";
+import { currentRentsUrl, geometryUrl, serveRelease } from "@/test/release-fixtures";
 
 // jsdom 无法运行 MapLibre；用一个按钮发出地图点击 Greensboro 的事件。
 vi.mock("react-map-gl/maplibre", () => ({
@@ -26,96 +28,16 @@ vi.mock("react-map-gl/maplibre", () => ({
 }));
 vi.mock("maplibre-gl", () => ({ setWorkerUrl: vi.fn() }));
 
-const currentRentsUrl = "/data/releases/2026-04-01.1/areas/current-rents/03.json";
-const geometryUrl = "/data/releases/2026-04-01.1/geometry/regions/03.geo.json";
-
-const manifest = {
-  version: "2026-04-01.1",
-  generatedAt: "2026-11-21T00:00:00.000Z",
-  latestPeriod: "2026-04-01",
-  partitions: [
-    { id: "03", name: "Waikato Region", areaCount: 3, currentRentsUrl, geometryUrl },
-  ],
-};
-
-// 生成当前租金文件中的一行；Region 信息和数据集最新季度对所有区域相同。
-function area(
-  sa2Id: string,
-  name: string,
-  territorialAuthorityName: string,
-  currentRent: {
-    observationPeriod: string | null;
-    medianRent: number | null;
-    reportedBonds: number | null;
-    yearOverYearChange: number | null;
-  },
-) {
-  return {
-    sa2Id,
-    name,
-    regionCode: "03",
-    regionName: "Waikato Region",
-    territorialAuthorityCode: "000",
-    territorialAuthorityName,
-    currentRent: { datasetLatestPeriod: "2026-04-01", ...currentRent },
-  };
-}
-
-// 三种租金状态：当前季度、旧季度和没有租金。最后一行是测试用的虚构区域。
-const currentRents = [
-  area("179900", "Greensboro", "Hamilton City", {
-    observationPeriod: "2026-04-01",
-    medianRent: 350,
-    reportedBonds: 171,
-    yearOverYearChange: 0.0128,
-  }),
-  area("167300", "Cooks Beach-Ferry Landing", "Thames-Coromandel District", {
-    observationPeriod: "2021-04-01",
-    medianRent: 305,
-    reportedBonds: 6,
-    yearOverYearChange: null,
-  }),
-  area("100100", "Area Without Rent", "Test District", {
-    observationPeriod: null,
-    medianRent: null,
-    reportedBonds: null,
-    yearOverYearChange: null,
-  }),
-];
-
-const geometry = {
-  type: "FeatureCollection",
-  features: currentRents.map(({ sa2Id }) => ({
-    type: "Feature",
-    id: sa2Id,
-    geometry: { type: "Polygon", coordinates: [[[175, -38], [176, -38], [175, -37], [175, -38]]] },
-    properties: { sa2Id },
-  })),
-};
-
-// 按地址返回数据；failOnce 中的地址第一次请求返回 503。
-function serveRelease(failOnce: string[] = []) {
-  const failedUrls = new Set<string>();
-
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    if (failOnce.includes(url) && !failedUrls.has(url)) {
-      failedUrls.add(url);
-      return new Response(null, { status: 503 });
-    }
-
-    if (url === "/data/manifest.json") return Response.json(manifest);
-    if (url === currentRentsUrl) return Response.json(currentRents);
-    if (url === geometryUrl) return Response.json(geometry);
-
-    throw new Error(`Unexpected data request: ${url}`);
-  }));
-}
-
 // 每个测试使用独立的路由和 QueryClient；关闭重试，让失败状态立即显示。
+// 路由同时包含详情页，用来检查两个页面之间的跳转。
 function renderExplore(initialEntry = "/explore") {
-  const router = createMemoryRouter([{ path: "/explore", Component: ExplorePage }], {
-    initialEntries: [initialEntry],
-  });
+  const router = createMemoryRouter(
+    [
+      { path: "/explore", Component: ExplorePage },
+      { path: "/areas/:sa2Id", Component: AreaDetailPage },
+    ],
+    { initialEntries: [initialEntry] },
+  );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   render(
@@ -170,6 +92,24 @@ describe("Explore page", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Area Without Rent/ }));
     expect(screen.getByRole("heading", { level: 2, name: "Area Without Rent" })).toBeInTheDocument();
     expect(router.state.location.search).toBe("?sa2=100100");
+  });
+
+  it("opens the area details without downloading the current rents again", async () => {
+    serveRelease();
+    const router = renderExplore("/explore?sa2=179900");
+
+    fireEvent.click(await screen.findByRole("link", { name: "View details" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/areas/179900");
+
+    // 详情页使用 Explore 已经下载的当前租金。
+    const currentRentRequests = vi.mocked(fetch).mock.calls.filter(([url]) => url === currentRentsUrl);
+    expect(currentRentRequests).toHaveLength(1);
+
+    // 返回 Explore 时保留原来的选择。
+    fireEvent.click(screen.getByRole("link", { name: "Back to Explore" }));
+    expect(await screen.findByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
+    expect(router.state.location.search).toBe("?sa2=179900");
   });
 
   it("recovers from a failed current-rents request using the retry button", async () => {

@@ -12635,6 +12635,327 @@ dist/assets/index-B2_Qowiq.js                              1,983.49 kB │ gzip:
 
 ### 7. 建立最小 Area Detail 数据链路
 
+第 6 节的 Explore 页面可以选中区域，但选中区域卡片只显示名称和所属 territorial authority。产品设计为每个区域规定了详情页 `/areas/:sa2Id`。本节建立这个页面，它读取的是与列表、地图相同的当前租金文件。
+
+产品设计中的详情页还包括历史租金和每季度的 Reported Bonds，这需要每个区域多个季度的租金，而这份 release 只为每个区域生成了一行当前租金。因此本节只显示当前租金已经包含的内容：
+
+| 显示 | 来源 |
+|---|---|
+| 区域名称、SA2 编号、territorial authority、Region | 区域信息 |
+| 最新观测中位租金和它所在的季度 | `medianRent`、`observationPeriod` |
+| 数据集最新季度 | `datasetLatestPeriod` |
+| Reported Bonds、12 个月变化 | `reportedBonds`、`yearOverYearChange` |
+| 分类 | 固定为 `ALL / ALL` |
+
+#### 7.1 从 URL 中的 SA2 编号找到区域
+
+在 `src/app/router/routes.tsx` 中加入路由：
+
+```tsx
+{
+  path: "areas/:sa2Id",
+  Component: AreaDetailPage,
+},
+```
+
+`:sa2Id` 是路径参数：访问 `/areas/179900` 时，React Router 把 `179900` 作为 `sa2Id` 交给页面，页面用 `useParams` 读取。
+
+详情页的地址只有 SA2 编号，没有 Region。要找到这个区域，页面仍然从 manifest 开始：先取得 Region 的当前租金文件，再在其中按编号查找。`AreaDetailPage` 与 `ExplorePage` 的结构相同，只负责 manifest 的三种状态：
+
+```tsx
+export function AreaDetailPage() {
+  const manifestQuery = useManifest();
+
+  if (manifestQuery.isError) {
+    // ……显示 DataLoadError
+  }
+
+  if (manifestQuery.isPending) {
+    // ……显示 Loading the data release…
+  }
+
+  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  return (
+    <section className="space-y-6">
+      <AreaDetails partition={manifestQuery.data.partitions[0]} />
+    </section>
+  );
+}
+```
+
+`AreaDetails` 读取当前租金，再按地址中的编号查找区域：
+
+```tsx
+function AreaDetails({ partition }: AreaDetailsProps) {
+  const { sa2Id } = useParams();
+  const currentRentsQuery = useRegionCurrentRents(partition);
+
+  // ……当前租金的失败和加载状态
+
+  const area = currentRentsQuery.data.find((item) => item.sa2Id === sa2Id);
+
+  // 编号格式不对，或者这份 release 中没有这个区域。
+  if (!area) {
+    return (
+      <>
+        <title>Area not found | RoostMap</title>
+        <h1 className="text-3xl font-semibold">Area not found</h1>
+        <p className="text-muted-foreground">
+          The current data release has no rental area with SA2 code {sa2Id}.
+        </p>
+        <Link className={buttonVariants({ variant: "outline" })} to="/explore">
+          Back to Explore
+        </Link>
+      </>
+    );
+  }
+
+  // ……显示区域详情
+}
+```
+
+详情页使用第 6 节的 `useManifest` 和 `useRegionCurrentRents`，查询键也相同。TanStack Query 按查询键保存数据，三个查询又设置了 `staleTime: Infinity`，所以从 Explore 进入详情页时，`useRegionCurrentRents` 直接返回已经下载的当前租金，不再发出请求。直接打开详情页地址时，缓存中没有数据，才会下载。
+
+地址中的编号来自用户，可能是任何文字。`find` 找不到时返回 `undefined`，无论编号格式不对，还是这份 release 中没有这个区域，页面都显示 `Area not found`，并提供返回 Explore 的链接。
+
+#### 7.2 共用 Explore 的显示规则
+
+详情页要显示的租金、Reported Bonds 和 12 个月变化，与列表遵守同样的规则：缺失值显示为 `No data` 或 `N/A`，旧季度的租金不称为当前价格。这些规则现在写在 `AreaList` 里。如果详情页再写一份，以后修改其中一份时，两个页面对同一个值就会显示不同的文字。
+
+现在两个页面都要使用这些规则，因此把它们从 `AreaList` 移到 `src/lib/format.ts`：
+
+```ts
+// 当前租金的显示规则，Explore 列表和 Area Detail 共用。
+// 缺失值显示为缺失，不当作 0。
+
+const changeFormatter = new Intl.NumberFormat("en-NZ", {
+  style: "percent",
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+export function formatRent(medianRent: number | null): string {
+  return medianRent === null ? "No data" : `NZ$${medianRent}/week`;
+}
+
+export function formatBonds(reportedBonds: number | null): string {
+  return reportedBonds === null ? "No data" : `${reportedBonds} bonds`;
+}
+
+export function formatChange(yearOverYearChange: number | null): string {
+  return yearOverYearChange === null
+    ? "N/A"
+    : changeFormatter.format(yearOverYearChange);
+}
+
+// 租金所在季度早于数据集最新季度时返回 true；这时的租金不能称为当前价格。
+export function isOlderObservation(
+  observationPeriod: string | null,
+  datasetLatestPeriod: string,
+): boolean {
+  return observationPeriod !== null && observationPeriod !== datasetLatestPeriod;
+}
+```
+
+`AreaList` 改为调用这些函数，显示结果不变：
+
+```tsx
+<span className="shrink-0 font-semibold">
+  {formatRent(medianRent)}
+</span>
+```
+
+```tsx
+{formatBonds(reportedBonds)}
+{" · 12-month change "}
+{formatChange(yearOverYearChange)}
+```
+
+```tsx
+{/* 旧季度的租金标出季度，不称为当前价格。 */}
+{isOlderObservation(observationPeriod, datasetLatestPeriod) && (
+```
+
+显示读取错误和 Retry 按钮的 `DataLoadError` 也是同样的情况。它原来定义在 `ExplorePage.tsx` 中，现在详情页也要使用，因此移到 `src/components/DataLoadError.tsx`，两个页面都从这里导入。
+
+#### 7.3 显示区域的当前租金
+
+找到区域后，页面先显示区域的身份，再显示当前租金：
+
+```tsx
+<div className="space-y-2">
+  <p className="text-sm text-muted-foreground">SA2 {area.sa2Id}</p>
+  <h1 className="text-3xl font-semibold">{area.name}</h1>
+  <p className="text-muted-foreground">
+    {area.territorialAuthorityName} · {area.regionName}
+  </p>
+  <p className="text-muted-foreground">
+    All dwelling types · All bedroom categories
+  </p>
+</div>
+```
+
+当前租金是一组“标签和数值”。HTML 的 `<dl>` 就是为这种结构准备的：`<dt>` 是标签，`<dd>` 是对应的数值，每一对用 `<div>` 包起来，便于排版：
+
+```tsx
+<dl className="grid gap-6 rounded-xl border bg-card p-6 sm:grid-cols-2">
+  <div className="space-y-1">
+    <dt className="text-sm text-muted-foreground">
+      Latest observed median weekly rent
+    </dt>
+    <dd className="text-2xl font-semibold">{formatRent(medianRent)}</dd>
+    {isOlderObservation(observationPeriod, datasetLatestPeriod) && (
+      <dd className="text-sm text-muted-foreground">
+        No rent is available for {datasetLatestPeriod}; this value is
+        from an earlier quarter.
+      </dd>
+    )}
+  </div>
+  <div className="space-y-1">
+    <dt className="text-sm text-muted-foreground">Observation period</dt>
+    <dd className="text-lg font-medium">{observationPeriod ?? "No data"}</dd>
+  </div>
+  {/* ……Dataset latest period、Reported Bonds、12-month change 写法相同 */}
+</dl>
+```
+
+- 租金的标签是 `Latest observed median weekly rent`，与地图图例一致，说明它是最近一次观测到的值。
+- 详情页同时显示 `Observation period` 和 `Dataset latest period`。两者不同时，租金下方再用一句话说明最新季度没有租金、这个值来自更早的季度。
+- `observationPeriod ?? "No data"`：`??` 在左边为 `null` 或 `undefined` 时使用右边的值。
+
+浏览器标签页的标题使用区域名称：
+
+```tsx
+<title>{`${area.name} | RoostMap`}</title>
+```
+
+`<title>` 中只能有一段文字。写成 `{area.name} | RoostMap` 时，JSX 会把它拆成两段，因此用模板字符串拼成一段。
+
+#### 7.4 连接 Explore 和详情页
+
+现在只有手动输入地址才能打开详情页。Explore 的选中区域卡片中加入详情链接：
+
+```tsx
+<Link
+  className={buttonVariants({
+    className: "mt-3",
+    size: "sm",
+    variant: "outline",
+  })}
+  to={`/areas/${selectedArea.sa2Id}`}
+>
+  View details
+</Link>
+```
+
+详情页顶部加入返回链接。链接地址带上当前区域的编号，回到 Explore 时仍然选中这个区域，地图也直接显示它：
+
+```tsx
+<Link
+  className={buttonVariants({ size: "sm", variant: "ghost" })}
+  to={`/explore?sa2=${area.sa2Id}`}
+>
+  <ArrowLeftIcon aria-hidden="true" data-icon="inline-start" />
+  Back to Explore
+</Link>
+```
+
+`buttonVariants` 来自 Step 04 加入的 shadcn/ui Button，它只生成按钮样式的 class，因此链接可以保持 `<a>` 元素，同时看起来像按钮。
+
+#### 7.5 测试并在浏览器中检查
+
+第 6 节的测试数据（manifest、三个区域的当前租金、边界和模拟的 `fetch`）写在 `ExplorePage.test.tsx` 中。详情页的测试需要同一份数据，因此把它们移到 `src/test/release-fixtures.ts`，两个测试文件都从这里导入：
+
+```ts
+import { currentRentsUrl, serveRelease } from "@/test/release-fixtures";
+```
+
+详情页的测试在 `src/pages/AreaDetailPage.test.tsx` 中。详情中的每个数值紧跟在它的标签后面，测试用一个小函数按标签取得数值：
+
+```ts
+function getValue(label: string) {
+  return screen.getByText(label).nextElementSibling;
+}
+```
+
+```ts
+expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$350/week");
+expect(getValue("Reported Bonds")).toHaveTextContent("171 bonds");
+expect(getValue("12-month change")).toHaveTextContent("+1.3%");
+```
+
+五个测试分别检查：
+
+| 测试 | 检查内容 |
+|---|---|
+| `shows the area and its rent for the latest quarter` | Greensboro 的名称、编号、所属地理和各项数值；没有旧季度说明 |
+| `marks a rent from an earlier quarter` | Cooks Beach-Ferry Landing 的 Observation period 为 `2021-04-01`，并显示旧季度说明 |
+| `shows missing values without replacing them with zero` | 没有租金的区域显示 `No data` 和 `N/A`，页面中没有 `NZ$0` |
+| `shows a not-found message for an SA2 outside the release` | `/areas/999999` 显示 `Area not found`，返回链接指向 `/explore` |
+| `recovers from a failed current-rents request using the retry button` | 当前租金请求失败后显示带文件地址的错误，Retry 后显示详情 |
+
+两个页面之间的跳转放在 `ExplorePage.test.tsx` 中检查。测试路由同时包含 Explore 和详情页：
+
+```tsx
+it("opens the area details without downloading the current rents again", async () => {
+  serveRelease();
+  const router = renderExplore("/explore?sa2=179900");
+
+  fireEvent.click(await screen.findByRole("link", { name: "View details" }));
+  expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe("/areas/179900");
+
+  // 详情页使用 Explore 已经下载的当前租金。
+  const currentRentRequests = vi.mocked(fetch).mock.calls.filter(([url]) => url === currentRentsUrl);
+  expect(currentRentRequests).toHaveLength(1);
+
+  // 返回 Explore 时保留原来的选择。
+  fireEvent.click(screen.getByRole("link", { name: "Back to Explore" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
+  expect(router.state.location.search).toBe("?sa2=179900");
+});
+```
+
+`vi.mocked(fetch).mock.calls` 是模拟的 `fetch` 收到的全部调用，每一项的第一个元素是请求地址。当前租金地址只出现一次，说明进入详情页时没有再次下载。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ src/pages/AreaDetailPage.test.tsx (5 tests) 292ms
+✓ src/pages/ExplorePage.test.tsx (5 tests) 471ms
+
+Test Files  10 passed (10)
+     Tests  43 passed (43)
+```
+
+`npm run build` 中的 `tsc -b` 通过，JavaScript chunk 超过 500 kB 的提示仍然存在：
+
+```text
+dist/assets/index-BHg7ASmu.js                              1,987.31 kB │ gzip: 565.46 kB
+```
+
+然后在 `npm run dev` 中检查：
+
+| 操作 | 结果 |
+|---|---|
+| 在 Explore 选中 Puniu，点击 View details | 进入 `/areas/185700`，标签页标题为 `Puniu \| RoostMap`，租金 `NZ$535/week`、`6 bonds`、`+6.4%`，与列表一致 |
+| 进入详情页前后查看浏览器的网络请求 | 进入详情页时没有新的数据请求，所有数据请求都发生在打开 Explore 时 |
+| 点击 Back to Explore | 回到 `/explore?sa2=185700`，仍然选中 Puniu，没有新的数据请求 |
+| 打开 `/areas/999999` | 显示 `Area not found` 和返回链接 |
+| 375px 宽度打开 `/areas/167300` | 内容上下排列，没有横向滚动，旧季度说明正常显示 |
+
+网络请求中，打开 Explore 时每个数据文件都先出现一次 `ERR_ABORTED`，紧接着再成功请求一次。`src/main.tsx` 用 React 的 `StrictMode` 包裹整个应用，开发模式下它会把组件挂载、卸载再挂载一次，用来暴露副作用中的问题。第一次挂载被卸载时，TanStack Query 通过 `signal` 取消了第一次请求；第二次挂载重新请求并成功。生产构建中 `StrictMode` 不会重复挂载组件。
+
+这些结果说明：详情页按地址中的编号，从与 Explore 相同的当前租金中找到区域，数值和显示规则与列表一致；从 Explore 进入时不重复下载数据，返回时保留选择；地址中的编号不存在时有明确的提示。页面还没有显示数据来源和 provisional 状态。
+
 ### 8. 让页面表达数据来源、周期与 provisional 状态
 
 ### 9. 更新公开说明并移除技术样例

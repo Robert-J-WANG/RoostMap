@@ -1,14 +1,13 @@
 import { useEffect, useRef } from "react";
 
 import type { AreaWithCurrentRent } from "@/data/contracts";
+import {
+  formatBonds,
+  formatChange,
+  formatRent,
+  isOlderObservation,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-// 12 个月变化以比例保存（0.0128），显示为带正负号的百分比（+1.3%）。
-const changeFormatter = new Intl.NumberFormat("en-NZ", {
-  style: "percent",
-  maximumFractionDigits: 1,
-  signDisplay: "exceptZero",
-});
 
 type AreaListProps = {
   areas: AreaWithCurrentRent[];
@@ -55,10 +54,6 @@ export function AreaList({ areas, selectedSa2Id, onSelect }: AreaListProps) {
           yearOverYearChange,
         } = area.currentRent;
 
-        // 缺失值显示为缺失，不当作 0；旧季度的租金标出季度，不称为当前价格。
-        const isOlderObservation =
-          observationPeriod !== null && observationPeriod !== datasetLatestPeriod;
-
         return (
           <li key={area.sa2Id}>
             <button
@@ -72,20 +67,19 @@ export function AreaList({ areas, selectedSa2Id, onSelect }: AreaListProps) {
               <span className="flex items-baseline justify-between gap-4">
                 <span className="font-medium">{area.name}</span>
                 <span className="shrink-0 font-semibold">
-                  {medianRent === null ? "No data" : `NZ$${medianRent}/week`}
+                  {formatRent(medianRent)}
                 </span>
               </span>
               <span className="flex justify-between gap-4 text-sm text-muted-foreground">
                 <span>{area.territorialAuthorityName}</span>
                 <span className="shrink-0">
-                  {reportedBonds === null ? "No data" : `${reportedBonds} bonds`}
+                  {formatBonds(reportedBonds)}
                   {" · 12-month change "}
-                  {yearOverYearChange === null
-                    ? "N/A"
-                    : changeFormatter.format(yearOverYearChange)}
+                  {formatChange(yearOverYearChange)}
                 </span>
               </span>
-              {isOlderObservation && (
+              {/* 旧季度的租金标出季度，不称为当前价格。 */}
+              {isOlderObservation(observationPeriod, datasetLatestPeriod) && (
                 <span className="block text-xs text-muted-foreground">
                   Last observed {observationPeriod}
                 </span>
