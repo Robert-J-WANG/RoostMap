@@ -54,7 +54,14 @@ describe("data release", () => {
     expect(manifest.rentalDataStatus).toBe(mbieSource.status);
     expect(manifest.rentalDataNotice).toBe(mbieSource.notice);
     expect(manifest.sources).toEqual(
-      sourceLock.sources.map(({ id, name, url, licence }) => ({ id, name, url, licence })),
+      sourceLock.sources.map(({ id, name, url, licence, retrievedAt, sha256 }) => ({
+        id,
+        name,
+        url,
+        licence,
+        retrievedAt,
+        sha256,
+      })),
     );
   });
 

@@ -6,6 +6,7 @@ export const currentRentsUrl = "/data/releases/2026-04-01.1/areas/current-rents/
 export const geometryUrl = "/data/releases/2026-04-01.1/geometry/regions/03.geo.json";
 export const rentalDataNotice = "Recent quarters may be revised.";
 export const mbieSourceUrl = "https://www.tenancy.govt.nz/rental-bond-data/";
+export const mbieSourceSha256 = "a".repeat(64);
 
 const manifest = {
   version: "2026-04-01.1",
@@ -22,12 +23,16 @@ const manifest = {
       name: "MBIE Rental Bond Data",
       url: mbieSourceUrl,
       licence: "Creative Commons Attribution 3.0 New Zealand",
+      retrievedAt: "2026-10-27",
+      sha256: mbieSourceSha256,
     },
     {
       id: "stats-sa2-2019",
       name: "Stats NZ SA2 2019",
       url: "https://datafinder.stats.govt.nz/layer/98779/",
       licence: "Creative Commons Attribution 4.0 International",
+      retrievedAt: "2026-10-27",
+      sha256: "b".repeat(64),
     },
   ],
 };

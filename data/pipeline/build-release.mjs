@@ -75,7 +75,8 @@ for (const regionCode of regionCodes) {
 }
 
 // 4. 写出版本目录中的 manifest，以及指向当前版本的顶层 manifest。
-// 租金数据的状态和说明、各来源的名称、地址和许可证都取自 source lock，页面据此注明来源。
+// 租金数据的状态和说明、各来源的名称、地址、许可证、下载日期和 SHA-256 都取自 source lock，
+// 页面据此注明来源，Methodology 据此说明数据由哪个源文件生成。
 const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
 const manifest = {
   version,
@@ -84,11 +85,13 @@ const manifest = {
   partitions,
   rentalDataStatus: mbieSource.status,
   rentalDataNotice: mbieSource.notice ?? null,
-  sources: sourceLock.sources.map(({ id, name, url, licence }) => ({
+  sources: sourceLock.sources.map(({ id, name, url, licence, retrievedAt, sha256 }) => ({
     id,
     name,
     url,
     licence,
+    retrievedAt,
+    sha256,
   })),
 };
 await writeJson(new URL("manifest.json", releaseUrl), manifest);

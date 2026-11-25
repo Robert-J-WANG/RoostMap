@@ -15,9 +15,8 @@ api/dist/
 data/raw/
 public/data/*
 
-# Keep directories traversable, then include only deployed Region data
+# Keep directories traversable, then include only the published data release
 !public/data/**/
-!public/data/spike/map-chart/comparison/regions/*.json
 !public/data/manifest.json
 !public/data/releases/**
 

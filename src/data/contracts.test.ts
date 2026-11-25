@@ -96,6 +96,8 @@ const validManifest = {
       name: "MBIE Rental Bond Data",
       url: "https://www.tenancy.govt.nz/rental-bond-data/",
       licence: "Creative Commons Attribution 3.0 New Zealand",
+      retrievedAt: "2026-10-27",
+      sha256: "a".repeat(64),
     },
   ],
 };

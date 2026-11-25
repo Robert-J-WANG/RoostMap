@@ -13278,6 +13278,273 @@ dist/assets/index-DrFgehDY.js                              1,988.70 kB │ gzip:
 
 ### 9. 更新公开说明并移除技术样例
 
+正式的 Explore、详情页和数据说明已经完成，但应用中还留着两类旧内容：
+
+- **Step 07 的技术样例**。`/spike/map-chart` 页面读取样例目录中的文件，导航栏里也有它的入口。正式页面完成后，它与正式页面并存，会让人以为应用有两套数据。
+- **与产品不一致的公开说明**。Home 写着 RoostMap 结合了历史租金和通勤需求，而通勤不在产品范围内，历史趋势也还没有实现；Methodology 只列出了两个数据来源的名称。
+
+本节先移除技术样例，再让 Home 和 Methodology 如实说明产品和当前 release。
+
+#### 9.1 移除技术样例
+
+技术样例包括：
+
+| 内容 | 文件 |
+|---|---|
+| 页面和测试 | `src/pages/MapChartPage.tsx`、`src/pages/MapChartPage.test.tsx` |
+| 样例代码 | `src/features/explore/sample-data.ts`、`src/features/explore/RentHistoryChart.tsx` |
+| 生成样例数据的脚本 | `data/scripts/` 中的 `prepare-map-chart-sample.mjs`、`prepare-map-chart-comparison.mjs`、`measure-map-chart-data.mjs` |
+| 样例数据 | `public/data/spike/` |
+| 路由、导航和忽略规则 | `routes.tsx` 中的 `spike/map-chart`、导航中的 MapChart、`.gitignore` 中放行样例数据的规则 |
+
+`RentHistoryChart` 读取的是样例数据的类型，正式数据还没有租金历史的 contract，它不能直接用于正式页面；三个脚本只生成样例数据，数据删除后也就没有用处。Git 历史保留着它们，需要时可以找回。`data/scripts/` 中 Step 06 的数据核查脚本不属于样例，保留。
+
+先在 `routes.tsx` 中删除样例页面的导入和路由，在 `AppShell.tsx` 中删除导航项，并修改 `.gitignore`：
+
+```gitignore
+# Keep directories traversable, then include only the published data release
+!public/data/**/
+!public/data/manifest.json
+!public/data/releases/**
+```
+
+然后用 `git rm` 删除文件。它会删除工作区中的文件，同时暂存这次删除：
+
+```bash
+git rm src/pages/MapChartPage.tsx src/pages/MapChartPage.test.tsx src/features/explore/sample-data.ts src/features/explore/RentHistoryChart.tsx data/scripts/prepare-map-chart-sample.mjs data/scripts/prepare-map-chart-comparison.mjs data/scripts/measure-map-chart-data.mjs
+git rm -r public/data/spike
+```
+
+第一条命令输出 7 行 `rm '…'`，第二条输出 38 行，与 Git 跟踪的样例数据文件数相同。
+
+`git rm` 只删除 Git 跟踪的文件。之后 `public/data/spike/` 下还剩三层文件夹，每层有一个 `.DS_Store`。这是 macOS 的 Finder 记录文件夹显示方式的文件，`.gitignore` 已经忽略它，所以不会被提交，但 `vite build` 会把 `public/` 中的所有内容复制到 `dist/`。剩下的文件夹用 `rm -r public/data/spike` 删除。
+
+删除后，代码中如果还有对样例文件的引用，`tsc` 会报告找不到模块。lint 和类型检查都没有报错，说明正式页面没有依赖样例代码。
+
+#### 9.2 让 Home 说明产品用途和当前 release
+
+Home 的主标题 "Make clearer rental decisions with area-level evidence." 符合产品定位，保留不变。下面的说明改为只描述现在真实存在的内容：
+
+```tsx
+<p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+  RoostMap shows the weekly rents recorded in official rental bond
+  data for each Statistical Area 2 (SA2), so you can compare areas
+  using the same data definitions.
+</p>
+
+<p className="mt-4 max-w-2xl text-muted-foreground">
+  It does not show live listings or tell you where to live.
+</p>
+```
+
+原来列出产品原则的卡片改为 "Current data release"，从 manifest 读取当前 release 覆盖的 Region、区域数量、数据季度和状态。用户在 Home 就能知道现在能查看哪些区域、数据截至哪个季度：
+
+```tsx
+function ReleaseSummary({ manifest }: ReleaseSummaryProps) {
+  const regionNames = manifest.partitions.map((partition) => partition.name).join(", ");
+  const areaCount = manifest.partitions.reduce(
+    (total, partition) => total + partition.areaCount,
+    0,
+  );
+
+  return (
+    <dl className="space-y-3 text-sm">
+      <div>
+        <dt className="text-muted-foreground">Coverage</dt>
+        <dd className="font-medium">
+          {regionNames} · {areaCount} areas
+        </dd>
+      </div>
+      {/* ……Data to（季度和状态标记）、Classification */}
+    </dl>
+  );
+}
+```
+
+`reduce` 把每个 Region 的区域数量依次加到 `total` 上，初始值为 0，得到所有 Region 的区域总数。
+
+产品介绍不依赖 manifest。manifest 读取失败时，只有这张卡片显示错误和 Retry 按钮，标题、说明和入口照常显示：
+
+```tsx
+let releaseSummary: ReactNode;
+
+if (manifestQuery.isError) {
+  releaseSummary = (
+    <DataLoadError
+      error={manifestQuery.error}
+      onRetry={() => manifestQuery.refetch()}
+    />
+  );
+} else if (manifestQuery.isPending) {
+  // ……Loading the current data release…
+} else {
+  releaseSummary = <ReleaseSummary manifest={manifestQuery.data} />;
+}
+```
+
+说明下方加入 "Explore rental areas" 入口，页面底部使用第 8 节的 `DataReleaseNotice`，注明来源并提供 Methodology 入口。
+
+Home 现在会读取 manifest，`routes.test.tsx` 中渲染整个路由表的辅助函数因此也要提供 `QueryClient` 和模拟的数据文件，否则 `useQuery` 找不到 QueryClient：
+
+```tsx
+function renderRoute(pathname: string) {
+  const router = createMemoryRouter(routes, {
+    initialEntries: [pathname],
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+  serveRelease();
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
+```
+
+#### 9.3 让 Methodology 说明来源和计算规则
+
+Methodology 是查看数据细节的地方：每个数字怎样计算、缺失值怎样处理、数据由哪个源文件生成。其中来源的下载日期和源文件的 SHA-256 记录在 source lock 中，manifest 还没有。
+
+在 `build-release.mjs` 中，`sources` 额外复制这两个字段：
+
+```js
+sources: sourceLock.sources.map(({ id, name, url, licence, retrievedAt, sha256 }) => ({
+  id,
+  name,
+  url,
+  licence,
+  retrievedAt,
+  sha256,
+})),
+```
+
+contract 同样增加：
+
+```ts
+retrievedAt: z.iso.date(),
+sha256: z.string().regex(/^[0-9a-f]{64}$/),
+```
+
+`z.iso.date()` 要求 `YYYY-MM-DD` 格式的日期；SHA-256 是 64 位十六进制字符。release 测试中比较 manifest 与 source lock 的部分也加入这两个字段。
+
+重新生成 release 并比较哈希：
+
+```bash
+npm run data:release
+shasum -a 256 public/data/manifest.json public/data/releases/2026-04-01.1/manifest.json public/data/releases/2026-04-01.1/areas/current-rents/03.json public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+```text
+82e3fdc3580558fa91971a3892575c20826b539b524ba78e57dbd9de01d249d7  public/data/manifest.json
+82e3fdc3580558fa91971a3892575c20826b539b524ba78e57dbd9de01d249d7  public/data/releases/2026-04-01.1/manifest.json
+bd086972677ce2816636466c016726feee6ec0cec0dfb8d80800410edf7ba75b  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+aa347c98c35d3a698677c5a6829d078f4254123bb4ebc04d5ad5d1c3ca77846b  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+两个 manifest 从第 8 节的 `4e49c319…` 变为 `82e3fdc3…`，当前租金和边界仍与第 4 节相同。
+
+Methodology 的内容分为两部分。计算规则写在页面中，它们来自前面几节实现的数据处理代码：
+
+| 小节 | 内容 | 依据 |
+|---|---|---|
+| What the figures describe | 新提交的私人部门 bond，按 tenancy start date 统计；不是实时房源或挂牌租金；不给区域排名或推荐 | 产品设计的数据口径 |
+| Current rent | 最新观测中位租金取自最后一个有租金的季度；Reported Bonds 取自同一季度；12 个月变化为数据集最新季度与上一年同季度 Geometric Mean Rent 之比减 1，任一季度缺失时为 N/A | 第 3 节的 `buildCurrentRent` |
+| Missing data | bonds 少于 5 时 MBIE 不发布，部分记录没有租金；显示为 No data，不用 0、其他分类或估计值代替 | 第 2 节的 contract 和产品设计的缺失规则 |
+| Geography | 使用 SA2 2019；区域在任一分类有租金、且 SA2 编号能关联到 Stats NZ 边界时发布 | 第 3 节的发布规则 |
+
+当前 release 和数据来源从 manifest 读取。每个来源显示名称和链接、许可证、下载日期和源文件的 SHA-256：
+
+```tsx
+{manifest.sources.map((source) => (
+  <li className="space-y-1" key={source.id}>
+    <a
+      className="font-medium text-foreground underline underline-offset-4"
+      href={source.url}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {source.name}
+    </a>
+    <p>Licence: {source.licence}</p>
+    <p>Retrieved: {source.retrievedAt}</p>
+    <p className="break-all">
+      SHA-256 of the source file:{" "}
+      <code className="text-xs">{source.sha256}</code>
+    </p>
+  </li>
+))}
+```
+
+SHA-256 是 64 个连续字符，中间没有空格，浏览器不会自动换行。`break-all` 允许在任意字符处换行，避免它在窄屏上撑出横向滚动。
+
+与 Home 一样，计算规则不依赖 manifest，读取失败时只有 release 和来源部分显示错误。
+
+#### 9.4 测试并完成检查
+
+两个页面各增加测试：
+
+| 测试 | 检查内容 |
+|---|---|
+| `shows the current data release from the manifest` | Home 显示 `Waikato Region · 3 areas`、`2026-04-01 Provisional`，Explore 入口指向 `/explore` |
+| `keeps the introduction when the manifest fails to load` | manifest 请求失败时显示带文件地址的错误，主标题和 Explore 入口仍然显示 |
+| `shows the release and each source with its licence, retrieval date and checksum` | Methodology 显示 release 版本、覆盖范围、来源链接、许可证、下载日期和 SHA-256 |
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ src/pages/MethodologyPage.test.tsx (1 test) 317ms
+✓ src/pages/HomePage.test.tsx (2 tests) 411ms
+✓ src/app/router/routes.test.tsx (4 tests) 363ms
+
+Test Files  11 passed (11)
+     Tests  46 passed (46)
+```
+
+第 8 节结束时是 10 个文件、48 个测试。`MapChartPage.test.tsx` 的 5 个测试随样例删除，Home 和 Methodology 增加 3 个，共 46 个。
+
+`npm run build` 的结果：
+
+```text
+✓ 2272 modules transformed.
+dist/assets/index-DhYCEUvL.js                              1,617.96 kB │ gzip: 459.27 kB
+```
+
+第 8 节的 build 转换了 2647 个模块，JavaScript 为 1,988.70 kB（gzip 565.87 kB）。这次少了 375 个模块，JavaScript 减少 370.74 kB（gzip 减少 106.60 kB）。样例页面是唯一使用 Recharts 的地方，删除后 Recharts 不再被任何页面导入，构建工具也就不再把它打包。JavaScript 仍然超过 500 kB，构建提示依然存在。
+
+Playwright 的浏览器测试检查 Home、导航、未找到页面和主题：
+
+```text
+  ✓  1 …ts/e2e/app-shell.spec.ts:20:1 › navigates to the methodology page (5.7s)
+  ✓  2 …ts/e2e/app-shell.spec.ts:54:1 › persists an explicit theme choice (7.2s)
+  ✓  3 …-shell.spec.ts:40:1 › shows the not-found page for an unknown URL (5.7s)
+  ✓  4 …] › tests/e2e/app-shell.spec.ts:6:1 › loads the application shell (5.9s)
+
+  4 passed (10.5s)
+```
+
+Home 和 Methodology 的主标题没有改变，导航中的 Methodology 链接仍然存在，所以这些测试不需要修改。
+
+在 `npm run dev` 中检查：
+
+| 页面 | 结果 |
+|---|---|
+| Home | 导航只有 Home、Explore 和 Methodology；"Current data release" 显示 `Waikato Region · 222 areas`、`2026-04-01` 加 `Provisional` 标记和分类；页面底部显示数据说明 |
+| Methodology | 四节计算规则；release 版本 `2026-04-01.1`、生成日期 `2026-11-21` 和状态说明；两个来源的许可证、下载日期 `2026-10-27` 和 SHA-256，SHA-256 与 source lock 中的值相同 |
+| 375px 宽度的 Methodology | SHA-256 换成 3 行显示，页面没有横向滚动 |
+| `/spike/map-chart` | 显示 Page not found |
+
+这些结果说明：技术样例已经从应用、数据目录和打包结果中移除；Home 只描述现在存在的功能，并从 manifest 显示当前 release 的覆盖范围、季度和状态；Methodology 说明每个数字的计算和缺失规则，并显示每个来源的许可证、下载日期和源文件 SHA-256。
+
 ### 10. 验证完整纵向链路并完成 Git 操作
 
 ### Step 08 完成状态

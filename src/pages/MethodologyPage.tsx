@@ -1,4 +1,31 @@
+import type { ReactNode } from "react";
+
+import { DataLoadError } from "@/components/DataLoadError";
+import { DataStatusBadge } from "@/components/DataStatusBadge";
+import type { DataManifest } from "@/data/contracts";
+import { useManifest } from "@/data/queries";
+
 export function MethodologyPage() {
+  const manifestQuery = useManifest();
+
+  // 计算规则是固定说明，不依赖 manifest；当前 release 和数据来源来自 manifest。
+  let releaseDetails: ReactNode;
+
+  if (manifestQuery.isError) {
+    releaseDetails = (
+      <DataLoadError
+        error={manifestQuery.error}
+        onRetry={() => manifestQuery.refetch()}
+      />
+    );
+  } else if (manifestQuery.isPending) {
+    releaseDetails = (
+      <p className="text-muted-foreground">Loading the current data release…</p>
+    );
+  } else {
+    releaseDetails = <ReleaseDetails manifest={manifestQuery.data} />;
+  }
+
   return (
     <>
       <title>Methodology | RoostMap</title>
@@ -17,15 +44,156 @@ export function MethodologyPage() {
           so that area comparisons retain a consistent geographic meaning.
         </p>
 
-        <section className="mt-10 border-t pt-8">
-          <h2 className="text-2xl font-semibold">Core data sources</h2>
+        <MethodologySection title="What the figures describe">
+          <p>
+            The figures come from MBIE Rental Bond Data: bonds lodged for new
+            private-sector tenancies, counted by tenancy start date. They are
+            not live listings, asking rents or a record of all rented homes.
+          </p>
+          <p>
+            RoostMap reports area-level evidence. It does not rank areas or
+            recommend where to live.
+          </p>
+        </MethodologySection>
 
-          <ul className="mt-4 list-disc space-y-3 pl-6 text-muted-foreground">
-            <li>MBIE Rental Bond Data</li>
-            <li>Stats NZ Statistical Area 2 Higher Geographies 2019</li>
+        <MethodologySection title="Current rent">
+          <p>
+            Each area uses the MBIE records for all dwelling types and all
+            bedroom categories.
+          </p>
+          <ul className="list-disc space-y-2 pl-6">
+            <li>
+              <strong className="text-foreground">
+                Latest observed median weekly rent
+              </strong>{" "}
+              is the Median Rent from the most recent quarter in which the area
+              has a rent. When that quarter is earlier than the latest quarter
+              in the data, pages show the quarter and do not describe the rent
+              as current.
+            </li>
+            <li>
+              <strong className="text-foreground">Reported Bonds</strong> is the
+              number of bonds recorded in that same quarter. It describes how
+              much data supports the rent, not how many homes are available.
+            </li>
+            <li>
+              <strong className="text-foreground">12-month change</strong>{" "}
+              compares the Geometric Mean Rent in the latest quarter of the
+              data with the same quarter one year earlier: latest ÷ one year
+              earlier − 1. When either quarter has no Geometric Mean Rent, it
+              is shown as N/A.
+            </li>
           </ul>
-        </section>
+        </MethodologySection>
+
+        <MethodologySection title="Missing data">
+          <p>
+            MBIE does not publish combinations with fewer than five bonds, and
+            some published records have no rent. RoostMap shows these values
+            as No data. It does not replace them with zero, with values from
+            another dwelling type or bedroom category, or with estimates for
+            missing quarters.
+          </p>
+        </MethodologySection>
+
+        <MethodologySection title="Geography">
+          <p>
+            Areas use Stats NZ Statistical Area 2 (SA2) 2019 boundaries. An
+            area is published when its MBIE records include at least one rent
+            in any dwelling type or bedroom category and its SA2 code matches a
+            Stats NZ boundary. Region and territorial authority names are used
+            for navigation and display only.
+          </p>
+        </MethodologySection>
+
+        {releaseDetails}
       </article>
+    </>
+  );
+}
+
+type MethodologySectionProps = {
+  title: string;
+  children: ReactNode;
+};
+
+// 一节说明：标题和正文。
+function MethodologySection({ title, children }: MethodologySectionProps) {
+  return (
+    <section className="mt-10 space-y-4 border-t pt-8 leading-7 text-muted-foreground">
+      <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+type ReleaseDetailsProps = {
+  manifest: DataManifest;
+};
+
+// 当前 release 和数据来源：版本、季度、状态、覆盖范围，以及每个源文件的许可证、下载日期和 SHA-256。
+function ReleaseDetails({ manifest }: ReleaseDetailsProps) {
+  const regionNames = manifest.partitions.map((partition) => partition.name).join(", ");
+  const areaCount = manifest.partitions.reduce(
+    (total, partition) => total + partition.areaCount,
+    0,
+  );
+
+  return (
+    <>
+      <MethodologySection title="Current data release">
+        <dl className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt className="text-sm">Release version</dt>
+            <dd className="font-medium text-foreground">{manifest.version}</dd>
+          </div>
+          <div>
+            <dt className="text-sm">Data to</dt>
+            <dd className="font-medium text-foreground">
+              {manifest.latestPeriod}{" "}
+              <DataStatusBadge status={manifest.rentalDataStatus} />
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm">Coverage</dt>
+            <dd className="font-medium text-foreground">
+              {regionNames} · {areaCount} areas
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm">Generated</dt>
+            <dd className="font-medium text-foreground">
+              {manifest.generatedAt.slice(0, 10)}
+            </dd>
+          </div>
+        </dl>
+        {manifest.rentalDataStatus === "provisional" && (
+          <p>{manifest.rentalDataNotice}</p>
+        )}
+      </MethodologySection>
+
+      <MethodologySection title="Data sources">
+        <ul className="space-y-6">
+          {manifest.sources.map((source) => (
+            <li className="space-y-1" key={source.id}>
+              <a
+                className="font-medium text-foreground underline underline-offset-4"
+                href={source.url}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {source.name}
+              </a>
+              <p>Licence: {source.licence}</p>
+              <p>Retrieved: {source.retrievedAt}</p>
+              <p className="break-all">
+                SHA-256 of the source file:{" "}
+                <code className="text-xs">{source.sha256}</code>
+              </p>
+            </li>
+          ))}
+        </ul>
+      </MethodologySection>
     </>
   );
 }

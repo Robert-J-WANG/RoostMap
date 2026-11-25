@@ -50,7 +50,8 @@ export const manifestPartitionSchema = z
   })
   .strict();
 
-// manifest 中的一个数据来源：名称、官方地址和许可证，页面用它注明来源。
+// manifest 中的一个数据来源：名称、官方地址和许可证用来注明来源；
+// 下载日期和源文件的 SHA-256 说明这份 release 由哪个源文件生成。
 // 地址会显示为链接，因此只接受 https 地址。
 const manifestSourceSchema = z
   .object({
@@ -58,6 +59,8 @@ const manifestSourceSchema = z
     name: nonEmptyStringSchema,
     url: z.url({ protocol: /^https$/ }),
     licence: nonEmptyStringSchema,
+    retrievedAt: z.iso.date(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
   })
   .strict();
 
