@@ -45,6 +45,19 @@ describe("data release", () => {
     expect(featureIds).toEqual(sa2Ids);
   });
 
+  it("copies the rental data status and sources from the source lock", () => {
+    const sourceLock = JSON.parse(
+      readFileSync(new URL("../source-lock.json", import.meta.url), "utf8"),
+    );
+    const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
+
+    expect(manifest.rentalDataStatus).toBe(mbieSource.status);
+    expect(manifest.rentalDataNotice).toBe(mbieSource.notice);
+    expect(manifest.sources).toEqual(
+      sourceLock.sources.map(({ id, name, url, licence }) => ({ id, name, url, licence })),
+    );
+  });
+
   // Greensboro 的源记录已手工核对：ALL / ALL 租金 350，Bonds 171，Geometric Mean Rent 395 / 390。
   it("keeps the Greensboro values from the source records", () => {
     const greensboro = waikatoCurrentRents.find((area) => area.sa2Id === "179900");

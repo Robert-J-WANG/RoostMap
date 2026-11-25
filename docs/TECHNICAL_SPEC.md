@@ -299,6 +299,7 @@ export type DataManifest = {
   rentalDataNotice: string | null;
   sources: Array<{
     id: "mbie-rental" | "stats-sa2-2019";
+    name: string;
     url: string;
     publishedAt: string | null;
     retrievedAt: string;

@@ -4,6 +4,8 @@ import { vi } from "vitest";
 
 export const currentRentsUrl = "/data/releases/2026-04-01.1/areas/current-rents/03.json";
 export const geometryUrl = "/data/releases/2026-04-01.1/geometry/regions/03.geo.json";
+export const rentalDataNotice = "Recent quarters may be revised.";
+export const mbieSourceUrl = "https://www.tenancy.govt.nz/rental-bond-data/";
 
 const manifest = {
   version: "2026-04-01.1",
@@ -11,6 +13,22 @@ const manifest = {
   latestPeriod: "2026-04-01",
   partitions: [
     { id: "03", name: "Waikato Region", areaCount: 3, currentRentsUrl, geometryUrl },
+  ],
+  rentalDataStatus: "provisional",
+  rentalDataNotice,
+  sources: [
+    {
+      id: "mbie-rental",
+      name: "MBIE Rental Bond Data",
+      url: mbieSourceUrl,
+      licence: "Creative Commons Attribution 3.0 New Zealand",
+    },
+    {
+      id: "stats-sa2-2019",
+      name: "Stats NZ SA2 2019",
+      url: "https://datafinder.stats.govt.nz/layer/98779/",
+      licence: "Creative Commons Attribution 4.0 International",
+    },
   ],
 };
 

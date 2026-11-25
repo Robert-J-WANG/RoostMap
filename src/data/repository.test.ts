@@ -15,6 +15,16 @@ const manifest = {
       geometryUrl: "/data/releases/2026-04-01.1/geometry/regions/03.geo.json",
     },
   ],
+  rentalDataStatus: "provisional",
+  rentalDataNotice: "Recent quarters may be revised.",
+  sources: [
+    {
+      id: "mbie-rental",
+      name: "MBIE Rental Bond Data",
+      url: "https://www.tenancy.govt.nz/rental-bond-data/",
+      licence: "Creative Commons Attribution 3.0 New Zealand",
+    },
+  ],
 };
 
 // 让 fetch 返回指定的 JSON 和 HTTP 状态，不发出真实请求。

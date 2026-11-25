@@ -2,8 +2,10 @@ import { ArrowLeftIcon } from "lucide-react";
 import { Link, useParams } from "react-router";
 
 import { DataLoadError } from "@/components/DataLoadError";
+import { DataReleaseNotice } from "@/components/DataReleaseNotice";
+import { DataStatusBadge } from "@/components/DataStatusBadge";
 import { buttonVariants } from "@/components/ui/button";
-import type { ManifestPartition } from "@/data/contracts";
+import type { DataManifest, ManifestPartition } from "@/data/contracts";
 import { useManifest, useRegionCurrentRents } from "@/data/queries";
 import {
   formatBonds,
@@ -43,18 +45,22 @@ export function AreaDetailPage() {
   // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
   return (
     <section className="space-y-6">
-      <AreaDetails partition={manifestQuery.data.partitions[0]} />
+      <AreaDetails
+        manifest={manifestQuery.data}
+        partition={manifestQuery.data.partitions[0]}
+      />
     </section>
   );
 }
 
 type AreaDetailsProps = {
+  manifest: DataManifest;
   partition: ManifestPartition;
 };
 
 // 一个区域的详情：与 Explore 的列表和地图读取同一份当前租金。
 // 查询键相同，从 Explore 进入时直接使用已经下载的数据，不再请求。
-function AreaDetails({ partition }: AreaDetailsProps) {
+function AreaDetails({ manifest, partition }: AreaDetailsProps) {
   const { sa2Id } = useParams();
   const currentRentsQuery = useRegionCurrentRents(partition);
 
@@ -149,7 +155,10 @@ function AreaDetails({ partition }: AreaDetailsProps) {
         </div>
         <div className="space-y-1">
           <dt className="text-sm text-muted-foreground">Dataset latest period</dt>
-          <dd className="text-lg font-medium">{datasetLatestPeriod}</dd>
+          <dd className="text-lg font-medium">
+            {datasetLatestPeriod}{" "}
+            <DataStatusBadge status={manifest.rentalDataStatus} />
+          </dd>
         </div>
         <div className="space-y-1">
           <dt className="text-sm text-muted-foreground">Reported Bonds</dt>
@@ -162,6 +171,8 @@ function AreaDetails({ partition }: AreaDetailsProps) {
           </dd>
         </div>
       </dl>
+
+      <DataReleaseNotice manifest={manifest} />
     </>
   );
 }

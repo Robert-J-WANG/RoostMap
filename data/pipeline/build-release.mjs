@@ -75,11 +75,21 @@ for (const regionCode of regionCodes) {
 }
 
 // 4. 写出版本目录中的 manifest，以及指向当前版本的顶层 manifest。
+// 租金数据的状态和说明、各来源的名称、地址和许可证都取自 source lock，页面据此注明来源。
+const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
 const manifest = {
   version,
   generatedAt,
   latestPeriod: datasetLatestPeriod,
   partitions,
+  rentalDataStatus: mbieSource.status,
+  rentalDataNotice: mbieSource.notice ?? null,
+  sources: sourceLock.sources.map(({ id, name, url, licence }) => ({
+    id,
+    name,
+    url,
+    licence,
+  })),
 };
 await writeJson(new URL("manifest.json", releaseUrl), manifest);
 await writeJson(new URL("manifest.json", publicDataUrl), manifest);

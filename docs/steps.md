@@ -12958,6 +12958,324 @@ dist/assets/index-BHg7ASmu.js                              1,987.31 kB │ gzip:
 
 ### 8. 让页面表达数据来源、周期与 provisional 状态
 
+第 6、7 节的页面已经显示数据集最新季度和租金所在的季度，缺失值也按规则显示。但页面还没有说明三件事：
+
+- **数据从哪里来**。MBIE 的租金数据使用 Creative Commons Attribution 3.0 New Zealand 许可，Stats NZ 的边界使用 Creative Commons Attribution 4.0 International 许可。两者都要求使用数据时注明来源和许可证。
+- **数据是否可能修订**。第 4 节的 source lock 记录了 MBIE 数据的状态为 `provisional`，产品设计要求这时相关页面显示状态说明。否则用户在数据更新后看到数字变化，会以为是市场变化。
+- **数据表示什么**。这些数字是新提交的私人部门 bond，不是实时房源，也不是全部出租住房。
+
+这些信息目前只在 `data/source-lock.json` 中，而页面只能读取 release 中的文件。第 4 节生成的 manifest 只有 `version`、`generatedAt`、`latestPeriod` 和 `partitions`。
+
+#### 8.1 在 manifest 中发布状态和来源
+
+状态说明是一段要给用户看的文字，它和状态本身一起决定页面怎样描述数据，因此和状态一起写在 source lock 的 MBIE 来源中：
+
+```json
+"status": "provisional",
+"notice": "MBIE marks this rental bond data as provisional. Recent quarters may be revised, so a change between releases is not necessarily a market change.",
+```
+
+MBIE 的数据将来变为 final 时，只需修改 source lock，页面代码不变。
+
+生成 manifest 时，从 source lock 复制状态、说明和每个来源的名称、地址、许可证。在 `data/pipeline/build-release.mjs` 的第 4 步中：
+
+```js
+// 租金数据的状态和说明、各来源的名称、地址和许可证都取自 source lock，页面据此注明来源。
+const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
+const manifest = {
+  version,
+  generatedAt,
+  latestPeriod: datasetLatestPeriod,
+  partitions,
+  rentalDataStatus: mbieSource.status,
+  rentalDataNotice: mbieSource.notice ?? null,
+  sources: sourceLock.sources.map(({ id, name, url, licence }) => ({
+    id,
+    name,
+    url,
+    licence,
+  })),
+};
+```
+
+- `sources` 只复制页面要显示的四个字段。source lock 中的 `path` 是本地文件位置，`sha256` 和 `retrievedAt` 是生成数据时使用的信息，页面现在不显示它们。
+- `mbieSource.notice ?? null`：source lock 没有写说明时，manifest 中写 `null`。
+
+manifest 的 contract 同样增加这三个字段。在 `src/data/contracts.ts` 中：
+
+```ts
+// manifest 中的一个数据来源：名称、官方地址和许可证，页面用它注明来源。
+// 地址会显示为链接，因此只接受 https 地址。
+const manifestSourceSchema = z
+  .object({
+    id: z.enum(["mbie-rental", "stats-sa2-2019"]),
+    name: nonEmptyStringSchema,
+    url: z.url({ protocol: /^https$/ }),
+    licence: nonEmptyStringSchema,
+  })
+  .strict();
+```
+
+```ts
+rentalDataStatus: z.enum(["provisional", "final"]),
+rentalDataNotice: nonEmptyStringSchema.nullable(),
+sources: z.array(manifestSourceSchema).min(1),
+```
+
+- `z.enum([...])` 只接受列出的几个值。状态只有 provisional 和 final 两种，来源也只有这两个。
+- `z.url({ protocol: /^https$/ })` 要求值是合法的 URL，并且协议必须是 `https`。来源地址会直接成为页面上链接的 `href`，这条规则同时拒绝了 `javascript:` 这类可以执行代码的地址。
+- `sources` 至少有一项，页面才能注明来源。
+
+技术规范中 manifest 的 `sources` 类型原来没有名称字段，而页面要显示来源名称，因此在 `docs/TECHNICAL_SPEC.md` 的类型定义中加入 `name: string`。
+
+#### 8.2 重新生成 release 并检查
+
+这次只修改了 manifest 的内容，release 版本号仍然是 `2026-04-01.1`。版本发布之后不再修改；这个 release 还没有合并或部署，修改它不会让已经读取过的用户得到不同的内容。
+
+重新生成：
+
+```bash
+npm run data:release
+```
+
+输出中的 Region 信息与第 4 节相同，`areaCount` 仍为 222。确认只有 manifest 改变：
+
+```bash
+git status --short public/data
+```
+
+```text
+ M public/data/manifest.json
+ M public/data/releases/2026-04-01.1/manifest.json
+```
+
+再比较四个文件的 SHA-256：
+
+```bash
+shasum -a 256 public/data/manifest.json public/data/releases/2026-04-01.1/manifest.json public/data/releases/2026-04-01.1/areas/current-rents/03.json public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+```text
+4e49c31964b368b4ecab92e09c584fe9bcb6ba41977eda1d0830ee909cc6f892  public/data/manifest.json
+4e49c31964b368b4ecab92e09c584fe9bcb6ba41977eda1d0830ee909cc6f892  public/data/releases/2026-04-01.1/manifest.json
+bd086972677ce2816636466c016726feee6ec0cec0dfb8d80800410edf7ba75b  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+aa347c98c35d3a698677c5a6829d078f4254123bb4ebc04d5ad5d1c3ca77846b  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+两个 manifest 从第 4 节的 `58b64635…` 变为 `4e49c319…`；当前租金和边界的值与第 4 节相同。这说明这次只在 manifest 中加入了状态和来源，222 个区域的数据没有任何变化。
+
+release 测试增加一条，确认 manifest 中的状态、说明和来源与 source lock 一致：
+
+```js
+it("copies the rental data status and sources from the source lock", () => {
+  const sourceLock = JSON.parse(
+    readFileSync(new URL("../source-lock.json", import.meta.url), "utf8"),
+  );
+  const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
+
+  expect(manifest.rentalDataStatus).toBe(mbieSource.status);
+  expect(manifest.rentalDataNotice).toBe(mbieSource.notice);
+  expect(manifest.sources).toEqual(
+    sourceLock.sources.map(({ id, name, url, licence }) => ({ id, name, url, licence })),
+  );
+});
+```
+
+#### 8.3 在 Explore 和详情页显示数据说明
+
+两个页面显示同一份说明，因此写成共享组件 `src/components/DataReleaseNotice.tsx`。两个页面都要有：详情页的地址可以直接分享，打开链接的人不经过 Explore，详情页的数字也需要自带说明。
+
+第一版把说明写成一张卡片，放在 Explore 的标题下方：
+
+```tsx
+<aside className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+  {manifest.rentalDataStatus === "provisional" && (
+    <p>
+      <span className="mr-2 rounded-md border px-2 py-0.5 text-xs font-semibold">
+        Provisional
+      </span>
+      {manifest.rentalDataNotice}
+    </p>
+  )}
+  {/* ……数据含义和来源列表 */}
+</aside>
+```
+
+在浏览器中检查，内容和链接都正确，但 375px 宽度下这张卡片高 314px，地图从页面顶部 696px 处才开始，812px 高的屏幕上几乎看不到地图。说明虽然必要，却把页面的核心内容推到了后面。
+
+#### 8.4 把状态放在数据季度旁，说明放在页面底部
+
+说明中的几部分并不都需要出现在最前面：
+
+- **状态**要紧挨着数据季度，用户看到季度时就知道它是 provisional。这只需要一个很小的标记。
+- **状态说明、数据含义、来源和许可证**只要在同一页面中能找到即可。
+
+因此把状态单独写成一个标记组件 `src/components/DataStatusBadge.tsx`：
+
+```tsx
+// 紧挨着数据季度显示的状态标记；数据为 final 时不显示。
+export function DataStatusBadge({ status }: DataStatusBadgeProps) {
+  if (status !== "provisional") {
+    return null;
+  }
+
+  return (
+    <span className="rounded-md border px-1.5 py-0.5 text-xs font-medium">
+      Provisional
+    </span>
+  );
+}
+```
+
+`DataStatusBadgeProps` 中 `status` 的类型写作 `DataManifest["rentalDataStatus"]`，即从 manifest 的类型中取出这个字段的类型 `"provisional" | "final"`。
+
+Explore 的标题行和详情页的 `Dataset latest period` 都在季度后面加上这个标记：
+
+```tsx
+<p className="text-muted-foreground">
+  {partition.areaCount} areas · All dwelling types · All bedroom
+  categories · Data to {manifest.latestPeriod}{" "}
+  <DataStatusBadge status={manifest.rentalDataStatus} />
+</p>
+```
+
+```tsx
+<dd className="text-lg font-medium">
+  {datasetLatestPeriod}{" "}
+  <DataStatusBadge status={manifest.rentalDataStatus} />
+</dd>
+```
+
+`DataReleaseNotice` 去掉卡片的边框和背景，改为小号灰色文字，并在最后加入 Methodology 的入口：
+
+```tsx
+<aside className="space-y-1 border-t pt-4 text-xs leading-5 text-muted-foreground">
+  {manifest.rentalDataStatus === "provisional" && (
+    <p>{manifest.rentalDataNotice}</p>
+  )}
+
+  <p>
+    Figures describe new private-sector bonds lodged with MBIE. They are
+    not live listings or a record of all rented homes.
+  </p>
+
+  <ul>
+    {manifest.sources.map((source) => (
+      <li key={source.id}>
+        Source:{" "}
+        <a
+          className="underline underline-offset-2 hover:text-foreground"
+          href={source.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {source.name}
+        </a>{" "}
+        · {source.licence}
+      </li>
+    ))}
+  </ul>
+
+  <p>
+    See{" "}
+    <Link
+      className="underline underline-offset-2 hover:text-foreground"
+      to="/methodology"
+    >
+      Methodology
+    </Link>{" "}
+    for how the data is processed.
+  </p>
+</aside>
+```
+
+- 来源链接指向其他网站，`target="_blank"` 在新标签页打开，不离开 RoostMap；`rel="noreferrer"` 不把 RoostMap 的地址传给对方网站，新页面也无法通过 `window.opener` 控制 RoostMap 的页面。
+- 数据页面只放理解数字所需的最少说明。数据的处理方法、隐私抑制规则和已知限制属于 Methodology，这里只提供入口。
+
+Explore 中，说明从标题下方移到地图和列表之后；详情页中，它原本就在租金卡片下方，位置不变。
+
+#### 8.5 测试并完成检查
+
+manifest 的 contract 测试增加两条，放在 `src/data/contracts.test.ts` 中：
+
+```ts
+it("rejects an unknown data status, a missing source list and a non-https source link", () => {
+  // 状态只能是 provisional 或 final。
+  expect(
+    manifestSchema.safeParse({ ...validManifest, rentalDataStatus: "draft" }).success,
+  ).toBe(false);
+  // 页面必须能注明来源。
+  expect(
+    manifestSchema.safeParse({ ...validManifest, sources: [] }).success,
+  ).toBe(false);
+  // 来源地址会显示为链接，只接受 https。
+  expect(
+    manifestSchema.safeParse({
+      ...validManifest,
+      sources: [{ ...validManifest.sources[0], url: "javascript:alert(1)" }],
+    }).success,
+  ).toBe(false);
+});
+```
+
+另一条确认完整的 manifest 能通过检查。第 5 节 repository 测试和第 7 节共享测试数据中的 manifest 也加入了这三个字段，否则它们会被新的 contract 拒绝。
+
+两个页面各增加一个测试，检查状态标记、说明文字、来源链接和 Methodology 链接。Explore 的测试为：
+
+```tsx
+it("shows the rental data status and sources from the manifest", async () => {
+  serveRelease();
+  renderExplore();
+
+  // 状态标记在标题行，读取 manifest 后显示；数据说明在页面底部，当前租金读取后显示。
+  expect(await screen.findByText("Provisional")).toBeInTheDocument();
+  expect(await screen.findByText(rentalDataNotice)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "MBIE Rental Bond Data" })).toHaveAttribute("href", mbieSourceUrl);
+  expect(screen.getByText(/Creative Commons Attribution 3\.0 New Zealand/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
+});
+```
+
+说明移到页面底部后，这个测试第一次运行失败：说明文字找不到。原因是两部分出现的时机不同。状态标记在标题行，manifest 读取完成就显示；说明在地图和列表之后，要等当前租金也读取完成才显示。测试找到标记后立即用 `getByText` 查找说明，这时说明还没有出现。改为同样用 `findByText` 等待说明出现后，测试通过。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ data/pipeline/release.test.mjs (5 tests) 253ms
+✓ src/data/contracts.test.ts (7 tests) 16ms
+✓ src/pages/AreaDetailPage.test.tsx (6 tests) 437ms
+✓ src/pages/ExplorePage.test.tsx (6 tests) 676ms
+
+Test Files  10 passed (10)
+     Tests  48 passed (48)
+```
+
+`npm run build` 中的 `tsc -b` 通过，JavaScript chunk 超过 500 kB 的提示仍然存在：
+
+```text
+dist/assets/index-DrFgehDY.js                              1,988.70 kB │ gzip: 565.87 kB
+```
+
+在浏览器中检查：
+
+| 检查 | 结果 |
+|---|---|
+| Explore 标题行 | `… · Data to 2026-04-01` 后显示 `Provisional` 标记，下面直接是地图和列表 |
+| Explore 页面底部 | 列表之后显示状态说明、数据含义、两条来源和 Methodology 入口 |
+| 详情页 `/areas/167300` | `Dataset latest period` 显示为 `2026-04-01` 加 `Provisional` 标记；租金卡片下方是同样的说明 |
+| 来源链接 | 分别打开 tenancy.govt.nz 的 Rental Bond Data 页面和 Stats NZ Datafinder 的 SA2 2019 图层，在新标签页中打开 |
+| 375px 宽度的 Explore | 没有横向滚动；地图从页面顶部 358px 处开始，说明位于列表之后 |
+
+这些结果说明：页面显示的状态、说明和来源都来自 manifest，而 manifest 中的这些信息来自 source lock；release 中的租金和边界没有因此改变。数据页面在季度旁显示状态，在页面底部注明数据含义、来源和许可证，并提供 Methodology 入口，地图和列表仍然位于页面前部。
+
 ### 9. 更新公开说明并移除技术样例
 
 ### 10. 验证完整纵向链路并完成 Git 操作

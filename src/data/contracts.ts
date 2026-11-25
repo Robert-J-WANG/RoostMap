@@ -50,13 +50,28 @@ export const manifestPartitionSchema = z
   })
   .strict();
 
-// 页面读取数据的入口：当前版本、生成时间、数据最新季度和全部 Region。
+// manifest 中的一个数据来源：名称、官方地址和许可证，页面用它注明来源。
+// 地址会显示为链接，因此只接受 https 地址。
+const manifestSourceSchema = z
+  .object({
+    id: z.enum(["mbie-rental", "stats-sa2-2019"]),
+    name: nonEmptyStringSchema,
+    url: z.url({ protocol: /^https$/ }),
+    licence: nonEmptyStringSchema,
+  })
+  .strict();
+
+// 页面读取数据的入口：当前版本、生成时间、数据最新季度、全部 Region，
+// 以及租金数据的状态、状态说明和数据来源。
 export const manifestSchema = z
   .object({
     version: nonEmptyStringSchema,
     generatedAt: z.iso.datetime(),
     latestPeriod: periodSchema,
     partitions: z.array(manifestPartitionSchema).min(1),
+    rentalDataStatus: z.enum(["provisional", "final"]),
+    rentalDataNotice: nonEmptyStringSchema.nullable(),
+    sources: z.array(manifestSourceSchema).min(1),
   })
   .strict();
 

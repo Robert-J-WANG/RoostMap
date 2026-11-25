@@ -10,6 +10,7 @@
       "url": "https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/",
       "licence": "Creative Commons Attribution 3.0 New Zealand",
       "status": "provisional",
+      "notice": "MBIE marks this rental bond data as provisional. Recent quarters may be revised, so a change between releases is not necessarily a market change.",
       "retrievedAt": "2026-10-27",
       "path": "data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
       "sha256": "b40a39a0ce899362df5da729ed38cf8962cc31058910693aa2301feb9d0be80e"

@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { DataLoadError } from "@/components/DataLoadError";
+import { DataReleaseNotice } from "@/components/DataReleaseNotice";
+import { DataStatusBadge } from "@/components/DataStatusBadge";
 import { buttonVariants } from "@/components/ui/button";
-import type { ManifestPartition } from "@/data/contracts";
+import type { DataManifest, ManifestPartition } from "@/data/contracts";
 import {
   useManifest,
   useRegionCurrentRents,
@@ -44,7 +46,7 @@ export function ExplorePage() {
     <section className="space-y-6">
       {pageTitle}
       <RegionExplorer
-        latestPeriod={manifestQuery.data.latestPeriod}
+        manifest={manifestQuery.data}
         partition={manifestQuery.data.partitions[0]}
       />
     </section>
@@ -52,12 +54,12 @@ export function ExplorePage() {
 }
 
 type RegionExplorerProps = {
-  latestPeriod: string;
+  manifest: DataManifest;
   partition: ManifestPartition;
 };
 
 // 一个 Region 的列表和地图：两者使用同一份当前租金和 URL 中的同一个选择。
-function RegionExplorer({ latestPeriod, partition }: RegionExplorerProps) {
+function RegionExplorer({ manifest, partition }: RegionExplorerProps) {
   const currentRentsQuery = useRegionCurrentRents(partition);
   const geometryQuery = useRegionGeometry(partition);
 
@@ -70,13 +72,14 @@ function RegionExplorer({ latestPeriod, partition }: RegionExplorerProps) {
     setSearchParams({ sa2: sa2Id }, { replace: true });
   }
 
-  // 标题区在加载、失败和完成三种状态下都显示。
+  // 标题区在加载、失败和完成三种状态下都显示；数据状态紧挨着数据季度。
   const header = (
     <div className="space-y-2">
       <h1 className="text-3xl font-semibold">{partition.name} rental areas</h1>
       <p className="text-muted-foreground">
         {partition.areaCount} areas · All dwelling types · All bedroom
-        categories · Data to {latestPeriod}
+        categories · Data to {manifest.latestPeriod}{" "}
+        <DataStatusBadge status={manifest.rentalDataStatus} />
       </p>
     </div>
   );
@@ -174,6 +177,9 @@ function RegionExplorer({ latestPeriod, partition }: RegionExplorerProps) {
           />
         </div>
       </div>
+
+      {/* 数据说明放在地图和列表之后，不推后核心内容。 */}
+      <DataReleaseNotice manifest={manifest} />
     </>
   );
 }

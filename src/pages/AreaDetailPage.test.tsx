@@ -5,7 +5,12 @@ import { RouterProvider } from "react-router/dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AreaDetailPage } from "@/pages/AreaDetailPage";
-import { currentRentsUrl, serveRelease } from "@/test/release-fixtures";
+import {
+  currentRentsUrl,
+  mbieSourceUrl,
+  rentalDataNotice,
+  serveRelease,
+} from "@/test/release-fixtures";
 
 // 每个测试使用独立的路由和 QueryClient；关闭重试，让失败状态立即显示。
 function renderAreaDetail(sa2Id: string) {
@@ -46,6 +51,17 @@ describe("Area Detail page", () => {
     expect(getValue("Reported Bonds")).toHaveTextContent("171 bonds");
     expect(getValue("12-month change")).toHaveTextContent("+1.3%");
     expect(screen.queryByText(/earlier quarter/)).not.toBeInTheDocument();
+  });
+
+  it("shows the rental data status and sources from the manifest", async () => {
+    serveRelease();
+    renderAreaDetail("179900");
+
+    await screen.findByRole("heading", { level: 1, name: "Greensboro" });
+    expect(screen.getByText("Provisional")).toBeInTheDocument();
+    expect(screen.getByText(rentalDataNotice)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MBIE Rental Bond Data" })).toHaveAttribute("href", mbieSourceUrl);
+    expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
   });
 
   it("marks a rent from an earlier quarter", async () => {

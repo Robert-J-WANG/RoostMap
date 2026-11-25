@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { areaWithCurrentRentSchema } from "@/data/contracts";
+import { areaWithCurrentRentSchema, manifestSchema } from "@/data/contracts";
 
 // 一行符合 contract 的区域列表数据，各测试在它的基础上修改单个字段。
 const validRow = {
@@ -71,5 +71,55 @@ describe("data contracts", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+// 一份符合 contract 的 manifest，各测试在它的基础上修改单个字段。
+const validManifest = {
+  version: "2026-04-01.1",
+  generatedAt: "2026-11-21T00:00:00.000Z",
+  latestPeriod: "2026-04-01",
+  partitions: [
+    {
+      id: "03",
+      name: "Waikato Region",
+      areaCount: 222,
+      currentRentsUrl: "/data/releases/2026-04-01.1/areas/current-rents/03.json",
+      geometryUrl: "/data/releases/2026-04-01.1/geometry/regions/03.geo.json",
+    },
+  ],
+  rentalDataStatus: "provisional",
+  rentalDataNotice: "Recent quarters may be revised.",
+  sources: [
+    {
+      id: "mbie-rental",
+      name: "MBIE Rental Bond Data",
+      url: "https://www.tenancy.govt.nz/rental-bond-data/",
+      licence: "Creative Commons Attribution 3.0 New Zealand",
+    },
+  ],
+};
+
+describe("manifest contract", () => {
+  it("accepts a manifest with its data status and sources", () => {
+    expect(manifestSchema.parse(validManifest)).toEqual(validManifest);
+  });
+
+  it("rejects an unknown data status, a missing source list and a non-https source link", () => {
+    // 状态只能是 provisional 或 final。
+    expect(
+      manifestSchema.safeParse({ ...validManifest, rentalDataStatus: "draft" }).success,
+    ).toBe(false);
+    // 页面必须能注明来源。
+    expect(
+      manifestSchema.safeParse({ ...validManifest, sources: [] }).success,
+    ).toBe(false);
+    // 来源地址会显示为链接，只接受 https。
+    expect(
+      manifestSchema.safeParse({
+        ...validManifest,
+        sources: [{ ...validManifest.sources[0], url: "javascript:alert(1)" }],
+      }).success,
+    ).toBe(false);
   });
 });
