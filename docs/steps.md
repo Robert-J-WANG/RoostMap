@@ -11830,7 +11830,7 @@ export type AreaWithCurrentRent = z.infer<typeof areaWithCurrentRentSchema>;
            拦住：代码错误                                   拦住：数据错误
 ```
 
-- **TS 类型**只在编译时存在。编辑器的提示和 `npm run build` 中的 `tsc -b` 用它检查我们写的代码；构建时类型被删除，浏览器运行的 JavaScript 中没有它。例如组件直接写 `area.currentRent.medianRent.toFixed(0)`，TS 会提示 `medianRent` 可能为 `null`，要求先处理没有租金的区域。`npm run dev` 和 `npm run test` 只去掉类型、不做类型检查，所以类型错误要靠编辑器和 `tsc -b` 发现。
+- **TS 类型**只在编译时存在。编辑器的提示和 `npm run build` 中的 `tsc -b` 用它检查开发者写的代码；构建时类型被删除，浏览器运行的 JavaScript 中没有它。例如组件直接写 `area.currentRent.medianRent.toFixed(0)`，TS 会提示 `medianRent` 可能为 `null`，要求先处理没有租金的区域。`npm run dev` 和 `npm run test` 只去掉类型、不做类型检查，所以类型错误要靠编辑器和 `tsc -b` 发现。
 - **schema** 是真实运行的 JavaScript，检查从外部进入的数据。例如数据文件把租金写成字符串 `"350"`，TS 无法发现，因为文件内容在运行时才读到；schema 会在数据进入页面之前拒绝它。数据文件可以在代码之外单独重新生成，所以这一道检查不能省。
 
 类型由 schema 推导而来，修改 schema 时类型自动随之改变：字段改名后，所有使用旧字段的代码都会在类型检查中报错，两种检查不会分叉。
@@ -11956,7 +11956,7 @@ async function fetchJson<T>(
 - `<T>` 是泛型参数，代表“这次读取的数据类型”。传入 `manifestSchema` 时 `T` 就是 `DataManifest`，传入边界 schema 时就是 `RegionGeometry`，同一个函数可以返回不同的类型。
 - `fetch` 在文件不存在时不会抛出错误，而是返回 `ok` 为 `false` 的响应，所以要自己检查状态。
 - 数据不符合 contract 时，用 `safeParse` 取得错误，再抛出一个带文件地址的错误。`z.prettifyError` 把 Zod 的错误整理成逐个字段的说明，出错时能直接看到是哪个文件、哪个字段。
-- `signal` 是 `AbortSignal`。用户切换 Region 时，旧的请求不再需要，调用方可以通过它取消请求。
+- `signal` 是 `AbortSignal`。页面离开、不再需要这份数据时，调用方可以通过它取消请求。
 
 三个读取函数只指定文件地址和 schema：
 
@@ -12623,13 +12623,7 @@ Test Files  9 passed (9)
      Tests  37 passed (37)
 ```
 
-`npm run build` 中的 `tsc -b` 通过。构建输出中仍有 JavaScript chunk 超过 500 kB 的提示：
-
-```text
-dist/assets/index-B2_Qowiq.js                              1,983.49 kB │ gzip: 564.76 kB
-```
-
-本节没有处理打包体积。
+`npm run build` 通过。
 
 这些结果说明：Explore 页面从 manifest 开始读取正式 release，列表和地图使用同一份当前租金；缺失值、旧季度租金和无法计算的 12 个月变化按产品规则显示；选择保存在 URL 中，在列表和地图之间同步；当前租金或边界读取失败时，页面显示带文件地址的错误并可以重试。页面还没有显示数据来源、provisional 状态和单个区域的详细信息。
 
@@ -12936,11 +12930,7 @@ Test Files  10 passed (10)
      Tests  43 passed (43)
 ```
 
-`npm run build` 中的 `tsc -b` 通过，JavaScript chunk 超过 500 kB 的提示仍然存在：
-
-```text
-dist/assets/index-BHg7ASmu.js                              1,987.31 kB │ gzip: 565.46 kB
-```
+`npm run build` 通过。
 
 然后在 `npm run dev` 中检查：
 
@@ -13258,11 +13248,7 @@ Test Files  10 passed (10)
      Tests  48 passed (48)
 ```
 
-`npm run build` 中的 `tsc -b` 通过，JavaScript chunk 超过 500 kB 的提示仍然存在：
-
-```text
-dist/assets/index-DrFgehDY.js                              1,988.70 kB │ gzip: 565.87 kB
-```
+`npm run build` 通过。
 
 在浏览器中检查：
 
@@ -13547,4 +13533,155 @@ Home 和 Methodology 的主标题没有改变，导航中的 Methodology 链接�
 
 ### 10. 验证完整纵向链路并完成 Git 操作
 
+前面各节在本地验证了每一段：源文件锁定、当前租金的计算、release 的生成、contract 检查、页面显示。还剩两处没有验证：
+
+- **部署环境如何处理数据文件的请求**。`public/staticwebapp.config.json` 的 SPA fallback 只排除了 `/assets/*`。Azure Static Web Apps 收到一个不存在的路径时，会返回 `index.html`。如果某个数据文件的地址写错，页面得到的是 HTML，最终显示的会是 contract 或 JSON 解析错误，而不是第 5 节设计的 `Could not load … (HTTP 404)`。
+- **源值是否显示在部署后的页面上**。第 6、7 节的页面测试使用的是模拟数据，还没有测试在部署环境中读取真实 release、检查页面上的数值。
+
+#### 10.1 让部署环境对缺失的数据文件返回 404
+
+技术规范要求部署配置包含 `/data/*` 排除规则。在 `navigationFallback` 的 `exclude` 中加入它：
+
+```json
+"exclude": ["/assets/*", "/data/*"]
+```
+
+`exclude` 中的路径不使用 fallback：文件存在时正常返回，不存在时返回 404。
+
+这个配置只由 Azure 读取。本地的 Vite 开发服务器有自己的 fallback，用 `curl` 请求 `npm run dev` 中的几个地址：
+
+```text
+missing json: 200 text/html
+manifest: 200 application/json
+deep link: 200 text/html
+```
+
+不存在的 `/data/releases/missing.json` 在本地同样返回 `200` 和 HTML。因此这条规则只能在部署环境中验证。
+
+#### 10.2 用浏览器测试覆盖正式数据链路
+
+在 `tests/e2e/data-slice.spec.ts` 中加入三个 Playwright 测试。Playwright 在本地运行时测试 `npm run dev`；设置了 `PLAYWRIGHT_BASE_URL` 时，它测试部署后的地址，CI 的 Deployed smoke test 就是这样测试 Preview 的。
+
+```ts
+// Greensboro（179900）的源记录已手工核对：ALL / ALL 租金 350，Bonds 171，12 个月变化 +1.3%。
+// 这些测试确认同样的值经过 release 文件后显示在页面上。
+
+test("shows the Greensboro rent from the published release in Explore", async ({ page }) => {
+  await page.goto("/explore");
+
+  const greensboro = page.getByRole("button", { name: /^Greensboro/ });
+  await expect(greensboro).toContainText("NZ$350/week");
+  await expect(greensboro).toContainText("171 bonds");
+  await expect(greensboro).toContainText("+1.3%");
+});
+
+test("opens an area page directly from its address", async ({ page }) => {
+  await page.goto("/areas/179900");
+
+  await expect(page).toHaveTitle("Greensboro | RoostMap");
+  const details = page.locator("dl");
+  await expect(details).toContainText("NZ$350/week");
+  await expect(details).toContainText("171 bonds");
+  await expect(details).toContainText("+1.3%");
+});
+
+test("returns 404 for a data file that does not exist", async ({ request }) => {
+  test.skip(!process.env.PLAYWRIGHT_BASE_URL, "Only the deployed site applies staticwebapp.config.json");
+
+  const response = await request.get("/data/releases/missing.json");
+  expect(response.status()).toBe(404);
+});
+```
+
+- 前两个测试读取真实的 release。Greensboro 的值已在 3.1 中由源记录手工核对，第 4 节的 release 测试确认它们进入了 release 文件，这里确认它们显示在页面上。三者连起来，同一个源值可以从源记录一直追踪到页面。
+- 第二个测试直接打开 `/areas/179900`。部署环境中，这个路径没有对应的文件，要靠 SPA fallback 返回 `index.html`，再由 React Router 显示详情页。
+- 第三个测试的 `request` 直接发送 HTTP 请求，不打开页面。`test.skip(条件, 原因)` 在条件成立时跳过这个测试：没有设置 `PLAYWRIGHT_BASE_URL` 就是在测试本地 Vite，而本地不应用这条规则。
+- 测试不检查地图本身。地图依赖 WebGL 和 MapTiler 的底图，已经在浏览器中人工检查过。
+
+#### 10.3 本地完整检查
+
+`npm run check` 依次运行 lint、单元与组件测试、生产构建和 Playwright，与 CI 的 Quality job 相同：
+
+```bash
+npm run check
+```
+
+lint 没有报错，测试为 11 个文件、46 个测试全部通过，build 与第 9 节相同。Playwright 运行 7 个测试，6 个通过；404 测试按预期在本地跳过，显示为 `1 skipped`。
+
+#### 10.4 推送并在 Preview 上验证
+
+提交这两个文件，并第一次推送这个分支：
+
+```bash
+git add public/staticwebapp.config.json tests/e2e/data-slice.spec.ts
+git commit -m "test: verify the published data slice in deployed environments"
+git push -u origin feat/data-first-slice
+```
+
+`-u` 让本地分支跟踪远程分支，之后在这个分支上直接运行 `git push` 即可。随后在 GitHub 页面上，从 `feat/data-first-slice` 向 `main` 创建 Pull Request #10，标题为 `feat: build the first formal data slice`。
+
+Pull Request 创建后，CI 依次运行三个 job：
+
+| Job | 结果 | 内容 |
+|---|---|---|
+| Quality | 通过 | `npm run check`，与本地相同 |
+| Deploy | 通过 | 把 Quality 生成的 `dist` 部署为 Azure Preview |
+| Deployed smoke test | 通过 | 用 Preview 地址作为 `PLAYWRIGHT_BASE_URL` 运行 Playwright |
+
+`Close Preview` 只在 Pull Request 关闭时运行，此时显示为跳过。
+
+Deployed smoke test 的 Playwright 结果为：
+
+```text
+Running 7 tests using 2 workers
+
+  ✓  1 [chromium] › tests/e2e/app-shell.spec.ts:6:1 › loads the application shell (779ms)
+  ✓  2 [chromium] › tests/e2e/app-shell.spec.ts:20:1 › navigates to the methodology page (984ms)
+  ✓  3 [chromium] › tests/e2e/app-shell.spec.ts:40:1 › shows the not-found page for an unknown URL (667ms)
+  ✓  4 [chromium] › tests/e2e/app-shell.spec.ts:54:1 › persists an explicit theme choice (1.1s)
+  ✓  5 [chromium] › tests/e2e/data-slice.spec.ts:8:1 › shows the Greensboro rent from the published release in Explore (886ms)
+  ✓  7 [chromium] › tests/e2e/data-slice.spec.ts:31:1 › returns 404 for a data file that does not exist (59ms)
+  ✓  6 [chromium] › tests/e2e/data-slice.spec.ts:18:1 › opens an area page directly from its address (560ms)
+
+  7 passed (6.6s)
+```
+
+这次 7 个测试全部运行，404 测试在 Preview 上通过，说明 `/data/*` 排除规则在 Azure 上生效。
+
+Deploy job 的日志最后给出 Preview 地址。用 `curl` 检查 Preview 上的几个路径：
+
+```text
+200 application/json  /data/manifest.json
+404 text/html  /data/releases/missing.json
+200 application/json  /data/releases/2026-04-01.1/areas/current-rents/03.json
+200 text/html  /areas/179900
+200 text/html  /explore
+200 text/html  /spike/map-chart
+404 text/html  /data/spike/map-chart/waikato.geo.json
+```
+
+- 存在的数据文件返回 JSON，不存在的数据文件返回 404。
+- `/areas/179900` 和 `/explore` 由 fallback 返回 `index.html`。`/spike/map-chart` 同样返回 `index.html`，页面中由路由显示 Page not found。
+- 原来的样例数据已经不在部署结果中。
+
+Preview 上 `/data/manifest.json` 的 SHA-256 为 `82e3fdc3…`，与本地生成的 manifest 相同，部署后的页面读取的就是第 9 节生成的 release。
+
+最后在浏览器中检查 Preview：地图底图、SA2 着色和图例正常显示；直接打开 `/areas/179900`，详情显示 `NZ$350/week`、`171 bonds`、`+1.3%`，`Dataset latest period` 旁有 `Provisional` 标记，页面底部有来源和许可证。
+
+这些结果说明：Greensboro 的源值从源记录经过 release 文件，显示在部署后的 Explore 和详情页上；部署环境对缺失的数据文件返回 404，对页面地址返回应用；Pull Request 的质量检查、Preview 部署和部署后测试全部通过。
+
 ### Step 08 完成状态
+
+```text
+✅ 区域列表所需的数据 contract 已用 Zod 定义，TypeScript 类型由 schema 推导
+✅ 当前租金的计算规则已由答案已知的小型 fixture 覆盖
+✅ 第一个版本化 Waikato release 已由锁定的源文件生成，结果可以重复生成
+✅ manifest 驱动的 repository 只向页面提供通过 contract 检查的数据
+✅ Explore 的列表和地图使用同一份当前租金，选择保存在 URL 中
+✅ 最小 Area Detail 与 Explore 共用当前租金，进入详情页时不重复下载
+✅ 页面显示数据季度、observation period、provisional 状态、数据来源和许可证
+✅ Home 和 Methodology 的说明与当前 release 一致，技术样例已经移除
+✅ Greensboro 的源值可以从源记录追踪到部署后的页面
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+```
