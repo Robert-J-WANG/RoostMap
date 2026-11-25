@@ -265,17 +265,17 @@ GeoJSON、坐标系统、专题地图、时序图表、bundle 与数据 payload 
 
 **主要内容**
 
-- 根据 Step 06–07 证据固定 V1 TypeScript/Zod contracts。
-- 转换一个代表性 Region 的 summary、map、geometry 和 history。
-- 建立 manifest、data repository 和统一 slice selector。
-- 用同一数据切片驱动区域列表、地图选择和最小详情。
+- 根据 Step 06–07 证据，只为本步页面定义 TypeScript/Zod contracts：区域信息和默认分类（`ALL / ALL`）的当前租金。
+- 转换一个代表性 Region 的 current rents 和 geometry，并作为首个版本化数据切片提交，使 Preview 可以读取。
+- 建立 manifest 和 data repository。
+- 用同一份当前租金驱动区域列表、地图选择和最小详情。
 - 显示来源、数据周期、observation period、provisional 和缺失状态。
 - 使 Home 与 Methodology 的公开说明和 V1 产品定位一致。
-- 用正式数据页面替代公开导航中的 spike 页面。
+- 用正式数据页面替代 spike 页面，并移除 spike 路由及其静态数据。
 
 **知识点**
 
-数据 contract、静态 repository、纵向切片、来源追踪和 UI 数据状态。
+数据 contract、按需演进的数据模型、静态 repository、纵向切片、来源追踪和 UI 数据状态。
 
 **测试与验收**
 
@@ -293,10 +293,11 @@ fixture、transform、contract 和页面测试通过；源值可逐项追踪到 
 
 **主要内容**
 
-- 完成分类、拒绝、join、geometry、同比和缺失处理。
-- 生成 manifest、geography/search index、Region current map/summary/geometry/history 和 quality report。
+- 完成分类、拒绝、join、geometry、12 个月变化和缺失处理。
+- 扩展 contracts：当前租金覆盖全部发布分类，并加入租金历史。
+- 生成 manifest、geography/search index、Region current-rents/geometry/rent-history 和 quality report。
 - 建立 source lock、SHA-256、pipeline version 和 immutable release bundle。
-- 核查主要城市、较小中心、稀疏区域和 Chatham Islands。
+- 核查主要城市、较小中心和稀疏区域，并确认 Chatham Islands 等没有 MBIE 观测的区域被正确排除。
 
 **知识点**
 
@@ -319,7 +320,7 @@ contracts 和质量门禁通过；分片计数一致、无重复 SA2、geometry 
 **主要内容**
 
 - 将通过门禁的全国数据打包为 immutable bundle，并由 current manifest 指向该版本。
-- 保留 source lock、quality report 和 SHA-256；存在上一个可用 bundle 时保留它用于回滚。
+- 保留 source lock、quality report 和 SHA-256；bundle 通过 data PR 提交，回滚通过 revert 该 PR 完成。
 - 完成来源、许可证、指标、缺失值、provisional 和数据质量说明。
 - 在 Preview 验证应用能够读取批准的数据版本。
 
@@ -349,7 +350,8 @@ bundle、manifest、quality report 和 Methodology 相互一致；锁定输入�
 
 - 组合 Region 导航、搜索、地图、区域列表和详情入口。
 - 同步 URL、视口、选择、Dwelling Type、Bedroom Category、Maximum Weekly Rent、图层和排序。
-- 支持最新租金、同比、Reported Bonds 和数据可用性图层/筛选。
+- 建立统一的分类选择规则，让地图、列表和详情读取同一住宅类型和卧室数的当前租金。
+- 支持最新租金、12 个月变化、Reported Bonds 和数据可用性图层/筛选。
 - 完成桌面与移动布局及 loading、empty、partial、error。
 
 **知识点**
@@ -374,7 +376,7 @@ Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
 
 - 显示区域身份、最新观测、period、provisional 和覆盖信息。
 - 绘制 Geometric Mean Rent 与 Reported Bonds 历史。
-- 提供同比、tooltip、文字摘要和数据表。
+- 提供 12 个月变化、tooltip、文字摘要和数据表。
 - 处理旧观测、缺失季度、稀疏切片和加载失败。
 
 **知识点**
@@ -383,7 +385,7 @@ Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
 
 **测试与验收**
 
-图表、文字和数据表一致；同比公式经过单元测试；缺失季度不连线或错误表述。
+图表、文字和数据表一致；12 个月变化公式经过单元测试；缺失季度不连线或错误表述。
 
 **Git 边界**
 
@@ -513,7 +515,7 @@ Authentication、authorisation、PostgreSQL migration、RLS、Data API 和 serve
 
 - 建立 `saved_searches` 和 `user_release_state`。
 - 完成 Saved 与 Account 页面。
-- 使用统一 history contract 比较 last seen 与 current data version。
+- 使用统一 rent history contract 比较 last seen 与 current data version。
 - 核查 managed Functions 当时支持的 runtime、HTTP trigger 和本地/Preview 边界。
 - 建立受保护的账户删除 Function。
 - 完成清除全部云端数据和 session 的行为。

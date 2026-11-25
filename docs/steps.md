@@ -107,16 +107,16 @@ git status --short --branch
 ### 4. 完成检查
 
 ```text
-⬜ React + TypeScript 应用由 Vite 官方模板创建
-⬜ 创建项目时已选择 ESLint
-⬜ package-lock.json 已生成
-⬜ 已理解 index.html → main.tsx → App.tsx 的入口关系
-⬜ npm run dev 能打开模板页面
-⬜ npm run build 成功
-⬜ npm run preview 能读取生产构建产物
-⬜ Git 历史从 main 开始
-⬜ 初始提交不包含依赖、构建产物或 secret
-⬜ 本地 main 已推送到空的远程仓库
+✅ React + TypeScript 应用由 Vite 官方模板创建
+✅ 创建项目时已选择 ESLint
+✅ package-lock.json 已生成
+✅ 已理解 index.html → main.tsx → App.tsx 的入口关系
+✅ npm run dev 能打开模板页面
+✅ npm run build 成功
+✅ npm run preview 能读取生产构建产物
+✅ Git 历史从 main 开始
+✅ 初始提交不包含依赖、构建产物或 secret
+✅ 本地 main 已推送到空的远程仓库
 ```
 
 ---
@@ -466,10 +466,10 @@ The application currently contains a minimal page, project directory structure, 
 
 The planned core data sources are:
 
-- MBIE Rental Bond Data
-- Stats NZ Statistical Area 2 Higher Geographies 2019
+- MBIE（租金） Rental Bond Data
+- Stats NZ（区域） Statistical Area 2 Higher Geographies 2019
 
-Publishable geographic coverage will be determined by successfully joining valid rental observations to Stats NZ SA2 geography.
+Publishable geographic coverage will be determined by successfully joining valid rental observations to Stats NZ（区域） SA2 geography.
 
 ## Project documentation
 
@@ -613,17 +613,17 @@ git branch -D chore/project-foundation
 ### Step 02 完成状态
 
 ```text
-⬜ 已从 main 创建独立开发分支
-⬜ Vite 示例代码、资源和样式已经清理
-⬜ 完整项目目录边界已经规划
-⬜ 前端目录已在本地建立
-⬜ TypeScript strict 和 @/* 路径别名已经生效
-⬜ .env.example 和本地 .env.local 已建立
-⬜ 项目文档、README、.gitignore 和 AGENTS.md 已归位
-⬜ npm run lint 通过
-⬜ npm run build 通过
-⬜ dev 和 preview 均能显示最小页面
-⬜ 基础配置已通过 Pull Request 合并到 main
+✅ 已从 main 创建独立开发分支
+✅ Vite 示例代码、资源和样式已经清理
+✅ 完整项目目录边界已经规划
+✅ 前端目录已在本地建立
+✅ TypeScript strict 和 @/* 路径别名已经生效
+✅ .env.example 和本地 .env.local 已建立
+✅ 项目文档、README、.gitignore 和 AGENTS.md 已归位
+✅ npm run lint 通过
+✅ npm run build 通过
+✅ dev 和 preview 均能显示最小页面
+✅ 基础配置已通过 Pull Request 合并到 main
 ```
 
 ---
@@ -1003,16 +1003,16 @@ git branch -D test/foundation
 ### Step 03 完成状态
 
 ```text
-⬜ 已从 main 创建 test/foundation 分支
-⬜ Vitest、jsdom 和 React Testing Library 已安装
-⬜ jest-dom 和测试清理已经配置
-⬜ App 组件测试通过
-⬜ Playwright 和 Chromium 已安装
-⬜ 首页浏览器 smoke test 通过
-⬜ 测试配置和测试文件参与 TypeScript 检查
-⬜ npm run check 依次通过 lint、test、build 和 E2E
-⬜ 测试报告和结果目录没有进入 Git
-⬜ 测试基础已通过 Pull Request 合并到 main
+✅ 已从 main 创建 test/foundation 分支
+✅ Vitest、jsdom 和 React Testing Library 已安装
+✅ jest-dom 和测试清理已经配置
+✅ App 组件测试通过
+✅ Playwright 和 Chromium 已安装
+✅ 首页浏览器 smoke test 通过
+✅ 测试配置和测试文件参与 TypeScript 检查
+✅ npm run check 依次通过 lint、test、build 和 E2E
+✅ 测试报告和结果目录没有进入 Git
+✅ 测试基础已通过 Pull Request 合并到 main
 ```
 
 ---
@@ -1504,8 +1504,8 @@ export function MethodologyPage() {
           <h2 className="text-2xl font-semibold">Core data sources</h2>
 
           <ul className="mt-4 list-disc space-y-3 pl-6 text-muted-foreground">
-            <li>MBIE Rental Bond Data</li>
-            <li>Stats NZ Statistical Area 2 Higher Geographies 2019</li>
+            <li>MBIE（租金） Rental Bond Data</li>
+            <li>Stats NZ（区域） Statistical Area 2 Higher Geographies 2019</li>
           </ul>
         </section>
       </article>
@@ -2278,20 +2278,20 @@ git branch -D feat/app-shell
 ### Step 04 完成状态
 
 ```text
-⬜ 已从 main 创建 feat/app-shell 分支
-⬜ Tailwind CSS Vite 插件已经配置
-⬜ shadcn/ui 已初始化并加入当前需要的组件
-⬜ 基础视觉 token 和页面布局规则已经建立
-⬜ 首次访问跟随系统主题，用户可以明确切换并保存 light 或 dark
-⬜ AppShell 和 RootLayout 已建立
-⬜ Home、Methodology 和 Not Found 页面已建立
-⬜ React Router 和页面标题已经配置
-⬜ 404 与页面错误边界已经建立
-⬜ 桌面与移动端布局可用
-⬜ 路由、主题工具、主题组件和 Playwright 测试已更新
-⬜ npm run check 通过
-⬜ README 已记录 Step 04 完成后的状态
-⬜ 应用外壳已通过 Pull Request 合并到 main
+✅ 已从 main 创建 feat/app-shell 分支
+✅ Tailwind CSS Vite 插件已经配置
+✅ shadcn/ui 已初始化并加入当前需要的组件
+✅ 基础视觉 token 和页面布局规则已经建立
+✅ 首次访问跟随系统主题，用户可以明确切换并保存 light 或 dark
+✅ AppShell 和 RootLayout 已建立
+✅ Home、Methodology 和 Not Found 页面已建立
+✅ React Router 和页面标题已经配置
+✅ 404 与页面错误边界已经建立
+✅ 桌面与移动端布局可用
+✅ 路由、主题工具、主题组件和 Playwright 测试已更新
+✅ npm run check 通过
+✅ README 已记录 Step 04 完成后的状态
+✅ 应用外壳已通过 Pull Request 合并到 main
 ```
 
 ## Step 05 · 建立 CI/CD 与首次公网部署
@@ -4084,26 +4084,26 @@ git status --short --branch
 ### Step 05 完成状态
 
 ```text
-⬜ 已建立 ci/initial-delivery 分支并通过初始本地检查
-⬜ 已理解 GitHub 平台、runner 与 Azure 的职责边界
-⬜ Pull Request workflow 可以响应 PR 创建和更新
-⬜ Quality job 已在远程 runner 中真实运行
-⬜ frontend-dist 可以在不同 job 之间传递
-⬜ React Router 页面回退规则已进入构建产物
-⬜ Azure Static Web Apps 资源和 Deployment Token 已建立
-⬜ Deploy job 已生成真实 Pull Request Preview
-⬜ Playwright 已支持 Local 和远程测试目标
-⬜ Deployed smoke test 已验证真实 Preview
-⬜ PR 关闭后可以自动清理 Preview
-⬜ main 的 required checks 已生效
-⬜ 失败的 Quality 检查能够阻止合并和部署
-⬜ Production workflow 已建立
-⬜ 最终 npm run check 通过
-⬜ README 已记录本步成功完成后的状态
-⬜ Pull Request 已通过 Squash Merge 进入 main
-⬜ Production deploy 和 Production smoke test 已通过
-⬜ Preview 已清理，Production URL 可以访问
-⬜ 本地 main 已同步，功能分支已清理
+✅ 已建立 ci/initial-delivery 分支并通过初始本地检查
+✅ 已理解 GitHub 平台、runner 与 Azure 的职责边界
+✅ Pull Request workflow 可以响应 PR 创建和更新
+✅ Quality job 已在远程 runner 中真实运行
+✅ frontend-dist 可以在不同 job 之间传递
+✅ React Router 页面回退规则已进入构建产物
+✅ Azure Static Web Apps 资源和 Deployment Token 已建立
+✅ Deploy job 已生成真实 Pull Request Preview
+✅ Playwright 已支持 Local 和远程测试目标
+✅ Deployed smoke test 已验证真实 Preview
+✅ PR 关闭后可以自动清理 Preview
+✅ main 的 required checks 已生效
+✅ 失败的 Quality 检查能够阻止合并和部署
+✅ Production workflow 已建立
+✅ 最终 npm run check 通过
+✅ README 已记录本步成功完成后的状态
+✅ Pull Request 已通过 Squash Merge 进入 main
+✅ Production deploy 和 Production smoke test 已通过
+✅ Preview 已清理，Production URL 可以访问
+✅ 本地 main 已同步，功能分支已清理
 ```
 
 ## Step 06 · 验证租金数据与 SA2 关联
@@ -4112,32 +4112,32 @@ git status --short --branch
 
 前面的步骤已经建立了应用外壳和交付流程，但 RoostMap 还没有经过验证的地区租金数据。要继续实现核心功能，首先要确认两份官方数据能否正确关联。
 
-MBIE 的 Rental Bond Data 按季度记录租金统计，其中使用 `Location Id` 表示地区。Stats NZ 的 SA2 2019 数据记录统计区域的编号、名称和边界。两份数据各自提供了一部分信息：
+MBIE（租金） 的 Rental Bond Data 按季度记录租金统计，其中使用 `Location Id` 表示地区。Stats NZ（区域） 的 SA2 2019 数据记录统计区域的编号、名称和边界。两份数据各自提供了一部分信息：
 
 ```text
-MBIE Rental Bond Data
+MBIE（租金） Rental Bond Data
 └─ 地区对应的租金统计
 
-Stats NZ SA2 2019
+Stats NZ（区域） SA2 2019
 └─ 地区编号、名称和边界
 ```
 
-如果 MBIE 的 `Location Id` 与 Stats NZ 的 SA2 编号表示同一个地区，就可以把租金统计与地区信息连接起来：
+如果 MBIE（租金） 的 `Location Id` 与 Stats NZ（区域） 的 SA2 编号表示同一个地区，就可以把租金统计与地区信息连接起来：
 
 ```text
-MBIE Location Id
+MBIE（租金） Location Id
         ↓
-Stats NZ SA2 编号
+Stats NZ（区域） SA2 编号
         ↓
 租金统计 + 地区名称 + 地区边界
 ```
 
-字段名称和编号形式相似，只能说明它们可能有关联，不能证明全国数据都能正确对应。因此，本步需要检查真实文件的字段和取值，找出可以参与关联的 MBIE 记录，再验证这些记录能否找到对应的 SA2 和地区边界。
+字段名称和编号形式相似，只能说明它们可能有关联，不能证明全国数据都能正确对应。因此，本步需要检查真实文件的字段和取值，找出可以参与关联的 MBIE（租金） 记录，再验证这些记录能否找到对应的 SA2 和地区边界。
 
 本步完成时，需要能够根据实际检查结果回答：
 
 ```text
-哪些 MBIE 记录可以参与 SA2 关联？
+哪些 MBIE（租金） 记录可以参与 SA2 关联？
 这些记录能否找到对应的 SA2？
 对应的 SA2 是否包含地区边界？
 有多少记录成功关联、不能参与关联或没有找到对应地区？
@@ -4189,9 +4189,9 @@ mkdir -p data/raw/mbie
 mkdir -p data/raw/stats-nz
 ```
 
-#### 2.1 取得 MBIE 租金数据
+#### 2.1 取得 MBIE（租金） 租金数据
 
-进入 MBIE 的 [Rental Bond Data](https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/) 页面，下载 detailed quarterly tenancy CSV，并保存为：
+进入 MBIE（租金） 的 [Rental Bond Data](https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/) 页面，下载 detailed quarterly tenancy CSV，并保存为：
 
 ```text
 data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
@@ -4215,9 +4215,9 @@ b40a39a0ce899362df5da729ed38cf8962cc31058910693aa2301feb9d0be80e
 
 当前文件共有 226,081 行。SHA-256 用来标识这次检查所使用的具体文件；即使以后下载到同名文件，也可以通过哈希值判断内容是否发生变化。文件内部的表头和记录结构将在确认来源文件后继续检查。
 
-#### 2.2 取得 Stats NZ SA2 数据
+#### 2.2 取得 Stats NZ（区域） SA2 数据
 
-进入 Stats NZ Datafinder 的 [Statistical Area 2 Higher Geographies 2019 Generalised](https://datafinder.stats.govt.nz/layer/98779-statistical-area-2-higher-geographies-2019-generalised/) 页面，创建以下导出：
+进入 Stats NZ（区域） Datafinder 的 [Statistical Area 2 Higher Geographies 2019 Generalised](https://datafinder.stats.govt.nz/layer/98779-statistical-area-2-higher-geographies-2019-generalised/) 页面，创建以下导出：
 
 ```text
 Vector format: GeoPackage / SQLite
@@ -4271,19 +4271,19 @@ file data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-gener
 SQLite 3.x database (OGC GeoPackage file)
 ```
 
-到这里可以确认，MBIE 文件是 CSV，Stats NZ 文件包含二进制 GeoPackage。它们都是保持原样的官方输入，不适合反复写入 Git 历史，因此仓库通过 `.gitignore` 排除整个 raw 目录：
+到这里可以确认，MBIE（租金） 文件是 CSV，Stats NZ（区域） 文件包含二进制 GeoPackage。它们都是保持原样的官方输入，不适合反复写入 Git 历史，因此仓库通过 `.gitignore` 排除整个 raw 目录：
 
 ```gitignore
 data/raw/
 ```
 
-现在已经取得并核对了两份原始输入：一份 MBIE 租金 CSV 和一份 Stats NZ SA2 GeoPackage。文件类型和哈希值只能证明下载内容明确且可以读取；要判断它们能否关联，还需要继续检查两份文件内部的字段和数据结构。
+现在已经取得并核对了两份原始输入：一份 MBIE（租金） 租金 CSV 和一份 Stats NZ（区域） SA2 GeoPackage。文件类型和哈希值只能证明下载内容明确且可以读取；要判断它们能否关联，还需要继续检查两份文件内部的字段和数据结构。
 
 ### 3. 理解两份数据的结构
 
 两份来源文件已经确认可以读取，但文件类型和哈希值无法说明内部字段能否关联。接下来分别查看它们的结构，先找出可能连接两份数据的字段。
 
-#### 3.1 检查 MBIE CSV
+#### 3.1 检查 MBIE（租金） CSV
 
 先查看 CSV 的表头和前三条数据：
 
@@ -4326,19 +4326,19 @@ CSV 有 12 个字段，可以分成四组：
 
 前三条数据已经显示出不同形式的 `Location Id`：`NULL`、`-99` 和六位编号 `100100`。其中一些租金字段也可能是 `NULL`。这几行只能说明这些值确实存在，尚不能说明它们在全国文件中出现多少次或应该怎样处理。
 
-字段名称还不能完整说明统计口径，因此需要同时阅读下载页面的说明。MBIE 说明这份数据：
+字段名称还不能完整说明统计口径，因此需要同时阅读下载页面的说明。MBIE（租金） 说明这份数据：
 
 - 来自登记到 tenancy bond database 的私人租赁债券；
 - 按 tenancy start date 统计；
-- 使用 Stats NZ 的 SA2 2019 地区定义；
+- 使用 Stats NZ（区域） 的 SA2 2019 地区定义；
 - 因新旧 bond management systems 的迁移和数据整理而处于 provisional 状态，后续可能修订；
 - 对数量使用以 3 为基数的 fixed random rounding，并在某个选择少于 5 个 bonds 时抑制结果。
 
 这些说明确认 `Location Id` 与 SA2 2019 有直接关系，也说明当前数据不能被理解为未经处理的精确个案记录。CSV 中实际包含哪些位置编号和分类值，仍需要根据整个文件继续检查。
 
-#### 3.2 检查 Stats NZ GeoPackage
+#### 3.2 检查 Stats NZ（区域） GeoPackage
 
-解压目录中的说明文件指出，这份数据保存 Stats NZ 在 2019 年定义的 SA2 边界，并把每个 SA2 对应到 territorial authority 和 regional council。当前导出已经转换为 WGS 84。
+解压目录中的说明文件指出，这份数据保存 Stats NZ（区域） 在 2019 年定义的 SA2 边界，并把每个 SA2 对应到 territorial authority 和 regional council。当前导出已经转换为 WGS 84。
 
 GeoPackage 本身是 SQLite 数据库。先查询 `gpkg_contents` 和 `gpkg_geometry_columns`，确认实际业务表和 geometry 定义：
 
@@ -4452,15 +4452,15 @@ total_rows  distinct_sa2_codes  missing_sa2_codes  empty_geometry
 
 GeoPackage 中共有 2,255 条记录，每条记录都有不同且非空的 SA2 编号；其中 16 条记录的 `geom` 为空。这里的查询只检查 geometry 字段是否存在内容，没有判断多边形本身是否有效。
 
-MBIE 官方说明表明租金数据使用 SA2 2019 地区定义，Stats NZ 表中对应的编号字段是 `SA22019_V1_00`，因此可以提出下面的关联假设：
+MBIE（租金） 官方说明表明租金数据使用 SA2 2019 地区定义，Stats NZ（区域） 表中对应的编号字段是 `SA22019_V1_00`，因此可以提出下面的关联假设：
 
 ```text
-MBIE Location Id = Stats NZ SA22019_V1_00
+MBIE（租金） Location Id = Stats NZ（区域） SA22019_V1_00
 ```
 
-当前只确认了候选关联字段。MBIE 样本中已经出现 `NULL`、`-99` 和六位编号，而 Stats NZ 也有少量空 geometry；在决定哪些记录可以参与关联之前，还需要先了解这些情况在完整数据中的分布。
+当前只确认了候选关联字段。MBIE（租金） 样本中已经出现 `NULL`、`-99` 和六位编号，而 Stats NZ（区域） 也有少量空 geometry；在决定哪些记录可以参与关联之前，还需要先了解这些情况在完整数据中的分布。
 
-### 4. 对 MBIE 全国数据进行 profiling
+### 4. 对 MBIE（租金） 全国数据进行 profiling
 
 上一节只查看了 CSV 的前三条记录，因此只能确认 `Location Id` 中出现了 `NULL`、`-99` 和六位编号。要判断候选关联字段是否适用于完整数据，还需要知道整个文件包含多少条记录、覆盖哪些季度，以及地区和住宅分类实际有哪些取值。
 
@@ -4687,7 +4687,7 @@ node data/scripts/profile-mbie.mjs
 
 #### 4.3 分开统计不同形式的 Location Id
 
-4.2 得到 2,011 种 `Location Id`，但这个总数没有说明这些值是否都具有 Stats NZ SA2 编号的形式。第 3 节提出的关联假设要求两边编号能够对应，因此现在需要进一步看清 `Location Id` 的组成。
+4.2 得到 2,011 种 `Location Id`，但这个总数没有说明这些值是否都具有 Stats NZ（区域） SA2 编号的形式。第 3 节提出的关联假设要求两边编号能够对应，因此现在需要进一步看清 `Location Id` 的组成。
 
 这里需要回答两个问题：
 
@@ -4742,7 +4742,7 @@ for await (const record of parser) {
 
 第一次遇到某个 `locationId` 时，`Map.get()` 得到 `undefined`，`?? 0` 把它作为 `0` 次处理，然后加 `1`。再次遇到相同值时，脚本会在原有次数上继续累加。
 
-文件读取结束后，`locationIds` 已经包含所有不同值，`locationIdCounts` 也已经保存每个值的出现行数。Stats NZ 样本中的 SA2 编号是六位数字，因此在循环结束后检查哪些 MBIE 值具有相同形式：
+文件读取结束后，`locationIds` 已经包含所有不同值，`locationIdCounts` 也已经保存每个值的出现行数。Stats NZ（区域） 样本中的 SA2 编号是六位数字，因此在循环结束后检查哪些 MBIE（租金） 值具有相同形式：
 
 ```js
 const sortedPeriods = [...periods].sort();
@@ -4818,7 +4818,7 @@ node data/scripts/profile-mbie.mjs
 }
 ```
 
-2,011 种 `Location Id` 由 2,009 个六位编号、`-99` 和 `NULL` 组成，没有出现其他形式的值。六位格式与 Stats NZ 样本中的 SA2 编号形式一致，因此当前只能把这 2,009 个值视为候选编号；格式相同还不能证明每个编号都能关联成功。
+2,011 种 `Location Id` 由 2,009 个六位编号、`-99` 和 `NULL` 组成，没有出现其他形式的值。六位格式与 Stats NZ（区域） 样本中的 SA2 编号形式一致，因此当前只能把这 2,009 个值视为候选编号；格式相同还不能证明每个编号都能关联成功。
 
 `-99` 和 `NULL` 的结果只说明它们在源文件中分别出现了 1,091 行和 794 行。profiling 没有可靠依据解释这两个值的业务含义，因此不在这里为它们定义处理方式。
 
@@ -5130,35 +5130,35 @@ node data/scripts/profile-mbie.mjs
 第 3.2 节提出了下面的关联假设：
 
 ```text
-MBIE Location Id = Stats NZ SA22019_V1_00
+MBIE（租金） Location Id = Stats NZ（区域） SA22019_V1_00
 ```
 
-第 4 节已经确认 MBIE 文件中哪些 `Location Id` 具有六位 SA2 编号的形式。接下来需要检查的不是两边各有多少个编号，而是 MBIE 中的每一个候选编号能否在 Stats NZ 数据中找到。
+第 4 节已经确认 MBIE（租金） 文件中哪些 `Location Id` 具有六位 SA2 编号的形式。接下来需要检查的不是两边各有多少个编号，而是 MBIE（租金） 中的每一个候选编号能否在 Stats NZ（区域） 数据中找到。
 
-这个问题可以转换成两个编号集合之间的比较。设 MBIE 候选编号为集合 A，Stats NZ SA2 编号为集合 B：
+这个问题可以转换成两个编号集合之间的比较。设 MBIE（租金） 候选编号为集合 A，Stats NZ（区域） SA2 编号为集合 B：
 
 ```text
 A ∩ B  同时存在于两份数据中的编号
-A - B  只存在于 MBIE、无法找到对应 SA2 的编号
+A - B  只存在于 MBIE（租金）、无法找到对应 SA2 的编号
 ```
 
-编号出现在交集中，只能证明两边存在同一个编号。RoostMap 还需要地区边界，因此找到编号后还要检查对应 Stats NZ 记录的 geometry。
+编号出现在交集中，只能证明两边存在同一个编号。RoostMap 还需要地区边界，因此找到编号后还要检查对应 Stats NZ（区域） 记录的 geometry。
 
 关联验证由此分成三个连续阶段：
 
 ```text
-建立 MBIE 候选编号集合
-→ 建立 Stats NZ SA2 编号与 geometry 的对应关系
+建立 MBIE（租金） 候选编号集合
+→ 建立 Stats NZ（区域） SA2 编号与 geometry 的对应关系
 → 比较编号并检查匹配记录的 geometry
 ```
 
 这些检查需要同时读取两份源文件，因此建立 `data/scripts/verify-data-join.mjs`。
 
-#### 5.1 建立 MBIE 候选编号集合
+#### 5.1 建立 MBIE（租金） 候选编号集合
 
-集合比较需要先准备 A。第 4.3 节已经确定，只有正好由六位数字组成的 `Location Id` 才具有当前 Stats NZ SA2 编号的形式。关联脚本沿用同一条判断规则，使 profiling 和关联验证使用相同的候选范围。
+集合比较需要先准备 A。第 4.3 节已经确定，只有正好由六位数字组成的 `Location Id` 才具有当前 Stats NZ（区域） SA2 编号的形式。关联脚本沿用同一条判断规则，使 profiling 和关联验证使用相同的候选范围。
 
-新脚本先加入读取 MBIE CSV 需要的 import、文件位置和字段读取函数：
+新脚本先加入读取 MBIE（租金） CSV 需要的 import、文件位置和字段读取函数：
 
 ```js
 import { createReadStream } from "node:fs";
@@ -5229,7 +5229,7 @@ node data/scripts/verify-data-join.mjs
 
 这个数量与第 4.3 节的 profiling 结果一致，说明关联脚本已经按相同规则建立了集合 A。
 
-#### 5.2 建立 Stats NZ SA2 编号与 geometry 的对应关系
+#### 5.2 建立 Stats NZ（区域） SA2 编号与 geometry 的对应关系
 
 集合 B 不能只保存 SA2 编号。编号匹配后还要知道对应记录是否有边界，因此需要保存下面的对应关系：
 
@@ -5257,7 +5257,7 @@ const statsNzFileUrl = new URL(
 );
 ```
 
-MBIE 循环结束后，查询每个 SA2 编号及其 geometry 状态：
+MBIE（租金） 循环结束后，查询每个 SA2 编号及其 geometry 状态：
 
 ```js
 const statsNzQuery = `
@@ -5310,7 +5310,7 @@ const statsNzAreasWithoutGeometry = [...statsNzAreas.values()].filter(
 
 #### 5.3 比较编号并检查 geometry
 
-对集合 A 中的每个编号调用 `statsNzAreas.has()`，就能判断 Stats NZ 映射中是否存在同一个键。根据判断结果，将编号分别放进 `matchedIds` 和 `unmatchedIds`：
+对集合 A 中的每个编号调用 `statsNzAreas.has()`，就能判断 Stats NZ（区域） 映射中是否存在同一个键。根据判断结果，将编号分别放进 `matchedIds` 和 `unmatchedIds`：
 
 ```js
 const matchedIds = [...mbieCandidateIds]
@@ -5380,23 +5380,23 @@ node data/scripts/verify-data-join.mjs
 }
 ```
 
-2,009 个 MBIE 候选编号全部存在于 Stats NZ SA2 数据中，没有未关联编号。Stats NZ 全表虽然有 16 条记录缺少 geometry，但这些记录不在当前匹配结果中；2,009 个匹配编号都具有 geometry。
+2,009 个 MBIE（租金） 候选编号全部存在于 Stats NZ（区域） SA2 数据中，没有未关联编号。Stats NZ（区域） 全表虽然有 16 条记录缺少 geometry，但这些记录不在当前匹配结果中；2,009 个匹配编号都具有 geometry。
 
 因此，当前两份源文件在地区编号层面满足下面的关联：
 
 ```text
-MBIE 六位 Location Id
-→ Stats NZ SA2 编号
+MBIE（租金） 六位 Location Id
+→ Stats NZ（区域） SA2 编号
 → 存在 geometry
 ```
 
 这个结论限定在本节检查的编号与 geometry：它证明候选地区可以完成关联，不改变第 4 节记录的其他源数据情况。
 
-### 6. 统计 MBIE 记录的关联结果
+### 6. 统计 MBIE（租金） 记录的关联结果
 
 第 5 节验证的是不同地区编号之间的关系。一个地区编号会在不同季度、住宅类型和卧室分类中重复出现，因此编号全部匹配还不能说明完整 CSV 中有多少条记录完成了关联。
 
-现在把检查单位从编号推进到记录。每条 MBIE 记录根据 `Location Id` 和 Stats NZ 查询结果，只能进入下面四种情况之一：
+现在把检查单位从编号推进到记录。每条 MBIE（租金） 记录根据 `Location Id` 和 Stats NZ（区域） 查询结果，只能进入下面四种情况之一：
 
 ```text
 Location Id 不是六位候选编号
@@ -5405,7 +5405,7 @@ Location Id 找到 SA2，但对应记录没有 geometry
 Location Id 找到 SA2，并且对应记录有 geometry
 ```
 
-四种记录数量相加应当等于 MBIE 输入总数。这样既能得到关联成功的记录数，也能检查统计过程中是否遗漏了记录。
+四种记录数量相加应当等于 MBIE（租金） 输入总数。这样既能得到关联成功的记录数，也能检查统计过程中是否遗漏了记录。
 
 #### 6.1 统计每个候选编号对应的记录数
 
@@ -5469,7 +5469,7 @@ let unmatchedLocationRecords = 0;
 let missingGeometryRecords = 0;
 ```
 
-然后遍历 `mbieCandidateIdCounts`。每次循环取得一个 `sa2Id` 和它对应的 `recordCount`，再按顺序判断 Stats NZ 映射：
+然后遍历 `mbieCandidateIdCounts`。每次循环取得一个 `sa2Id` 和它对应的 `recordCount`，再按顺序判断 Stats NZ（区域） 映射：
 
 ```js
 for (const [sa2Id, recordCount] of mbieCandidateIdCounts) {
@@ -5541,7 +5541,7 @@ node data/scripts/verify-data-join.mjs
 }
 ```
 
-224,195 条记录使用六位候选编号，并且全部找到带有 geometry 的 Stats NZ SA2。1,885 条记录的 `Location Id` 不属于六位候选编号；这个数量与第 4.3 节的位置编号统计一致。候选记录中没有未找到 SA2 或缺少 geometry 的情况。
+224,195 条记录使用六位候选编号，并且全部找到带有 geometry 的 Stats NZ（区域） SA2。1,885 条记录的 `Location Id` 不属于六位候选编号；这个数量与第 4.3 节的位置编号统计一致。候选记录中没有未找到 SA2 或缺少 geometry 的情况。
 
 四种结果重新相加：
 
@@ -5563,11 +5563,11 @@ node data/scripts/verify-data-join.mjs
 关联记录最多的 SA2       检查高频地区
 关联记录最少的 SA2       检查稀疏地区
 陆地面积最大的已关联 SA2 检查大面积边界
-Stats NZ 中的 Chatham Islands 地区
-                         检查只有边界、没有 MBIE 观察记录的地区
+Stats NZ（区域） 中的 Chatham Islands 地区
+                         检查只有边界、没有 MBIE（租金） 观察记录的地区
 ```
 
-前三项来自已经完成关联的 2,009 个 SA2。最后一项来自 Stats NZ 边界数据，用来保留一个与前三项不同的边界情况。选择条件直接作用于完整源数据，因此源文件不变时会得到相同样本。
+前三项来自已经完成关联的 2,009 个 SA2。最后一项来自 Stats NZ（区域） 边界数据，用来保留一个与前三项不同的边界情况。选择条件直接作用于完整源数据，因此源文件不变时会得到相同样本。
 
 #### 7.1 为已关联地区补充可读信息
 
@@ -5589,7 +5589,7 @@ const statsNzQuery = `
 `;
 ```
 
-查询仍然只读取同一张 Stats NZ 业务表。新增字段用于解释样本，`hasGeometry` 的判断保持不变。
+查询仍然只读取同一张 Stats NZ（区域） 业务表。新增字段用于解释样本，`hasGeometry` 的判断保持不变。
 
 在同一个文件中，`statsNzRows` 解析完成后，先把每个 SA2 的完整信息保存到 `statsNzDetails`：
 
@@ -5627,11 +5627,11 @@ const statsNzAreas = new Map(
 );
 ```
 
-这样，同一份 Stats NZ 查询结果同时支持关联计数和样本说明，不需要再次读取 GeoPackage。
+这样，同一份 Stats NZ（区域） 查询结果同时支持关联计数和样本说明，不需要再次读取 GeoPackage。
 
 #### 7.2 根据完整数据选择样本
 
-继续在 `data/scripts/verify-data-join.mjs` 中处理样本。`matchedIds` 已经保存全部匹配成功的 SA2 编号，`mbieCandidateIdCounts` 保存每个编号对应的 MBIE 记录数。在 `accountedRecords` 计算完成后、`console.log()` 输出之前，把两部分信息组合成用于比较的完整地区列表：
+继续在 `data/scripts/verify-data-join.mjs` 中处理样本。`matchedIds` 已经保存全部匹配成功的 SA2 编号，`mbieCandidateIdCounts` 保存每个编号对应的 MBIE（租金） 记录数。在 `accountedRecords` 计算完成后、`console.log()` 输出之前，把两部分信息组合成用于比较的完整地区列表：
 
 ```js
 const joinedAreaDetails = matchedIds.map((sa2Id) => ({
@@ -5640,7 +5640,7 @@ const joinedAreaDetails = matchedIds.map((sa2Id) => ({
 }));
 ```
 
-现在列表中的每一项既有 Stats NZ 地区信息，也有对应的 MBIE 记录数。先按记录数从高到低和从低到高排序，取得高频与稀疏样本：
+现在列表中的每一项既有 Stats NZ（区域） 地区信息，也有对应的 MBIE（租金） 记录数。先按记录数从高到低和从低到高排序，取得高频与稀疏样本：
 
 ```js
 const highestRecordCountSample = [...joinedAreaDetails].sort(
@@ -5668,7 +5668,7 @@ const largestLandAreaSample = [...joinedAreaDetails].sort(
 )[0];
 ```
 
-前三个样本都来自 `joinedAreaDetails`，因此一定同时具有 MBIE 观察记录和 Stats NZ geometry。Chatham Islands 的样本需要从完整 Stats NZ 列表中寻找，并明确排除已经出现在 MBIE 候选编号集合中的地区：
+前三个样本都来自 `joinedAreaDetails`，因此一定同时具有 MBIE（租金） 观察记录和 Stats NZ（区域） geometry。Chatham Islands 的样本需要从完整 Stats NZ（区域） 列表中寻找，并明确排除已经出现在 MBIE（租金） 候选编号集合中的地区：
 
 ```js
 const chathamIslandsSample = [...statsNzDetails.values()]
@@ -5685,7 +5685,7 @@ const chathamIslandsSample = [...statsNzDetails.values()]
   )[0];
 ```
 
-这里要求地区有 geometry、没有 MBIE 候选编号，并在符合条件的 Chatham Islands 地区中选择陆地面积最大的记录。它表示“边界存在但当前没有租金观察”的数据情况。
+这里要求地区有 geometry、没有 MBIE（租金） 候选编号，并在符合条件的 Chatham Islands 地区中选择陆地面积最大的记录。它表示“边界存在但当前没有租金观察”的数据情况。
 
 最后给四个结果加入选择原因，并组成一个小型样本列表：
 
@@ -5711,7 +5711,7 @@ const representativeSamples = [
 ];
 ```
 
-`selection` 记录样本为何被选中；`recordCount` 则保持统一含义，表示该 SA2 在 MBIE 文件中的候选记录数。
+`selection` 记录样本为何被选中；`recordCount` 则保持统一含义，表示该 SA2 在 MBIE（租金） 文件中的候选记录数。
 
 #### 7.3 查看选择结果
 
@@ -5777,19 +5777,19 @@ node data/scripts/verify-data-join.mjs
 ]
 ```
 
-Greensboro 和 Hokianga South 展示了同一关联规则下记录数从 579 到 1 的差异；Mackenzie Lakes 提供了面积明显更大的已关联边界；Chatham Islands 则只有 Stats NZ geometry，没有 MBIE 候选记录。四个样本都由明确条件从完整数据中选出，可以追溯到对应的官方 SA2 编号和边界记录。
+Greensboro 和 Hokianga South 展示了同一关联规则下记录数从 579 到 1 的差异；Mackenzie Lakes 提供了面积明显更大的已关联边界；Chatham Islands 则只有 Stats NZ（区域） geometry，没有 MBIE（租金） 候选记录。四个样本都由明确条件从完整数据中选出，可以追溯到对应的官方 SA2 编号和边界记录。
 
 ### 8. 保存一组最小关联样本
 
-第 7 节已经从完整 MBIE CSV 和 Stats NZ GeoPackage 中选出了代表样本。如果只想重复检查这些样本之间的关联，每次都读取两份完整源文件并不必要。当前关联实际使用的是少量 `Location Id`、SA2 编号和 geometry 状态，因此可以把这些值单独保存成一组小型固定样本。
+第 7 节已经从完整 MBIE（租金） CSV 和 Stats NZ（区域） GeoPackage 中选出了代表样本。如果只想重复检查这些样本之间的关联，每次都读取两份完整源文件并不必要。当前关联实际使用的是少量 `Location Id`、SA2 编号和 geometry 状态，因此可以把这些值单独保存成一组小型固定样本。
 
 在测试和数据处理中，这种为了重复检查而保存的固定样本通常称为 fixture，所以项目使用 `data/fixtures/` 目录存放它们。这里的 fixture 只是从真实源数据中提取的一小部分字段和值。
 
-关联从 MBIE 的 `Location Id` 开始，所以先保存这些输入值，再判断另一侧还需要哪些 Stats NZ 信息。
+关联从 MBIE（租金） 的 `Location Id` 开始，所以先保存这些输入值，再判断另一侧还需要哪些 Stats NZ（区域） 信息。
 
 #### 8.1 保存最小输入
 
-关联过程读取 MBIE 的 `Location Id`，再到 Stats NZ 数据中寻找相同的 SA2 编号并检查 geometry。租金、住宅类型和地区面积不会改变这次关联，因此这组输入只保留三个必要信息。
+关联过程读取 MBIE（租金） 的 `Location Id`，再到 Stats NZ（区域） 数据中寻找相同的 SA2 编号并检查 geometry。租金、住宅类型和地区面积不会改变这次关联，因此这组输入只保留三个必要信息。
 
 先建立存放固定样本的目录：
 
@@ -5797,7 +5797,7 @@ Greensboro 和 Hokianga South 展示了同一关联规则下记录数从 579 到
 mkdir -p data/fixtures/data-join
 ```
 
-创建 `data/fixtures/data-join/mbie-records.csv`，写入五个已经在完整 MBIE 文件中确认过的 `Location Id`：
+创建 `data/fixtures/data-join/mbie-records.csv`，写入五个已经在完整 MBIE（租金） 文件中确认过的 `Location Id`：
 
 ```csv
 Location Id
@@ -5810,7 +5810,7 @@ NULL
 
 前三个编号分别来自第 7 节选出的高频、稀疏和大面积已关联地区。`-99` 与 `NULL` 则保留第 4.3 节发现的两种非六位值，使最小输入同时包含可以参与关联和不能作为 SA2 候选编号的情况。
 
-`mbie-records.csv` 只提供需要查找的值，还不能判断三个六位编号是否存在，也不能判断对应边界是否可用。关联的另一侧因此需要保留 Stats NZ 的 SA2 编号和 geometry 状态。创建 `data/fixtures/data-join/sa2-areas.json`：
+`mbie-records.csv` 只提供需要查找的值，还不能判断三个六位编号是否存在，也不能判断对应边界是否可用。关联的另一侧因此需要保留 Stats NZ（区域） 的 SA2 编号和 geometry 状态。创建 `data/fixtures/data-join/sa2-areas.json`：
 
 ```json
 {
@@ -5835,7 +5835,7 @@ NULL
 }
 ```
 
-前三条 Stats NZ 记录与 CSV 中的六位编号对应。`343000` 是第 7 节选出的 Chatham Islands，只存在于当前 Stats NZ 样本中，没有对应的 MBIE 样本记录。
+前三条 Stats NZ（区域） 记录与 CSV 中的六位编号对应。`343000` 是第 7 节选出的 Chatham Islands，只存在于当前 Stats NZ（区域） 样本中，没有对应的 MBIE（租金） 样本记录。
 
 这里使用源字段名 `SA22019_V1_00` 保存 SA2 编号，使固定样本与 GeoPackage 的关联字段保持一致。geometry 本身是较大的二进制内容；当前关联只需要判断它是否存在，因此保存第 7 节已经查询出的 `hasGeometry` 状态。
 
@@ -5843,7 +5843,7 @@ NULL
 
 8.1 已经保存了关联两侧的输入，但这些数据本身还没有说明什么结果才是正确的。固定样本还需要一份“答案表”，逐条写明五个 `Location Id` 应当得到的关联状态。
 
-这里按照第 5、6 节已经确认的关联方法逐条判断。Stats NZ 输入中可以查找的编号是：
+这里按照第 5、6 节已经确认的关联方法逐条判断。Stats NZ（区域） 输入中可以查找的编号是：
 
 ```text
 179900 → hasGeometry: true
@@ -5852,19 +5852,19 @@ NULL
 343000 → hasGeometry: true
 ```
 
-现在从第一条 MBIE 输入开始判断：
+现在从第一条 MBIE（租金） 输入开始判断：
 
-| MBIE `Location Id` | 判断过程 | 正确结果 |
+| MBIE（租金） `Location Id` | 判断过程 | 正确结果 |
 | --- | --- | --- |
-| `179900` | 是六位编号；Stats NZ 中存在；geometry 存在 | `joined` |
-| `102100` | 是六位编号；Stats NZ 中存在；geometry 存在 | `joined` |
-| `341500` | 是六位编号；Stats NZ 中存在；geometry 存在 | `joined` |
+| `179900` | 是六位编号；Stats NZ（区域） 中存在；geometry 存在 | `joined` |
+| `102100` | 是六位编号；Stats NZ（区域） 中存在；geometry 存在 | `joined` |
+| `341500` | 是六位编号；Stats NZ（区域） 中存在；geometry 存在 | `joined` |
 | `-99` | 不是六位编号，不进入 SA2 查找 | `nonCandidateLocation` |
 | `NULL` | 不是六位编号，不进入 SA2 查找 | `nonCandidateLocation` |
 
-Stats NZ 输入中的 `343000` 没有出现在 MBIE 输入里，因此它不是一条未关联的 MBIE 记录。它只表示当前固定样本中存在一个没有对应 MBIE 观察的 Stats NZ SA2，单独记为 `statsOnlySa2Ids`。
+Stats NZ（区域） 输入中的 `343000` 没有出现在 MBIE（租金） 输入里，因此它不是一条未关联的 MBIE（租金） 记录。它只表示当前固定样本中存在一个没有对应 MBIE（租金） 观察的 Stats NZ（区域） SA2，单独记为 `statsOnlySa2Ids`。
 
-五条 MBIE 输入由此得到：
+五条 MBIE（租金） 输入由此得到：
 
 ```text
 3 条 joined
@@ -5917,9 +5917,9 @@ Stats NZ 输入中的 `343000` 没有出现在 MBIE 输入里，因此它不是�
 }
 ```
 
-`records` 是五条 MBIE 输入的答案，顺序与 `mbie-records.csv` 保持一致。能够关联的记录保存相同的 `sa2Id`；没有进入 SA2 查找的 `-99` 和 `NULL` 使用 `null`，表示它们没有关联结果。
+`records` 是五条 MBIE（租金） 输入的答案，顺序与 `mbie-records.csv` 保持一致。能够关联的记录保存相同的 `sa2Id`；没有进入 SA2 查找的 `-99` 和 `NULL` 使用 `null`，表示它们没有关联结果。
 
-`statsOnlySa2Ids` 保存只出现在 Stats NZ 输入中的编号，`counts` 则把五条记录的状态重新汇总。输入文件与这份已知正确的结果放在一起，组成完整的固定样本。
+`statsOnlySa2Ids` 保存只出现在 Stats NZ（区域） 输入中的编号，`counts` 则把五条记录的状态重新汇总。输入文件与这份已知正确的结果放在一起，组成完整的固定样本。
 
 #### 8.3 检查固定样本文件
 
@@ -5950,7 +5950,7 @@ git status --short --untracked-files=all data/fixtures
 ?? data/fixtures/data-join/sa2-areas.json
 ```
 
-现在这三份小文件已经固定了五条 MBIE 输入、四条 Stats NZ 输入以及对应的预期关联结果。它们保留真实源值，同时只包含复现当前关联情况需要的数据。
+现在这三份小文件已经固定了五条 MBIE（租金） 输入、四条 Stats NZ（区域） 输入以及对应的预期关联结果。它们保留真实源值，同时只包含复现当前关联情况需要的数据。
 
 ### 9. 用固定样本验证关联规则
 
@@ -5993,7 +5993,7 @@ const expectedFixtureUrl = new URL(
 );
 ```
 
-`createReadStream()` 和 `csv-parse` 读取 MBIE CSV，`readFile()` 读取两个 JSON。`assert` 会在计算完成后比较实际结果和正确答案。
+`createReadStream()` 和 `csv-parse` 读取 MBIE（租金） CSV，`readFile()` 读取两个 JSON。`assert` 会在计算完成后比较实际结果和正确答案。
 
 两个 JSON 使用相同的读取方式，因此先加入一个小函数：
 
@@ -6020,7 +6020,7 @@ for await (const record of parser) {
 }
 ```
 
-CSV 读取完成后，再读取 Stats NZ 输入和 8.2 写出的答案：
+CSV 读取完成后，再读取 Stats NZ（区域） 输入和 8.2 写出的答案：
 
 ```js
 const [statsNzFixture, expectedAssociations] = await Promise.all([
@@ -6056,7 +6056,7 @@ const statsNzAreas = new Map(
 SA2 编号 → geometry 是否存在
 ```
 
-接下来在同一个文件中加入 `associateRecord()`。函数每次接收一条 MBIE 输入，并按照固定顺序判断：
+接下来在同一个文件中加入 `associateRecord()`。函数每次接收一条 MBIE（租金） 输入，并按照固定顺序判断：
 
 ```js
 function associateRecord(record) {
@@ -6103,13 +6103,13 @@ Map 中有键，但值为 false       → missingGeometry
 Map 中有键，并且值为 true      → joined
 ```
 
-用这个函数依次处理五条 MBIE 输入：
+用这个函数依次处理五条 MBIE（租金） 输入：
 
 ```js
 const records = mbieRecords.map(associateRecord);
 ```
 
-Stats NZ 输入中还包含没有对应 MBIE 记录的 `343000`。先从 MBIE 输入中取得全部六位候选编号，再找出只存在于 `statsNzAreas` 的编号：
+Stats NZ（区域） 输入中还包含没有对应 MBIE（租金） 记录的 `343000`。先从 MBIE（租金） 输入中取得全部六位候选编号，再找出只存在于 `statsNzAreas` 的编号：
 
 ```js
 const mbieCandidateIds = new Set(
@@ -6141,7 +6141,7 @@ for (const record of records) {
 
 #### 9.3 对照正确答案
 
-实际结果已经由关联规则计算完成。把逐条结果、Stats NZ 独有编号和汇总数量组合成与 `expected-associations.json` 相同的结构：
+实际结果已经由关联规则计算完成。把逐条结果、Stats NZ（区域） 独有编号和汇总数量组合成与 `expected-associations.json` 相同的结构：
 
 ```js
 const actualAssociations = {
@@ -6194,18 +6194,18 @@ missingGeometry: 0
 statsOnlySa2Ids: 343000
 ```
 
-`passed` 表示脚本计算出的五条记录、Stats NZ 独有编号和汇总数量与固定答案全部一致；同一组输入再次运行时会经过相同判断并得到相同结果。
+`passed` 表示脚本计算出的五条记录、Stats NZ（区域） 独有编号和汇总数量与固定答案全部一致；同一组输入再次运行时会经过相同判断并得到相同结果。
 
 ### 10. 汇总最终质量结论
 
-第 9 节已经证明固定样本能够按照同一套规则得到已知答案，但它只检查了五条 MBIE 记录。全国关联脚本虽然已经输出编号和记录数量，这些数字目前仍然是分散的结果，还没有形成一个明确的通过或失败状态。
+第 9 节已经证明固定样本能够按照同一套规则得到已知答案，但它只检查了五条 MBIE（租金） 记录。全国关联脚本虽然已经输出编号和记录数量，这些数字目前仍然是分散的结果，还没有形成一个明确的通过或失败状态。
 
 现在回到 `data/scripts/verify-data-join.mjs`，根据已经计算出的全国结果判断三件事：
 
 ```text
-所有 MBIE 六位候选编号是否都找到 Stats NZ SA2
+所有 MBIE（租金） 六位候选编号是否都找到 Stats NZ（区域） SA2
 所有已匹配 SA2 是否都具有 geometry
-所有 MBIE 输入记录是否都进入一个关联结果
+所有 MBIE（租金） 输入记录是否都进入一个关联结果
 ```
 
 三项条件全部成立时，全国关联才可以记为 `passed`。完成判断后，再把脚本输出的完整 JSON 保存下来，使本节结论与产生它的具体结果保存在一起。
@@ -6316,15 +6316,15 @@ echo $?
 全国脚本得到的编号级结果是：
 
 ```text
-2,009 个 MBIE 六位 Location Id
-→ 2,009 个全部找到 Stats NZ SA2 2019
+2,009 个 MBIE（租金） 六位 Location Id
+→ 2,009 个全部找到 Stats NZ（区域） SA2 2019
 → 2,009 个全部具有 geometry
 ```
 
 对应的记录级结果是：
 
 ```text
-226,080 条 MBIE 输入记录
+226,080 条 MBIE（租金） 输入记录
 → 224,195 条六位编号记录完成关联
 → 1,885 条非六位编号记录单独计数
 → 0 条候选记录未找到 SA2
@@ -6332,7 +6332,7 @@ echo $?
 → 226,080 条记录全部得到解释
 ```
 
-Stats NZ 全表存在 16 条缺少 geometry 的记录，但它们都不属于当前 2,009 个 MBIE 匹配编号，因此不会改变已匹配地区的 geometry 结果。第 9 节的五条固定样本也得到 `passed`，实际关联结果与逐条写出的正确答案一致。
+Stats NZ（区域） 全表存在 16 条缺少 geometry 的记录，但它们都不属于当前 2,009 个 MBIE（租金） 匹配编号，因此不会改变已匹配地区的 geometry 结果。第 9 节的五条固定样本也得到 `passed`，实际关联结果与逐条写出的正确答案一致。
 
 当前两份源文件由此得到：
 
@@ -6341,7 +6341,7 @@ Location Id → SA2 2019 → geometry
 状态：passed
 ```
 
-这个结论只说明当前 MBIE 租金数据可以通过六位 `Location Id` 与当前 Stats NZ SA2 2019 数据完成地区关联。
+这个结论只说明当前 MBIE（租金） 租金数据可以通过六位 `Location Id` 与当前 Stats NZ（区域） SA2 2019 数据完成地区关联。
 
 ### 11. git 提交
 
@@ -6379,15 +6379,15 @@ git push origin --delete spike/data-join
 ### Step 06 完成状态
 
 ```text
-⬜ 两份官方源文件已取得并完成完整性核对
-⬜ MBIE 与 Stats NZ 的数据结构和关联键已经确认
-⬜ MBIE 全国数据 profiling 已完成
-⬜ 2,009 个 MBIE 六位 Location Id 全部关联到带有 geometry 的 SA2
-⬜ 226,080 条 MBIE 输入记录全部得到解释
-⬜ 代表样本和最小固定样本已经建立
-⬜ 全国关联与固定样本验证均通过
-⬜ 全国关联报告可以稳定重新生成
-⬜ 数据脚本和文档已经完成
+✅ 两份官方源文件已取得并完成完整性核对
+✅ MBIE（租金） 与 Stats NZ（区域） 的数据结构和关联键已经确认
+✅ MBIE（租金） 全国数据 profiling 已完成
+✅ 2,009 个 MBIE（租金） 六位 Location Id 全部关联到带有 geometry 的 SA2
+✅ 226,080 条 MBIE（租金） 输入记录全部得到解释
+✅ 代表样本和最小固定样本已经建立
+✅ 全国关联与固定样本验证均通过
+✅ 全国关联报告可以稳定重新生成
+✅ 数据脚本和文档已经完成
 ```
 
 ---
@@ -6396,7 +6396,7 @@ git push origin --delete spike/data-join
 
 ### 这一步做什么
 
-Step 06 已经确认，MBIE 的六位 `Location Id` 可以找到对应的 Stats NZ SA2，而且这些已匹配地区都具有 geometry。这个结论解决了数据能否关联的问题，但目前得到的仍然是 CSV、GeoPackage 和验证报告，浏览器还不能直接用它们组成地图与图表。
+Step 06 已经确认，MBIE（租金） 的六位 `Location Id` 可以找到对应的 Stats NZ（区域） SA2，而且这些已匹配地区都具有 geometry。这个结论解决了数据能否关联的问题，但目前得到的仍然是 CSV、GeoPackage 和验证报告，浏览器还不能直接用它们组成地图与图表。
 
 地图和历史图表需要从同一份关联结果中取得两种不同形态的数据：
 
@@ -6465,7 +6465,7 @@ hasGeometry                true
 recordCount                579
 ```
 
-`179900` 是完整 MBIE 候选记录中出现次数最多的 SA2，并且具有 Stats NZ geometry。它所在的 Waikato Region 可以提供多个 SA2 边界用于地图，Greensboro 则提供一个数据较充足的初始选择用于历史图表。因此，本次样例固定为：
+`179900` 是完整 MBIE（租金） 候选记录中出现次数最多的 SA2，并且具有 Stats NZ（区域） geometry。它所在的 Waikato Region 可以提供多个 SA2 边界用于地图，Greensboro 则提供一个数据较充足的初始选择用于历史图表。因此，本次样例固定为：
 
 ```text
 Region             Waikato Region
@@ -6476,7 +6476,7 @@ Initial SA2        179900 · Greensboro
 
 #### 2.1 固定地图与图表的分类条件
 
-Step 06 第 4 节的 MBIE profiling 已经确认，数据覆盖 2020-01-01 至 2026-04-01，共 26 个季度。源文件同时提供 `ALL` 住宅类型和 `ALL` 卧室分类，项目设计将这两个官方源值作为默认切片。
+Step 06 第 4 节的 MBIE（租金） profiling 已经确认，数据覆盖 2020-01-01 至 2026-04-01，共 26 个季度。源文件同时提供 `ALL` 住宅类型和 `ALL` 卧室分类，项目设计将这两个官方源值作为默认切片。
 
 本次样例因此固定下面的分类条件：
 
@@ -6486,7 +6486,7 @@ Dwelling Type              ALL
 Number Of Beds             ALL
 ```
 
-这里的 `ALL` 是 MBIE 源文件中已经存在的分类值，不是脚本把其他住宅类型或卧室数量重新相加得到的结果。地图和图表都只读取精确匹配这两个值的记录，不混入其他分类。
+这里的 `ALL` 是 MBIE（租金） 源文件中已经存在的分类值，不是脚本把其他住宅类型或卧室数量重新相加得到的结果。地图和图表都只读取精确匹配这两个值的记录，不混入其他分类。
 
 #### 2.2 确定地图指标与历史指标
 
@@ -6520,7 +6520,7 @@ Coverage           Total Bonds
 
 第 2 节已经确定本次样例使用 Waikato Region、初始地区 Greensboro，以及 `ALL / ALL` 分类。地图需要比较 Waikato 各 SA2 的最新季度租金，图表需要显示 Greensboro 在相同分类下的季度历史。
 
-这些信息分散在两个源文件中：Stats NZ GeoPackage 保存地区身份和边界，MBIE CSV 保存季度租金。两边都使用六位 SA2 编号，因此可以通过 `sa2Id` 组合；在组合之前，先要把 GeoPackage 中的边界转换成 JavaScript 能处理的 GeoJSON geometry。
+这些信息分散在两个源文件中：Stats NZ（区域） GeoPackage 保存地区身份和边界，MBIE（租金） CSV 保存季度租金。两边都使用六位 SA2 编号，因此可以通过 `sa2Id` 组合；在组合之前，先要把 GeoPackage 中的边界转换成 JavaScript 能处理的 GeoJSON geometry。
 
 #### 3.1 解决 GeoPackage geometry 的格式差异
 
@@ -6540,11 +6540,11 @@ roostmap@0.0.0
 └── wkx@0.5.0
 ```
 
-Stats NZ 导出时已经选择 EPSG:4326，因此这里只转换 geometry 的存储格式，不改变坐标系。
+Stats NZ（区域） 导出时已经选择 EPSG:4326，因此这里只转换 geometry 的存储格式，不改变坐标系。
 
 #### 3.2 读取 Waikato Region 的 SA2 边界
 
-现在创建 `data/scripts/prepare-map-chart-sample.mjs`，先只处理 Stats NZ 数据。这个阶段的目标是确认三件事：脚本能够限定 Waikato Region、能够把每条 geometry 转成 GeoJSON，并且没有在转换过程中丢失边界。
+现在创建 `data/scripts/prepare-map-chart-sample.mjs`，先只处理 Stats NZ（区域） 数据。这个阶段的目标是确认三件事：脚本能够限定 Waikato Region、能够把每条 geometry 转成 GeoJSON，并且没有在转换过程中丢失边界。
 
 脚本先引入 Node.js 文件路径工具和 `wkx`，再指向已经解压的 GeoPackage：
 
@@ -6692,16 +6692,16 @@ node data/scripts/prepare-map-chart-sample.mjs
 }
 ```
 
-脚本从 Stats NZ 读取到 240 个 Waikato SA2，且没有缺失 geometry。第一条记录成功转换为 `MultiPolygon`，说明 GeoPackage header 与 WKB 的分界计算正确。此时得到的是 Stats NZ 的完整 Region 范围，还没有判断哪些 SA2 在 MBIE 租金数据中出现。
+脚本从 Stats NZ（区域） 读取到 240 个 Waikato SA2，且没有缺失 geometry。第一条记录成功转换为 `MultiPolygon`，说明 GeoPackage header 与 WKB 的分界计算正确。此时得到的是 Stats NZ（区域） 的完整 Region 范围，还没有判断哪些 SA2 在 MBIE（租金） 租金数据中出现。
 
-#### 3.3 关联 MBIE 记录
+#### 3.3 关联 MBIE（租金） 记录
 
-地图不能直接把 240 个 Stats NZ SA2 都当作租金地区。项目的可发布范围要求 SA2 同时具有 Stats NZ geometry 和 MBIE 观测，因此下一步是在现有脚本中读取 MBIE CSV，并用 `sa2Id` 完成关联。
+地图不能直接把 240 个 Stats NZ（区域） SA2 都当作租金地区。项目的可发布范围要求 SA2 同时具有 Stats NZ（区域） geometry 和 MBIE（租金） 观测，因此下一步是在现有脚本中读取 MBIE（租金） CSV，并用 `sa2Id` 完成关联。
 
 一次 CSV 读取需要得到三组信息：
 
 ```text
-mbieWaikatoSa2Ids   Waikato 中曾经出现过 MBIE 观测的 SA2
+mbieWaikatoSa2Ids   Waikato 中曾经出现过 MBIE（租金） 观测的 SA2
 currentMetrics      2026-04-01、ALL / ALL 的地图指标
 historyObservations Greensboro 在 ALL / ALL 下的季度历史
 ```
@@ -6717,7 +6717,7 @@ import { parse } from "csv-parse";
 import wkx from "wkx";
 ```
 
-在 `statsNzFileUrl` 声明结束后加入 MBIE 文件位置：
+在 `statsNzFileUrl` 声明结束后加入 MBIE（租金） 文件位置：
 
 ```js
 const mbieFileUrl = new URL(
@@ -6735,7 +6735,7 @@ const dwellingType = "ALL";
 const bedroomCategory = "ALL";
 ```
 
-MBIE 字段需要统一去掉首尾空白；数值字段中的空字符串和 `NULL` 都表示缺失，不能改写成 `0`。在这些常量后、`geoPackageWkb()` 前加入两个读取函数：
+MBIE（租金） 字段需要统一去掉首尾空白；数值字段中的空字符串和 `NULL` 都表示缺失，不能改写成 `0`。在这些常量后、`geoPackageWkb()` 前加入两个读取函数：
 
 ```js
 function sourceValue(record, field) {
@@ -6759,7 +6759,7 @@ function sourceNumber(record, field) {
 }
 ```
 
-文件上半部分到这里准备完成。脚本下半部分继续保留 `geometryFeatures` 和 `missingGeometryFeatures`，删除第 3.2 节末尾只检查 geometry 的 `console.log(...)`。从 `missingGeometryFeatures` 后面开始，新的代码按照“读取 MBIE → 组合指标 → 输出检查”的顺序连续加入。
+文件上半部分到这里准备完成。脚本下半部分继续保留 `geometryFeatures` 和 `missingGeometryFeatures`，删除第 3.2 节末尾只检查 geometry 的 `console.log(...)`。从 `missingGeometryFeatures` 后面开始，新的代码按照“读取 MBIE（租金） → 组合指标 → 输出检查”的顺序连续加入。
 
 先把 Waikato 的 SA2 编号整理成集合，并建立三组结果容器。CSV 使用 stream 逐条读取，不需要一次把 226,080 条记录全部保存在内存中：
 
@@ -6781,7 +6781,7 @@ const parser = createReadStream(mbieFileUrl).pipe(
 );
 ```
 
-读取每条记录时，先收集所有能够与 Waikato geometry 对应的六位 `Location Id`。这个判断发生在分类筛选之前，因为一个 SA2 只要存在有效 MBIE 观测，就属于关联范围。
+读取每条记录时，先收集所有能够与 Waikato geometry 对应的六位 `Location Id`。这个判断发生在分类筛选之前，因为一个 SA2 只要存在有效 MBIE（租金） 观测，就属于关联范围。
 
 随后只让 `ALL / ALL` 记录继续参与当前指标和历史整理：最新季度记录进入 `currentMetrics`，Greensboro 的各季度记录进入 `historyObservations`。
 
@@ -6826,7 +6826,7 @@ historyObservations.sort((left, right) =>
 );
 ```
 
-CSV 读取结束后，`mbieWaikatoSa2Ids` 表示 Waikato geometry 与 MBIE 观测的交集。用它筛选 `geometryFeatures`，再把当前季度指标加入每个保留的 feature。某个可发布地区缺少当前切片时仍然保留边界，对应指标保持 `null`。
+CSV 读取结束后，`mbieWaikatoSa2Ids` 表示 Waikato geometry 与 MBIE（租金） 观测的交集。用它筛选 `geometryFeatures`，再把当前季度指标加入每个保留的 feature。某个可发布地区缺少当前切片时仍然保留边界，对应指标保持 `null`。
 
 ```js
 const publishableFeatures = geometryFeatures.filter(
@@ -6852,7 +6852,7 @@ const initialMapFeature = mapFeatures.find(
 );
 ```
 
-最后加入新的检查输出。它把 Stats NZ 原始范围、MBIE 关联范围、当前切片和 Greensboro 历史分别列出，便于判断每一步的记录是否完整：
+最后加入新的检查输出。它把 Stats NZ（区域） 原始范围、MBIE（租金） 关联范围、当前切片和 Greensboro 历史分别列出，便于判断每一步的记录是否完整：
 
 ```js
 console.log(
@@ -6929,7 +6929,7 @@ node data/scripts/prepare-map-chart-sample.mjs
 }
 ```
 
-240 个 Stats NZ SA2 中有 222 个能够关联到 MBIE 观测，而且这些地区都有 geometry，因此关联范围与可发布范围数量一致。最新 `ALL / ALL` 切片覆盖其中 162 个地区；另外 60 个地区保留边界，但当前租金指标为缺失。Greensboro 取得 26 个季度的连续分类记录，范围与第 2 节确定的数据周期一致。
+240 个 Stats NZ（区域） SA2 中有 222 个能够关联到 MBIE（租金） 观测，而且这些地区都有 geometry，因此关联范围与可发布范围数量一致。最新 `ALL / ALL` 切片覆盖其中 162 个地区；另外 60 个地区保留边界，但当前租金指标为缺失。Greensboro 取得 26 个季度的连续分类记录，范围与第 2 节确定的数据周期一致。
 
 ### 4. 建立地图与图表技术样例页面
 
@@ -7506,7 +7506,7 @@ const sa2FillLayer: LayerProps = {
     </li>
   </ul>
   <p className="text-muted-foreground">
-    Sources: MBIE rental bond data; Stats NZ SA2 2019 boundaries.
+    Sources: MBIE（租金） rental bond data; Stats NZ（区域） SA2 2019 boundaries.
   </p>
 </div>
 ```
@@ -7806,7 +7806,7 @@ await main();
 
 ```js
 // ─────────────────────────────────────────────
-// 边界：读取 Stats NZ 的 SA2 数据并转换为 GeoJSON features
+// 边界：读取 Stats NZ（区域） 的 SA2 数据并转换为 GeoJSON features
 // ─────────────────────────────────────────────
 
 /**
@@ -7904,7 +7904,7 @@ function geoPackageWkb(geometryBytes) {
 
 扫描租金 CSV功能封装：
 
-有了边界编号，就可以扫描 MBIE CSV。`scanMbieCsv(waikatoSa2Ids)` 接收这个编号集合，逐行读取全国租金记录：先收集其中出现过的 Waikato 编号，再按住宅类型和卧室分类筛选，分别保存指定季度的地图指标和 Greensboro 的各季度历史。
+有了边界编号，就可以扫描 MBIE（租金） CSV。`scanMbieCsv(waikatoSa2Ids)` 接收这个编号集合，逐行读取全国租金记录：先收集其中出现过的 Waikato 编号，再按住宅类型和卧室分类筛选，分别保存指定季度的地图指标和 Greensboro 的各季度历史。
 
 循环中，`sourceValue()` 负责取出字段并去掉两端空白；需要租金或 Reported Bonds 数值时，`sourceNumber()` 先调用它取得文本，再转换成数字，来源空值保留为 `null`。
 
@@ -7912,8 +7912,8 @@ function geoPackageWkb(geometryBytes) {
 
 ```js
 /**
- * 流式扫描 MBIE CSV，同一次遍历收集三组结果：
- *   1. mbieWaikatoSa2Ids：MBIE 中出现过的 Waikato SA2 编号（关联范围，不限分类）
+ * 流式扫描 MBIE（租金） CSV，同一次遍历收集三组结果：
+ *   1. mbieWaikatoSa2Ids：MBIE（租金） 中出现过的 Waikato SA2 编号（关联范围，不限分类）
  *   2. currentMetrics：指定季度的地图指标，按 SA2 保存
  *   3. historyObservations：初始 SA2 的各季度历史，按日期升序
  *
@@ -8023,7 +8023,7 @@ function sourceNumber(record, field) {
 
 合并为地图数据功能封装：
 
-扫描完成后，已经有边界数组、出现过租金记录的地区编号，以及当前季度指标。`buildMapFeatures()` 接收这三项结果，先筛选同时具有 geometry 和 MBIE 观测的地区，再按 SA2 编号将当前指标附加到边界属性上。
+扫描完成后，已经有边界数组、出现过租金记录的地区编号，以及当前季度指标。`buildMapFeatures()` 接收这三项结果，先筛选同时具有 geometry 和 MBIE（租金） 观测的地区，再按 SA2 编号将当前指标附加到边界属性上。
 
 某个地区即使缺少当前季度指标，只要符合上述地区范围，仍保留边界，并把缺失指标设为 `null`。函数返回的 `mapFeatures` 就是要保存的地图 features。
 
@@ -8034,11 +8034,11 @@ function sourceNumber(record, field) {
 
 /**
  * 生成可发布的地图 features。
- * 发布范围要求同时具有边界和 MBIE 观测，不以当前季度是否有指标为条件；
+ * 发布范围要求同时具有边界和 MBIE（租金） 观测，不以当前季度是否有指标为条件；
  * 当前指标按 SA2 附加到边界属性上，没有指标的地区保留 null。
  *
  * @param {object[]} geometryFeatures 目标大区的全部边界 features
- * @param {Set<string>} mbieWaikatoSa2Ids MBIE 中出现过的 SA2 编号
+ * @param {Set<string>} mbieWaikatoSa2Ids MBIE（租金） 中出现过的 SA2 编号
  * @param {Map<string, object>} currentMetrics 指定季度的指标，按 SA2 索引
  * @returns {object[]} 附带 medianRent / reportedBonds 的 features
  */
@@ -8084,7 +8084,7 @@ function buildMapFeatures(
  *
  * @param {object} data
  * @param {object[]} data.geometryFeatures 目标大区的全部边界 features
- * @param {Set<string>} data.mbieWaikatoSa2Ids MBIE 中出现过的 SA2 编号
+ * @param {Set<string>} data.mbieWaikatoSa2Ids MBIE（租金） 中出现过的 SA2 编号
  * @param {object[]} data.mapFeatures 可发布的地图 features
  * @param {Map<string, object>} data.currentMetrics 指定季度的指标
  * @param {object[]} data.historyObservations 初始地区的历史观测
@@ -8194,11 +8194,11 @@ async function writeOutputFiles(mapFeatures, historyObservations) {
 
 ```js
 async function main() {
-  // 1. 读取 Stats NZ 边界，并建立 Waikato SA2 编号集合。
+  // 1. 读取 Stats NZ（区域） 边界，并建立 Waikato SA2 编号集合。
   const geometryFeatures = readStatsNzRows().map(toGeometryFeature);
   const waikatoSa2Ids = new Set(geometryFeatures.map((feature) => feature.id));
 
-  // 2. 扫描 MBIE CSV，收集关联范围、当前季度指标和初始地区历史。
+  // 2. 扫描 MBIE（租金） CSV，收集关联范围、当前季度指标和初始地区历史。
   const { mbieWaikatoSa2Ids, currentMetrics, historyObservations } =
     await scanMbieCsv(waikatoSa2Ids);
 
@@ -8279,7 +8279,7 @@ node data/scripts/prepare-map-chart-sample.mjs
 
 目前脚本只收集了 Greensboro 的历史数据。地图中选择其他地区时，也需要取得对应地区的季度记录。因此，接下来调整 `scanMbieCsv()`，我们需要把历史收集范围扩大到 Waikato 的各个 SA2，并按地区编号分别保存。
 
-在扫描 MBIE CSV租房数据的功能函数`scanMbieCsv()`中，原来的 `historyObservations` 是用来保存单个地区数据的数组。而我们现在需要保存多个地区的数据，因此，需要使用一个新的Map结构的变量来实现。Map 的键是 SA2 编号，值是这个地区的记录数组。例如，通过`historyObservations.get("179900")` 就能关联取得 Greensboro 的季度记录。
+在扫描 MBIE（租金） CSV租房数据的功能函数`scanMbieCsv()`中，原来的 `historyObservations` 是用来保存单个地区数据的数组。而我们现在需要保存多个地区的数据，因此，需要使用一个新的Map结构的变量来实现。Map 的键是 SA2 编号，值是这个地区的记录数组。例如，通过`historyObservations.get("179900")` 就能关联取得 Greensboro 的季度记录。
 
 在 `scanMbieCsv()` 内，把原先的数组 `historyObservations` 结构替换成 Map结构
 
@@ -9066,7 +9066,7 @@ Waikato 的地图选择与历史图表已经连通，当前页面读取这个大
 ```js
 async function main() {
   // 1. 读取全国 SA2 边界，建立地区编号集合。
-  // 2. 扫描 MBIE CSV，取得这些地区的租金记录和季度范围。
+  // 2. 扫描 MBIE（租金） CSV，取得这些地区的租金记录和季度范围。
   // 3. 整理地图指标与各地区的季度历史。
   // 4. 将整理好的全国数据写成文件。
   // 5. 按 Region 分组，保存各大区文件及文件目录。
@@ -9240,7 +9240,7 @@ node data/scripts/prepare-map-chart-comparison.mjs
 
 **2. 扫描租金记录**
 
-现在 `main()` 已有地区编号集合，需要找到这些地区的租金。`scanMbieCsv(sa2Ids)` 逐行读取 MBIE CSV，通过 `sa2Ids.has(sa2Id)` 判断编号是否能匹配边界表。
+现在 `main()` 已有地区编号集合，需要找到这些地区的租金。`scanMbieCsv(sa2Ids)` 逐行读取 MBIE（租金） CSV，通过 `sa2Ids.has(sa2Id)` 判断编号是否能匹配边界表。
 
 扫描同时处理两个范围：关联编号不限住宅与卧室分类；地图指标和历史则使用 `ALL / ALL`，其中地图只取 `2026-04-01`。这样不会因为某个地区当前季度没有指标，就丢掉它在其他季度的历史。
 
@@ -9248,7 +9248,7 @@ node data/scripts/prepare-map-chart-comparison.mjs
 
 | 结果 | 用途 |
 | --- | --- |
-| `matchedSa2Ids` | 保存 MBIE 中出现过、能匹配边界表的 SA2 编号 |
+| `matchedSa2Ids` | 保存 MBIE（租金） 中出现过、能匹配边界表的 SA2 编号 |
 | `currentMetrics` | 按 SA2 保存指定季度的 Median Rent 和 Reported Bonds |
 | `historyObservations` | 按 SA2 保存各季度的 Geometric Mean Rent 和 Reported Bonds |
 | `sortedPeriods` | 保存 CSV 中去重、排序后的全部季度日期 |
@@ -9443,7 +9443,7 @@ node data/scripts/prepare-map-chart-comparison.mjs
 }
 ```
 
-2,009 个地区在 MBIE 中有匹配编号，但当前季度有指标记录的地区只有 1,622 个，`ALL / ALL` 分类下有历史记录的地区有 2,003 个。这些数量不同，说明地图地区范围不能直接用当前指标记录来决定。
+2,009 个地区在 MBIE（租金） 中有匹配编号，但当前季度有指标记录的地区只有 1,622 个，`ALL / ALL` 分类下有历史记录的地区有 2,003 个。这些数量不同，说明地图地区范围不能直接用当前指标记录来决定。
 
 **3. 整理地图与历史**
 
@@ -10179,7 +10179,7 @@ Waikato 的原始数据和 gzip 数据都约为全国文件的 12%，解析中�
 
 #### 8.1 汇总已有验证
 
-数据侧使用同一批 MBIE 和 Stats NZ 记录生成全国文件与 16 组 Region 分片。全国共有 2,009 个可发布 SA2，各分片合计仍为 2,009 个，因此分组没有丢失或重复地区；地图和历史文件也使用相同的 SA2 集合。
+数据侧使用同一批 MBIE（租金） 和 Stats NZ（区域） 记录生成全国文件与 16 组 Region 分片。全国共有 2,009 个可发布 SA2，各分片合计仍为 2,009 个，因此分组没有丢失或重复地区；地图和历史文件也使用相同的 SA2 集合。
 
 页面侧的 5 个地图组件测试覆盖：
 
@@ -10210,7 +10210,7 @@ Application shell E2E tests     4 passed
 
 Step 07 的技术样例已经确认：
 
-- Stats NZ SA2 边界可以与 MBIE 租金记录通过六位 SA2 编号关联。
+- Stats NZ（区域） SA2 边界可以与 MBIE（租金） 租金记录通过六位 SA2 编号关联。
 - 同一份关联结果可以同时支持当前季度地图和季度历史图表。
 - 地图选择、缺失值、空历史、Region 切换和请求失败都有明确表现。
 - 按 Region 加载明显减少当前页面的数据传输与解析成本。
@@ -10314,19 +10314,3374 @@ git push origin --delete spike/map-chart
 ### Step 07 完成状态
 
 ```text
-⬜ 已固定地图与历史图表使用的真实数据切片和分类条件
-⬜ Stats NZ geometry 已转换为浏览器可读取的 GeoJSON
-⬜ MBIE 租金指标已与 SA2 边界完成关联
-⬜ MapLibre 地图已显示真实 SA2 边界和当前季度租金
-⬜ 地图悬停与选择可以显示对应地区信息
-⬜ 地图选择可以驱动同一 SA2 的历史图表和季度表格
-⬜ 缺失季度、空历史和数据请求失败已有明确表现
-⬜ 全国数据和 16 组 Region 分片可以稳定生成
-⬜ Region 切换、查询缓存和失败重试已经验证
-⬜ 全国文件与 Region 分片的体积和解析成本已经测量
-⬜ 页面必需的 Region 静态数据已经进入构建产物
-⬜ GitHub Actions 构建已经接入 VITE_MAPTILER_KEY
-⬜ MapTiler key 已限制为允许的部署域名
-⬜ lint、单元与组件测试、生产构建和 E2E 测试全部通过
-⬜ 地图与图表技术样例已通过 Pull Request 合并到 main
+✅ 已固定地图与历史图表使用的真实数据切片和分类条件
+✅ Stats NZ（区域） geometry 已转换为浏览器可读取的 GeoJSON
+✅ MBIE（租金） 租金指标已与 SA2 边界完成关联
+✅ MapLibre 地图已显示真实 SA2 边界和当前季度租金
+✅ 地图悬停与选择可以显示对应地区信息
+✅ 地图选择可以驱动同一 SA2 的历史图表和季度表格
+✅ 缺失季度、空历史和数据请求失败已有明确表现
+✅ 全国数据和 16 组 Region 分片可以稳定生成
+✅ Region 切换、查询缓存和失败重试已经验证
+✅ 全国文件与 Region 分片的体积和解析成本已经测量
+✅ 页面必需的 Region 静态数据已经进入构建产物
+✅ GitHub Actions 构建已经接入 VITE_MAPTILER_KEY
+✅ MapTiler key 已限制为允许的部署域名
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ 地图与图表技术样例已通过 Pull Request 合并到 main
+```
+
+---
+
+## Step 08 · 建立第一个正式数据纵向切片
+
+### 这一步做什么
+
+Step 06 已经确认 MBIE（租金） 租金记录可以通过六位 SA2 编号与 Stats NZ（区域） geometry 稳定关联。Step 07 又确认同一份关联结果能够同时支持地图和历史图表，并用测量结果说明浏览器应当按 Region 加载数据，而不是一次加载全国边界。
+
+但 Step 07 的文件和页面只为验证可行性而准备。页面直接读取样例目录中的 GeoJSON 和历史文件，文件结构由样例脚本临时决定，没有版本、来源记录和运行时验证；地图和图表各自假设数据的形状，同一个指标在不同文件中的含义也没有统一约束。正式产品的列表、地图和详情必须依赖同一套数据定义，样例阶段的约定不能承担这个职责。
+
+因此，本步建立第一条正式纵向切片。纵向切片指产品中范围很小、但从数据源一直贯穿到用户界面的一段完整功能：同一份数据依次经过转换、发布、读取和页面显示，每一层都使用相同的定义。
+
+本步只处理 Step 07 已经使用过的 Waikato Region，页面只显示每个区域在 MBIE（租金） `ALL / ALL` 源分类下的当前租金。范围限定在一个 Region 和一种分类，是为了先让一条完整链路在真实数据上正确运行，而不把全国数据量、筛选和搜索交互混入同一次验证。
+
+整条链路是：
+
+```text
+区域列表需要的数据 contract
+→ 用小型 fixture 计算每个区域的当前租金
+→ 生成版本化 Waikato release
+→ manifest 驱动的数据 repository
+→ Explore 列表与地图
+→ 最小 Area Detail
+→ 数据来源、周期与 provisional 说明
+→ 替换技术样例并完成交付
+```
+
+本步完成后，从官方源记录到页面上显示的每个数值都应当能够逐项追踪：浏览器读取的数据先通过 contract 验证，生成的数据带有版本、来源和校验值，页面同时说明数据周期、provisional 状态和来源。整条链路经过测试、CI 和 Preview 验证，技术样例页面不再属于产品的一部分。
+
+### 1. 建立正式数据切片分支
+
+Step 07 已经通过 Pull Request 合并到 `main`。本步开始实现正式产品功能，而不再是可行性验证，因此分支使用 `feat` 类别；`data-first-slice` 说明这次交付的是第一条正式数据切片。
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c feat/data-first-slice
+git status --short --branch
+```
+
+`git status` 的分支行显示：
+
+```text
+## feat/data-first-slice
+```
+
+### 2. 定义区域列表需要的数据 contract
+
+在这条链路中，转换脚本负责产出数据，页面负责读取数据。两边必须遵守同一份关于“数据是什么”的定义，否则脚本写出的字段和页面期待的字段迟早会出现偏差。这份由产出数据的一方和读取数据的一方共同遵守的定义，称为数据 contract。因此，在生成任何正式文件之前，先确定页面需要的数据，并把它的结构和含义固定下来。
+
+#### 2.1 检查样例阶段的数据读取方式
+
+Step 07 的页面通过 `src/features/explore/sample-data.ts` 读取样例文件。Region 目录是这样取得的：
+
+```ts
+return response.json() as Promise<RegionIndexData>;
+```
+
+地图文件则直接标注为 `MapData`：
+
+```ts
+const map: MapData = await mapResponse.json();
+```
+
+`RegionIndexData` 和 `MapData` 是 TypeScript 类型。TypeScript 只在编译阶段检查代码，编译完成后类型信息会被完全移除，浏览器运行的 JavaScript 中并不存在它们。`response.json()` 返回的值在类型上是 `any`，`as` 和类型标注都只是告诉编译器“相信这份数据就是这种形状”，并不会真的检查文件内容。
+
+因此，如果某个数据文件把租金写成字符串 `"520"`，或者缺少 `sa2Id`，代码仍然可以通过编译。错误会一直传到组件中，最后表现为排序异常、地图颜色错误或页面显示 `undefined`。这时问题出现的位置离真正的原因很远，很难判断是数据文件、读取逻辑还是组件出了错。
+
+同一个文件中还能看到第二个问题。地图属性用 `region` 表示 Region 名称，Region 目录用 `name`，历史文件又有自己的 `region` 字段。每个样例文件各自定义结构，项目中不存在一份统一的数据定义。
+
+正式数据链路因此需要满足两个要求：
+
+```text
+同一个概念在所有文件中只有一种定义
+数据进入应用时，在运行时检查它是否符合这个定义
+```
+
+#### 2.2 确定区域列表需要的数据
+
+本步的页面是 Waikato 的区域列表和地图。列表中的每一行、地图上的每个 SA2，都要回答同一组问题：
+
+```text
+这是哪个区域          SA2 编号、名称、所属 Region 和 territorial authority
+现在的租金是多少      Median Rent
+有多少记录支撑        Reported Bonds
+这个数值来自哪个季度  数值所在的季度
+一年来变化了多少      12 个月变化
+```
+
+这些内容来自两份官方数据。区域信息直接来自 Stats NZ（区域） 的 GeoPackage，每个 SA2 一条，不随季度变化；租金相关的数值则要从 MBIE（租金） 的季度记录中计算出来。两部分来源不同、产生方式不同，所以分开定义，再通过 Step 06 已经确认的 SA2 编号组合成列表中的一行。
+
+“现在的租金”需要定义清楚。整个数据集有一个最新季度，Step 06 确认为 `2026-04-01`。但并不是每个 SA2 都有这个季度的记录。如果某个 SA2 的最后一条有效记录来自更早的季度，把它和其他区域的最新季度放在一起显示，旧数值就会被误读为当前市场价格。因此当前租金同时记录两个季度：
+
+```text
+datasetLatestPeriod    整个数据集的最新季度
+observationPeriod      这个 SA2 最后一个 Median Rent 不为空的季度
+```
+
+Median Rent 和 Reported Bonds 都取自 `observationPeriod`。两个季度相同，说明数值属于最新季度；两者不同，页面就必须标明它是旧季度的租金。12 个月变化按项目设计的定义，比较最新季度和四个季度前的 Geometric Mean Rent。
+
+列表中一行数据的结构因此是：
+
+```text
+AreaWithCurrentRent        列表中的一行
+├── 区域信息（Area）       sa2Id、name、regionCode、regionName、
+│                          territorialAuthorityCode、territorialAuthorityName
+└── currentRent            当前租金（CurrentRent）：
+                           datasetLatestPeriod、observationPeriod、
+                           medianRent、reportedBonds、yearOverYearChange
+```
+
+#### 2.3 用 schema 描述区域信息
+
+2.1 的第二个要求是在运行时检查数据，常见做法是使用 schema。schema 是一个在运行时真实存在的 JavaScript 对象，它描述数据必须满足的规则，并且可以拿一份实际数据来检查是否符合这些规则。
+
+项目使用 Zod 编写 schema。先安装依赖：
+
+```bash
+npm install zod
+npm ls zod --depth=0
+```
+
+依赖树中显示：
+
+```text
+`-- zod@4.6.7
+```
+
+先从区域信息中最基础的两个字段开始。Step 06 已经确认，MBIE（租金） 的 `Location Id` 与 Stats NZ（区域） 的六位 SA2 编号对应，因此一个区域至少有一个六位编号和一个名称。
+
+用 Zod 把这两个字段写成区域信息的第一个 schema，保存在 `src/data/contracts.ts`：
+
+```ts
+import { z } from "zod";
+
+export const areaSchema = z
+  .object({
+    sa2Id: z.string().regex(/^\d{6}$/),
+    name: z.string().min(1),
+  })
+  .strict();
+```
+
+这里的每一部分都对应一条规则：
+
+```text
+z.object({...})        数据必须是包含这些字段的对象
+z.string()             字段值必须是字符串
+.regex(/^\d{6}$/)      sa2Id 必须恰好是六位数字
+.min(1)                name 不能是空字符串
+.strict()              对象中不能出现未定义的额外字段
+```
+
+`.strict()` 的作用是发现结构漂移。如果生成脚本改了字段名，例如把 `name` 写成 `areaName`，缺少 `name` 会让验证失败，多出来的 `areaName` 也会被明确报告，而不是被静默忽略。
+
+schema 通过 `parse` 检查数据。下面的代码只用于说明它的行为，不写入文件：
+
+```ts
+const area = areaSchema.parse({ sa2Id: "179900", name: "Greensboro" });
+// area 的值是验证通过的对象
+
+areaSchema.parse({ sa2Id: "unknown", name: "Greensboro" });
+// 抛出 ZodError，错误信息中包含出错字段 sa2Id
+```
+
+验证成功时，`parse` 返回通过检查的数据；验证失败时，`parse` 直接抛出错误，不返回任何值，后面使用这份数据的代码也就不会执行。
+
+区域信息还需要所属 Region 和 territorial authority。Step 06 查看 GeoPackage 时已经确认，Stats NZ（区域） 为每个 SA2 提供 regional council 和 territorial authority 的编号与名称。这四个字段与 `name` 一样不能为空，因此把“非空字符串”提取成一个共享规则，再补全区域信息。
+
+补全后的区域信息 schema 为：
+
+```ts
+import { z } from "zod";
+
+const nonEmptyStringSchema = z.string().min(1);
+
+export const areaSchema = z
+  .object({
+    sa2Id: z.string().regex(/^\d{6}$/),
+    name: nonEmptyStringSchema,
+    regionCode: nonEmptyStringSchema,
+    regionName: nonEmptyStringSchema,
+    territorialAuthorityCode: nonEmptyStringSchema,
+    territorialAuthorityName: nonEmptyStringSchema,
+  })
+  .strict();
+```
+
+Region 名称统一使用 `regionName`，不再出现样例文件中 `region` 和 `name` 并存的情况。
+
+#### 2.4 描述当前租金
+
+当前租金的五个字段，每一个的规则都来自 Step 06 的 profiling 或 2.2 的定义：
+
+```text
+datasetLatestPeriod   季度。TimeFrame 统一使用 YYYY-MM-DD，每个值都是季度第一天，
+                      所以只可能落在 1、4、7、10 月
+observationPeriod     同样是季度；这个 SA2 从未有过有效租金时为 null
+medianRent            Median Rent 有 803 条 NULL 标记。缺失不能写成 0，否则会被当成
+                      “租金为 0”参与排序，所以允许为 null，存在时不能小于 0
+reportedBonds         Total Bonds 在产品中显示为 Reported Bonds。它是计数，
+                      允许为 null，存在时必须是非负整数
+yearOverYearChange    两个租金之比减 1，是一个普通数值；任一季度缺少租金时为 null
+```
+
+两个季度字段使用同一条规则，因此先把季度规则定义成 `periodSchema`，再用它和上表中的其他规则组成当前租金的 schema：
+
+```ts
+const periodSchema = z.string().regex(/^\d{4}-(01|04|07|10)-01$/);
+
+export const currentRentSchema = z
+  .object({
+    datasetLatestPeriod: periodSchema,
+    observationPeriod: periodSchema.nullable(),
+    medianRent: z.number().nonnegative().nullable(),
+    reportedBonds: z.number().int().nonnegative().nullable(),
+    yearOverYearChange: z.number().nullable(),
+  })
+  .strict();
+```
+
+新出现的三条规则：
+
+```text
+.nullable()      值可以是 null
+.nonnegative()   数字不能小于 0
+.int()           数字必须是整数
+```
+
+#### 2.5 组合成列表中的一行
+
+列表中的一行是区域信息加上当前租金。`extend` 在已有 schema 的基础上增加字段，并保留原来的 `.strict()` 设置，所以不需要重复书写区域信息的规则。把当前租金作为 `currentRent` 字段加到区域信息上，就得到列表中一行的 schema：
+
+```ts
+export const areaWithCurrentRentSchema = areaSchema.extend({
+  currentRent: currentRentSchema,
+});
+```
+
+#### 2.6 用测试固定 contract 的边界
+
+schema 中的每条规则都来自前面的证据。测试把这些规则变成可以重复执行的检查：以后任何人修改 schema，只要放宽或改错了规则，测试就会失败。
+
+列表读取的是完整的一行，所以测试直接使用 `areaWithCurrentRentSchema`，只覆盖有明确依据的边界：
+
+```text
+符合定义的一行可以通过
+不符合格式的 SA2 编号和季度被拒绝
+从未有过有效租金的区域，当前租金各项保持为 null
+字符串形式的租金被拒绝，不会被静默转换成数字
+定义之外的字段被拒绝
+```
+
+测试先准备一行符合定义的数据，每个测试只修改其中一个字段，这样失败时就能确定是哪条规则在起作用。名称、上级地理名称、Median Rent 和 Reported Bonds 使用 Step 07 核对过的 Greensboro；编号和变化率只需要是符合规则的值。
+
+修改单个字段用到展开写法：`{ ...validRow, sa2Id: "unknown" }` 先把 `validRow` 的全部字段复制到新对象中，再用后面写出的字段覆盖同名字段，`validRow` 本身不会被修改。`toEqual` 逐个比较两个对象的全部字段和值。判断数据是否被拒绝时使用 `safeParse`：它与 `parse` 使用相同的规则，但不抛出错误，而是返回一个包含 `success` 的结果对象，适合在测试中直接判断验证是否通过。
+
+按这个思路，在 `src/data/contracts.test.ts` 中为上面五条边界各写一个测试：
+
+```ts
+import { describe, expect, it } from "vitest";
+
+import { areaWithCurrentRentSchema } from "@/data/contracts";
+
+const validRow = {
+  sa2Id: "179900",
+  name: "Greensboro",
+  regionCode: "03",
+  regionName: "Waikato Region",
+  territorialAuthorityCode: "016",
+  territorialAuthorityName: "Hamilton City",
+  currentRent: {
+    datasetLatestPeriod: "2026-04-01",
+    observationPeriod: "2026-04-01",
+    medianRent: 350,
+    reportedBonds: 171,
+    yearOverYearChange: 0.0128,
+  },
+};
+
+describe("data contracts", () => {
+  it("accepts an area with its current rent", () => {
+    expect(areaWithCurrentRentSchema.parse(validRow)).toEqual(validRow);
+  });
+
+  it("rejects unsupported id and period formats", () => {
+    // 不是六位数字的 SA2 编号。
+    expect(
+      areaWithCurrentRentSchema.safeParse({ ...validRow, sa2Id: "unknown" })
+        .success,
+    ).toBe(false);
+    // 2 月不是季度首月。
+    expect(
+      areaWithCurrentRentSchema.safeParse({
+        ...validRow,
+        currentRent: { ...validRow.currentRent, datasetLatestPeriod: "2026-02-01" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps missing rent values as null", () => {
+    const row = areaWithCurrentRentSchema.parse({
+      ...validRow,
+      currentRent: {
+        datasetLatestPeriod: "2026-04-01",
+        observationPeriod: null,
+        medianRent: null,
+        reportedBonds: null,
+        yearOverYearChange: null,
+      },
+    });
+
+    expect(row.currentRent.medianRent).toBeNull();
+    expect(row.currentRent.observationPeriod).toBeNull();
+  });
+
+  it("rejects a rent stored as a string", () => {
+    const result = areaWithCurrentRentSchema.safeParse({
+      ...validRow,
+      currentRent: { ...validRow.currentRent, medianRent: "350" },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects fields outside the contract", () => {
+    const result = areaWithCurrentRentSchema.safeParse({
+      ...validRow,
+      areaName: "Greensboro",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+```
+
+运行 contract 测试：
+
+```bash
+npm run test -- src/data/contracts.test.ts
+```
+
+结果为：
+
+```text
+✓ src/data/contracts.test.ts (5 tests)
+  ✓ data contracts (5)
+    ✓ accepts an area with its current rent
+    ✓ rejects unsupported id and period formats
+    ✓ keeps missing rent values as null
+    ✓ rejects a rent stored as a string
+    ✓ rejects fields outside the contract
+
+Test Files  1 passed (1)
+     Tests  5 passed (5)
+```
+
+5 个测试全部通过，说明编号与季度格式、缺失值、数值类型和字段范围的规则都按证据设定的方式工作，`extend` 组合出的一行也保留了 `.strict()`。这个结论只针对手写的测试数据：目前还没有任何从真实源文件转换得到的数据经过这些 schema 的检查。
+
+### 3. 用小型 fixture 计算每个区域的当前租金
+
+第 2 节固定了区域列表中一行数据的样子：区域信息加上当前租金。这些数据要从 Step 06 核对过的两份官方源文件生成，但这两份文件都不是这个样子。要得到列表数据，需要一段转换代码，把源文件中的原始记录整理成 contract 规定的结构。本节先弄清这段转换代码要做什么，再在一个答案已知的小样本上把它写对。
+
+#### 3.1 从一个真实 SA2 看转换要做的判断
+
+Step 07 使用过的 Greensboro（`179900`）适合作为观察对象。先看它在 MBIE（租金） 数据集最新季度 `2026-04-01` 有多少条记录：
+
+```bash
+grep -cE '^2026-04-01,179900,' data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+```
+
+结果为：
+
+```text
+16
+```
+
+同一个 SA2、同一个季度有 16 条记录，因为 MBIE（租金） 按住宅类型和卧室数量分别统计。其中只有一条是 `ALL / ALL` 合计：
+
+```bash
+grep -E '^(2025-04-01|2026-04-01),179900,ALL,ALL,' data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+```
+
+结果为：
+
+```text
+2026-04-01,179900,ALL,ALL,171,1755,165,350,395,550,290,0.3518
+2025-04-01,179900,ALL,ALL,213,1608,186,350,390,560,280,0.3983
+```
+
+记录中的值按 CSV 表头的顺序排列，转换只用到其中 7 个字段：季度、`Location Id`、住宅类型、卧室、Total Bonds（第 5 列）、Median Rent（第 8 列）和 Geometric Mean Rent（第 9 列）。
+
+这两行只有编号 `179900` 和租金，没有区域名称，也没有上级地理。这些信息在 Stats NZ（区域） 的 GeoPackage 中，Step 06 已经确认两边可以通过 SA2 编号连接。查询 Greensboro 的区域信息：
+
+```bash
+sqlite3 -header -column \
+  data/raw/stats-nz/sa2-2019/statistical-area-2-higher-geographies-2019-generalised.gpkg \
+  "SELECT SA22019_V1_00, SA22019_V1_00_NAME, REGC2019_V1_00, REGC2019_V1_00_NAME, TA2019_V1_00, TA2019_V1_00_NAME
+   FROM statistical_area_2_higher_geographies_2019_generalised
+   WHERE SA22019_V1_00 = '179900';"
+```
+
+结果为：
+
+```text
+SA22019_V1_00  SA22019_V1_00_NAME  REGC2019_V1_00  REGC2019_V1_00_NAME  TA2019_V1_00  TA2019_V1_00_NAME
+-------------  ------------------  --------------  -------------------  ------------  -----------------
+179900         Greensboro          03              Waikato Region       016           Hamilton City
+```
+
+区域列表中 Greensboro 这一行，按第 2 节的定义同时用到两份数据：
+
+```text
+区域信息，来自 Stats NZ（区域）
+sa2Id                      179900
+name                       Greensboro
+regionCode / regionName    03 / Waikato Region
+territorialAuthority...    016 / Hamilton City
+
+当前租金，来自 MBIE（租金）
+datasetLatestPeriod        2026-04-01
+observationPeriod          2026-04-01
+medianRent                 350
+reportedBonds              171
+yearOverYearChange         395 / 390 - 1 ≈ 0.0128
+```
+
+从上面的原始记录手工得到这一行，需要做出几个判断：
+
+```text
+1. 改字段名        两份源文件的字段名换成 contract 中的字段名
+2. 选记录          MBIE（租金） 的 16 条记录中只使用 ALL / ALL 这一条
+3. 转换数值        CSV 中的 "350" 是文字，要变成数字 350
+4. 选当前季度      使用最新季度 2026-04-01 的记录
+5. 算 12 个月变化  用 2026-04-01 和四个季度前 2025-04-01 的 Geometric Mean Rent
+```
+
+Greensboro 是一个情况完整的区域，每个判断都很直接。真正容易出错的是不完整的区域，而前面的步骤已经观察到这些情况真实存在：
+
+```text
+租金为 NULL           Step 06：Median Rent 和 Geometric Mean Rent 各有 803 条 NULL 标记
+非 SA2 编号           Step 06：Location Id 中有 -99 和 NULL
+最新季度没有记录      Step 07：Waikato 的 222 个可发布 SA2 中，只有 162 个在最新季度
+                      有 ALL / ALL 记录，另外 60 个没有
+```
+
+这些情况会让上面的判断变得不再直接，例如最新季度没有记录时，当前租金应该取哪个季度？租金是 `NULL` 时，12 个月变化还能不能算？这些问题必须有明确的规则：
+
+```text
+可发布区域     这个 Region 中至少有一条 Median Rent 不为 NULL 的记录的 SA2，
+               任意住宅类型和卧室数都算；-99 等非 SA2 编号不参与
+当前租金       只看 ALL / ALL 记录；从最新季度往前，找到最后一个 Median Rent 不为 NULL 的季度
+12 个月变化    只比较数据集最新季度和四个季度前；任一季度缺少几何平均租金时为 null
+```
+
+“当前租金”的规则来自第 2.2 节对 `observationPeriod` 的定义；“可发布区域”和“12 个月变化”的规则来自项目设计。12 个月变化使用数据集最新季度，而不是各区域当前租金所在的季度，所有区域才处在同一个比较区间，变化率才能放在一起比较。
+
+#### 3.2 用答案已知的小样本覆盖每个判断
+
+规则写成代码后，需要证明它是对的。直接在 Waikato 的真实数据上运行，会得到 222 个区域的结果，但无法逐个手工算出正确答案，也就无法判断结果对不对。更关键的是，结果的格式即使完全合法，内容也可能是错的，例如把旧季度误当成当前季度，`observationPeriod` 依然是一个格式正确的季度，第 2 节的 schema 不会报错。
+
+因此先构造一个小测试样本，让每种情况各出现一次，并且在写代码之前能够手工写出正确答案。这样代码算出的结果与手工答案一致，才说明规则被正确实现。这种为测试准备的固定输入称为 fixture。
+
+Step 06 的 `data/fixtures/data-join/` 只包含 `Location Id`，没有季度、分类和租金，无法覆盖这些规则，所以这里需要一组新的 fixture。
+
+MBIE（租金） 和 Stats NZ（区域） 各需要一个 fixture，两者都保持源文件的形状，只是行数很少：字段名、文字形式的数值、`NULL` 标记和 `-99` 编号都与源文件相同，转换代码在测试中读到的记录就和真实数据一样。
+
+先设计样本，让每个区域对应一种情况：
+
+```text
+900001  Area A  两个季度都有 ALL / ALL 记录，另有一条 House / 3 卧记录
+900002  Area B  最后一条记录早于数据集最新季度
+900003  Area C  最新季度有记录，但租金为 NULL
+900004  Area D  属于这个 Region，但没有任何 MBIE（租金） 记录
+-99             非 SA2 编号
+900099          不属于这个 Region 的编号
+```
+
+fixture 中的数值是为这些情况构造的，不代表真实租金。编号使用 `9000xx`：Stats NZ（区域） 2019 的 SA2 编号介于 `100100` 和 `400016` 之间，这些编号不会与真实区域混淆。数据集最新季度固定为 `2026-04-01`。
+
+转换只使用 3.1 列出的 7 个字段，因此 MBIE（租金） fixture 只保留这 7 个字段，字段名与源文件完全一致。按照上面的设计，`data/fixtures/first-slice/mbie-records.csv` 的内容是：
+
+```csv
+TimeFrame,Location Id,Dwelling Type,Number Of Beds,Total Bonds,Median Rent,Geometric Mean Rent
+2025-04-01,900001,ALL,ALL,30,520,500
+2026-04-01,900001,ALL,ALL,33,540,525
+2026-04-01,900001,House,3,12,610,600
+2025-01-01,900002,ALL,ALL,9,450,440
+2025-10-01,900002,ALL,ALL,12,470,460
+2026-01-01,900003,ALL,ALL,9,400,390
+2026-04-01,900003,ALL,ALL,6,NULL,NULL
+2026-04-01,-99,ALL,ALL,41000,600,570
+2026-04-01,900099,ALL,ALL,15,480,470
+```
+
+Stats NZ（区域） 一侧使用 3.1 查询中的 6 个字段，字段名与 GeoPackage 完全一致。计算当前租金不需要区域边界，所以这里不包含 geometry 坐标数据。`data/fixtures/first-slice/stats-nz-areas.json` 的内容是：
+
+```json
+[
+  {
+    "SA22019_V1_00": "900001",
+    "SA22019_V1_00_NAME": "Fixture Area A",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  },
+  {
+    "SA22019_V1_00": "900002",
+    "SA22019_V1_00_NAME": "Fixture Area B",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  },
+  {
+    "SA22019_V1_00": "900003",
+    "SA22019_V1_00_NAME": "Fixture Area C",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  },
+  {
+    "SA22019_V1_00": "900004",
+    "SA22019_V1_00_NAME": "Fixture Area D",
+    "REGC2019_V1_00": "03",
+    "REGC2019_V1_00_NAME": "Waikato Region",
+    "TA2019_V1_00": "901",
+    "TA2019_V1_00_NAME": "Fixture District"
+  }
+]
+```
+
+按照 3.1 的规则，手工得到的正确答案是：
+
+```text
+可发布区域     900001、900002、900003
+               900004 没有 MBIE（租金） 记录；-99 和 900099 不是这个 Region 的 SA2
+
+900001  当前租金 2026-04-01，Median Rent 540，Reported Bonds 33
+        House / 3 记录不参与计算
+        12 个月变化 525 / 500 - 1 = 0.05
+
+900002  当前租金 2025-10-01，Median Rent 470，Reported Bonds 12
+        这是旧季度的租金
+        2026-04-01 没有记录，12 个月变化为 null
+
+900003  2026-04-01 的租金为 NULL，往前找到 2026-01-01
+        当前租金 2026-01-01，Median Rent 400，Reported Bonds 9
+        2026-04-01 没有几何平均租金，12 个月变化为 null
+```
+
+Area C 的 Reported Bonds 是 `9`，不是最新季度那条记录中的 `6`：当前租金中的每个数值都来自同一个季度，不能把不同季度的数值拼在一起。
+
+#### 3.3 把源记录转换成租金记录和区域信息
+
+转换从最小的单位开始：每份源文件中的一条记录。
+
+```text
+一条 MBIE（租金） 记录      → 一个季度的租金记录
+一条 Stats NZ（区域） 记录  → 区域信息（第 2 节的 Area）
+```
+
+**MBIE（租金） 记录。** 计算当前租金只需要一条记录中的季度和三个数值：Total Bonds、Median Rent 和 Geometric Mean Rent。所以一条 MBIE（租金） 记录先转换成只有这四个字段的租金记录。这个租金记录只在转换代码内部使用。
+
+CSV 解析后，每个字段都是字符串，而计算需要数字或 `null`。把字符串变成数字时有一个陷阱：JavaScript 的 `Number("350")` 得到 `350`，但 `Number("NULL")` 得到 `NaN`，`Number("")` 更是得到 `0`。如果对所有字段直接调用 `Number`，缺失值可能悄悄变成“租金为 0”，在排序中成为最便宜的区域。Step 06 的 profiling 把 `NULL` 和空字符串都计为缺失标记，因此这两种值都要先转换成 `null`。
+
+**Stats NZ（区域） 记录。** 3.1 的查询结果中，Region 编号 `03` 和 territorial authority 编号 `016` 都保留了前导零。数字不会保留前导零，这说明这些字段以文本保存，与 contract 中的字符串字段类型相同，只需要换成 contract 的字段名。
+
+转换代码与 Step 06、Step 07 的数据脚本一样，使用 Node.js 的 `.mjs` 模块。与那些脚本不同的是，它不读取文件，只接收已经读出的记录并返回结果。这样的函数只依赖输入：相同的输入总是得到相同的输出，测试可以直接把 fixture 交给它，而不需要真实源文件。
+
+因此，两种记录各定义一个转换函数：`convertToQuarterlyRent` 和 `convertToArea`。把文本转换成数字或 `null` 的判断在三个数值字段上都要用，单独封装成工具函数 `parseNullableNumber`。这些函数放在 `data/pipeline/first-slice.mjs`：
+
+```js
+function parseNullableNumber(value) {
+  return value === "NULL" || value === "" ? null : Number(value);
+}
+
+export function convertToQuarterlyRent(record) {
+  return {
+    period: record.TimeFrame,
+    reportedBonds: parseNullableNumber(record["Total Bonds"]),
+    medianRent: parseNullableNumber(record["Median Rent"]),
+    geometricMeanRent: parseNullableNumber(record["Geometric Mean Rent"]),
+  };
+}
+
+export function convertToArea(record) {
+  return {
+    sa2Id: record.SA22019_V1_00,
+    name: record.SA22019_V1_00_NAME,
+    regionCode: record.REGC2019_V1_00,
+    regionName: record.REGC2019_V1_00_NAME,
+    territorialAuthorityCode: record.TA2019_V1_00,
+    territorialAuthorityName: record.TA2019_V1_00_NAME,
+  };
+}
+```
+
+改名同时统一了产品中的叫法，例如 MBIE（租金） 的 `Total Bonds` 在产品中称为 Reported Bonds，因此写入 `reportedBonds`。
+
+两个函数写好以后，要用 3.2 的样本确认转换结果。每个函数用一条记录检查即可，但这条记录要覆盖函数中所有需要判断的地方：
+
+```text
+convertToQuarterlyRent  使用 Area C 在 2026-04-01 的记录
+                 它同时包含数字文本 6 和两个 NULL，一次就能检查两种转换
+                 预期 reportedBonds 为 6，medianRent 和 geometricMeanRent 为 null
+
+convertToArea           使用第一条 Stats NZ（区域） 记录，即 Area A
+                 预期 6 个字段换成 contract 字段名，regionCode 仍是文本 "03"
+```
+
+测试要先读出两份 fixture。转换函数只接收已经读出的记录，所以读取文件的工作放在测试文件中：
+
+- MBIE（租金） fixture 是 CSV，使用 Step 06 已安装的 `csv-parse` 解析。fixture 很小，所以使用同步接口一次读完。`columns: true` 让每条记录成为以表头字段命名的对象，与 Step 06 读取真实 CSV 时得到的记录形状一致。
+- Stats NZ（区域） fixture 是 JSON，读出文本后直接用 `JSON.parse` 转换。
+
+读取本地文件要用 Node.js 的 `node:fs`，这又涉及测试环境。Step 03 把 Vitest 的默认环境设为 `jsdom`，它在 Node.js 中模拟浏览器，供组件测试使用。转换代码不在浏览器中运行。Vitest 允许一个测试文件在第一行用注释声明自己的环境，因此这个测试文件单独使用 `node` 环境，组件测试不受影响。
+
+测试文件 `data/pipeline/first-slice.test.mjs` 因此从环境声明和读取 fixture 开始：
+
+```js
+// @vitest-environment node
+import { readFileSync } from "node:fs";
+
+import { parse } from "csv-parse/sync";
+
+const mbieRecords = parse(
+  readFileSync(
+    new URL("../fixtures/first-slice/mbie-records.csv", import.meta.url),
+  ),
+  { columns: true, skip_empty_lines: true },
+);
+
+const statsNzRecords = JSON.parse(
+  readFileSync(
+    new URL("../fixtures/first-slice/stats-nz-areas.json", import.meta.url),
+    "utf8",
+  ),
+);
+```
+
+fixture 读出来以后就可以写测试。测试要用到 Vitest 的 `describe`、`expect`、`it`，以及要测试的两个函数，先导入它们：
+
+```js
+import { describe, expect, it } from "vitest";
+
+import { convertToArea, convertToQuarterlyRent } from "./first-slice.mjs";
+```
+
+两个测试各取一条 fixture 记录交给被测函数，再与上面列出的期望结果比较。使用 `toEqual` 比较时，转换多出或漏掉一个字段，或者把 `NULL` 转成了 `NaN`，测试都会失败。
+
+```js
+describe("rent conversion", () => {
+  it("converts an MBIE（租金） record into a quarterly rent", () => {
+    const areaCRecord = mbieRecords.find(
+      (record) =>
+        record["Location Id"] === "900003" && record.TimeFrame === "2026-04-01",
+    );
+
+    expect(convertToQuarterlyRent(areaCRecord)).toEqual({
+      period: "2026-04-01",
+      reportedBonds: 6,
+      medianRent: null,
+      geometricMeanRent: null,
+    });
+  });
+
+  it("converts a Stats NZ（区域） record into an area", () => {
+    expect(convertToArea(statsNzRecords[0])).toEqual({
+      sa2Id: "900001",
+      name: "Fixture Area A",
+      regionCode: "03",
+      regionName: "Waikato Region",
+      territorialAuthorityCode: "901",
+      territorialAuthorityName: "Fixture District",
+    });
+  });
+});
+```
+
+最后让 Vitest 能找到这个测试。Step 03 配置的 `test.include` 只搜索 `src/` 下的 `.test.ts` 和 `.test.tsx` 文件，而这个测试位于 `data/pipeline/`，扩展名是 `.mjs`。因此要把 `data/` 下的 `.mjs` 测试加入 `vite.config.ts` 的 `test.include`：
+
+```ts
+include: [
+  "src/**/*.test.{ts,tsx}",
+  "src/**/*.spec.{ts,tsx}",
+  "data/**/*.test.mjs",
+],
+```
+
+运行转换测试：
+
+```bash
+npm run test -- data/pipeline/first-slice.test.mjs
+```
+
+输出为：
+
+```text
+✓ data/pipeline/first-slice.test.mjs (2 tests)
+  ✓ rent conversion (2)
+    ✓ converts an MBIE（租金） record into a quarterly rent
+    ✓ converts a Stats NZ（区域） record into an area
+
+Test Files  1 passed (1)
+     Tests  2 passed (2)
+```
+
+Vitest 找到了 `data/` 下的测试，两条源记录都按预期转换。这个结果只说明单条记录的转换正确，还没有涉及当前租金、12 个月变化或区域筛选。
+
+#### 3.4 计算一个区域的当前租金
+
+单条记录已经可以转换成季度租金记录。区域列表需要的却是第 2 节的当前租金 `CurrentRent`：它把一个区域的全部季度租金记录归结为一组当前数值。其中的季度、Median Rent 和 Reported Bonds 按 3.1 的“当前租金”规则选出，`yearOverYearChange` 按“12 个月变化”规则计算。
+
+计算当前租金的函数命名为 `buildCurrentRent`。先确定它接收什么，再逐条实现这两条规则。
+
+**函数的输入。** `buildCurrentRent` 接收两个参数。
+
+第一个参数 `quarterlyRents` 是一个区域全部 `ALL / ALL` 季度租金记录组成的数组。它由 3.3 的 `convertToQuarterlyRent` 的结果组成：
+
+```text
+一个区域的多条 MBIE（租金） 记录
+   │  逐条调用 convertToQuarterlyRent
+   ▼
+多个季度租金记录：只保留 ALL / ALL，按季度从旧到新排列
+   │  组成 quarterlyRents 数组
+   ▼
+buildCurrentRent
+   │  应用当前租金和 12 个月变化规则
+   ▼
+这个区域的当前租金
+```
+
+筛选 `ALL / ALL` 和按季度排序由调用这个函数的代码负责，`buildCurrentRent` 只做计算。
+
+以 Area C 为例，它的 `quarterlyRents` 是：
+
+```text
+quarterlyRents[0]  period 2026-01-01  reportedBonds 9  medianRent 400   geometricMeanRent 390
+quarterlyRents[1]  period 2026-04-01  reportedBonds 6  medianRent null  geometricMeanRent null
+```
+
+第二个参数 `datasetLatestPeriod` 是数据集最新季度。它无法从一个区域的记录中推断：Area B 的记录停在 `2025-10-01`，但整个数据集的最新季度是 `2026-04-01`。因此它由外部传入。
+
+**当前租金。** 规则是从最新季度往前，找到最后一个 Median Rent 不为 `null` 的季度。`quarterlyRents` 已经从旧到新排列，所以只要从数组末尾往前查找。以 Area C 为例：`quarterlyRents[1]` 的租金为 `null`，跳过；`quarterlyRents[0]` 有租金，它就是当前租金的来源。
+
+JavaScript 数组的 `findLast` 方法正好做这件事：它从数组末尾开始逐个检查元素，返回第一个满足条件的元素；一个都找不到时返回 `undefined`。
+
+找到这条记录后，`observationPeriod`、`medianRent` 和 `reportedBonds` 都从它读取。所以 Area C 的 Reported Bonds 是 `9`，而不是 `2026-04-01` 那条记录中的 `6`。如果一个区域从未有过有效租金，`findLast` 返回 `undefined`，这三个字段都应为 `null`。
+
+直接读取 `undefined` 的属性会报错，因此读取时要处理“可能找不到”的情况。JavaScript 为此提供了两个运算符：
+
+```text
+?.     左边是 undefined 或 null 时，不继续读取属性，直接得到 undefined
+??     左边是 undefined 或 null 时，使用右边的值
+```
+
+两者连用，`latestObservedQuarter?.period ?? null` 的含义是：找到了记录就取它的季度，找不到就得到 `null`。用 `findLast` 找到记录，再用这种写法读取字段，就得到 `buildCurrentRent` 的第一部分：
+
+```js
+export function buildCurrentRent(quarterlyRents, datasetLatestPeriod) {
+  const latestObservedQuarter = quarterlyRents.findLast(
+    (quarterlyRent) => quarterlyRent.medianRent !== null,
+  );
+
+  return {
+    datasetLatestPeriod,
+    observationPeriod: latestObservedQuarter?.period ?? null,
+    medianRent: latestObservedQuarter?.medianRent ?? null,
+    reportedBonds: latestObservedQuarter?.reportedBonds ?? null,
+  };
+}
+```
+
+**12 个月变化。** 规则是比较两个固定季度的 Geometric Mean Rent：`datasetLatestPeriod`，以及四个季度前。实现时要依次解决三个问题。
+
+第一个问题是四个季度前是哪个季度。季度使用 `YYYY-MM-DD` 格式，四个季度前就是上一年的同一季度，只要把年份减 1：`2026-04-01` 变成 `2025-04-01`。这个计算与具体区域无关，可以封装成工具函数 `getSameQuarterLastYear`：
+
+```js
+function getSameQuarterLastYear(period) {
+  const year = Number(period.slice(0, 4));
+  return `${year - 1}${period.slice(4)}`;
+}
+```
+
+第二个问题是怎样读取某个季度的租金。用数组的 `find` 方法，从 `quarterlyRents` 中找出 `period` 等于这个季度的记录。读取会遇到两种缺失：Area B 在 `2026-04-01` 没有记录，`find` 返回 `undefined`；Area C 在 `2026-04-01` 有记录，但租金为 `null`。用前面的 `?.` 和 `??`，两种情况都会得到 `null`。因此，先调用 `getSameQuarterLastYear` 得到去年的同一季度，再用 `find` 分别取出两个季度的记录，读出它们的几何平均租金：
+
+```js
+export function buildCurrentRent(quarterlyRents, datasetLatestPeriod) {
+  // 当前租金：用 findLast 找到 latestObservedQuarter……
+
+  const lastYearPeriod = getSameQuarterLastYear(datasetLatestPeriod);
+  const currentQuarter = quarterlyRents.find(
+    (quarterlyRent) => quarterlyRent.period === datasetLatestPeriod,
+  );
+  const lastYearQuarter = quarterlyRents.find(
+    (quarterlyRent) => quarterlyRent.period === lastYearPeriod,
+  );
+  const currentGeometricMeanRent = currentQuarter?.geometricMeanRent ?? null;
+  const lastYearGeometricMeanRent = lastYearQuarter?.geometricMeanRent ?? null;
+
+  return {
+    // datasetLatestPeriod、observationPeriod、medianRent、reportedBonds……
+  };
+}
+```
+
+第三个问题是浮点误差。两个租金都存在时，计算 `当前 / 去年 - 1`。`525 / 500 - 1` 在 JavaScript 中得到 `0.050000000000000044`，而不是 `0.05`。变化率在页面上以百分比显示，保留 4 位小数已经精确到 0.01 个百分点，所以结果四舍五入到 4 位小数。这个处理同样与具体区域无关，也封装成工具函数 `roundChange`：
+
+```js
+function roundChange(value) {
+  return Math.round(value * 10000) / 10000;
+}
+```
+
+有了两个季度的租金和 `roundChange`，返回结果中就可以加上 12 个月变化：两个租金都存在时计算变化率，否则为 `null`。
+
+```js
+export function buildCurrentRent(quarterlyRents, datasetLatestPeriod) {
+  // 当前租金：用 findLast 找到 latestObservedQuarter……
+
+  // 12 个月变化：读出 currentGeometricMeanRent 和 lastYearGeometricMeanRent……
+
+  return {
+    // datasetLatestPeriod、observationPeriod、medianRent、reportedBonds……
+    yearOverYearChange:
+      currentGeometricMeanRent !== null && lastYearGeometricMeanRent !== null
+        ? roundChange(currentGeometricMeanRent / lastYearGeometricMeanRent - 1)
+        : null,
+  };
+}
+```
+
+**测试。** 测试对照 3.2 中三个区域的手工答案。每个区域都要先准备 `buildCurrentRent` 的输入：从 `mbieRecords` 中筛出这个区域的 `ALL / ALL` 记录，再逐条交给 `convertToQuarterlyRent`。fixture 中每个区域的记录已经按季度从旧到新书写，筛选后的顺序就符合要求；Area A 的 `House / 3` 记录在筛选时被去掉。
+
+三个区域在两个测试中都要这样准备输入，再调用 `buildCurrentRent`。因此把这两步写成测试文件中的一个函数 `calculateCurrentRentFromFixture`：传入一个 SA2 编号，它以 `2026-04-01` 作为数据集最新季度，返回这个区域的当前租金。函数中调用了 `buildCurrentRent`，测试文件也要导入它。
+
+```js
+function calculateCurrentRentFromFixture(sa2Id) {
+  const quarterlyRents = mbieRecords
+    .filter(
+      (record) =>
+        record["Location Id"] === sa2Id &&
+        record["Dwelling Type"] === "ALL" &&
+        record["Number Of Beds"] === "ALL",
+    )
+    .map((record) => convertToQuarterlyRent(record));
+
+  return buildCurrentRent(quarterlyRents, "2026-04-01");
+}
+```
+
+当前租金的测试只检查与当前季度有关的字段，所以使用 `toMatchObject`：它只比较列出的字段，其余字段不参与比较。12 个月变化的测试使用 `toBe`，它要求两个值完全相同，`toBe(0.05)` 能够通过，就说明四舍五入消除了浮点误差。
+
+用这个函数，当前租金和 12 个月变化各写一个测试：
+
+```js
+it("uses the latest observed quarter as the current rent", () => {
+  // Area A：最新季度有租金，直接使用最新季度。
+  expect(calculateCurrentRentFromFixture("900001")).toMatchObject({
+    observationPeriod: "2026-04-01",
+    medianRent: 540,
+    reportedBonds: 33,
+  });
+  // Area B：最后一条记录在 2025-10-01，当前租金停在这个旧季度。
+  expect(calculateCurrentRentFromFixture("900002")).toMatchObject({
+    observationPeriod: "2025-10-01",
+    medianRent: 470,
+  });
+  // Area C：最新季度租金为 NULL，往前使用 2026-01-01；Bonds 也取这个季度的 9。
+  expect(calculateCurrentRentFromFixture("900003")).toMatchObject({
+    observationPeriod: "2026-01-01",
+    medianRent: 400,
+    reportedBonds: 9,
+  });
+});
+
+it("calculates the 12-month change only when both quarters exist", () => {
+  // Area A：525 / 500 - 1 = 0.05。
+  expect(calculateCurrentRentFromFixture("900001").yearOverYearChange).toBe(0.05);
+  // Area B：2026-04-01 没有记录。
+  expect(calculateCurrentRentFromFixture("900002").yearOverYearChange).toBeNull();
+  // Area C：2026-04-01 的 Geometric Mean Rent 为 NULL。
+  expect(calculateCurrentRentFromFixture("900003").yearOverYearChange).toBeNull();
+});
+```
+
+运行转换测试：
+
+```bash
+npm run test -- data/pipeline/first-slice.test.mjs
+```
+
+输出为：
+
+```text
+✓ data/pipeline/first-slice.test.mjs (4 tests)
+  ✓ rent conversion (4)
+    ……（3.3 的 2 个测试省略）
+    ✓ uses the latest observed quarter as the current rent
+    ✓ calculates the 12-month change only when both quarters exist
+
+Test Files  1 passed (1)
+     Tests  4 passed (4)
+```
+
+新增的两个测试通过，三个区域的当前租金和 12 个月变化都与 3.2 的手工答案一致。这个结果只说明一个区域的租金记录已经整理好时，计算是正确的；测试中的 `quarterlyRents` 由测试代码准备，还没有从一个 Region 的全部记录中自动整理出来。
+
+#### 3.5 整理一个 Region 的全部记录
+
+3.4 的测试中，`buildCurrentRent` 的输入由测试代码准备：指定一个 SA2 编号，从 fixture 中筛出它的记录。真实转换中没有人逐个指定 SA2 编号。它拿到的是一个 Region 的全部源记录，要自己找出哪些区域可以发布，并为每个区域整理出 `quarterlyRents`。
+
+完成这项工作的函数命名为 `buildAreasWithCurrentRent`，它接收三个值：
+
+```text
+statsNzRecords       这个 Region 全部 SA2 的 Stats NZ（区域） 记录
+mbieRecords          MBIE（租金） 记录，包含所有 SA2、所有住宅类型和卧室数
+datasetLatestPeriod  数据集最新季度，原样交给 buildCurrentRent
+```
+
+参数写成 `{ statsNzRecords, mbieRecords, datasetLatestPeriod }`，表示调用时传入一个对象，函数从中取出这三个同名字段，作为三个变量使用：
+
+```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // ...
+}
+```
+
+它返回可发布区域的列表，每个元素就是第 2 节定义的列表中的一行 `AreaWithCurrentRent`：`convertToArea` 得到的区域信息，加上 `buildCurrentRent` 计算出的 `currentRent`。
+
+单条记录的转换和一个区域的当前租金，3.3 和 3.4 的函数已经能够完成。这个函数负责把它们组织起来，分四部分：
+
+```text
+1. 确定这个 Region 的 SA2
+2. 按 SA2 收集租金记录
+3. 确定可发布区域
+4. 计算每个可发布区域的当前租金
+```
+
+**1. 确定这个 Region 的 SA2。** 先把 Stats NZ（区域） 记录逐条交给 `convertToArea`。数组的 `map` 方法会把数组中的每个元素依次交给一个函数，再把每次的返回值按原顺序组成新数组。`statsNzRecords.map((record) => convertToArea(record))` 中，`record` 依次是 `statsNzRecords` 的每一条记录，得到的 `areas` 就是区域信息组成的数组。
+
+MBIE（租金） 记录中混有其他 Region 的编号，以及 `-99` 这类非 SA2 编号，只有属于这个 Region 的记录才需要处理。因此把这个 Region 的 SA2 编号放进 Step 06 用过的 `Set`，判断一条记录是否属于这个 Region 时，调用它的 `has` 即可。函数的第一部分是：
+
+```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2
+  const areas = statsNzRecords.map((record) => convertToArea(record));
+  const regionSa2Ids = new Set(areas.map((area) => area.sa2Id));
+}
+```
+
+**2. 按 SA2 收集租金记录。** 有了这个 Region 的 SA2 编号，接下来要从 MBIE（租金） 记录中，为每个 SA2 找出两样东西：
+
+```text
+能否发布        至少有一条 Median Rent 不为 NULL 的记录，任意住宅类型和卧室数都算
+当前租金的输入  它的 ALL / ALL 季度租金记录
+```
+
+做法是把 MBIE（租金） 记录从头到尾读一遍，每读到一条属于这个 Region 的记录，就分别检查这两件事：
+
+- 记录的 Median Rent 不为 `NULL`，就把它的 SA2 编号放进一个 `Set`，命名为 `publishableSa2Ids`。同一个编号放进去多次，`Set` 中也只保留一个。判断时使用 3.3 的 `parseNullableNumber`，`NULL` 和空字符串都视为缺失。
+- 记录属于 `ALL / ALL`，就转换成季度租金记录，放进这个 SA2 的列表。“SA2 编号 → 这个 SA2 的季度租金记录列表”这种对应关系，用 Step 06 用过的 `Map` 保存，命名为 `quarterlyRentsBySa2Id`。某个 SA2 第一次出现 `ALL / ALL` 记录时，先为它建立一个空列表。
+
+以 fixture 为例，读完后两者的内容是：
+
+```text
+publishableSa2Ids       "900001"、"900002"、"900003"
+
+quarterlyRentsBySa2Id
+"900001" → [900001 的 ALL / ALL 季度租金记录]
+"900002" → [900002 的 ALL / ALL 季度租金记录]
+"900003" → [900003 的 ALL / ALL 季度租金记录]
+```
+
+900004 没有任何 MBIE（租金） 记录，两者中都没有它。Area A 的 `House / 3` 记录有租金，它让 900001 进入 `publishableSa2Ids`，但不进入 900001 的列表。
+
+判断 `ALL / ALL` 要用到两个固定的分类值，先把它们定义成常量，代码中就能看出这两个 `"ALL"` 的含义：
+
+```js
+const defaultDwellingType = "ALL";
+const defaultBedrooms = "ALL";
+```
+
+有了 `regionSa2Ids` 和这两个常量，函数的第二部分逐条读取 MBIE（租金） 记录，分别更新 `publishableSa2Ids` 和 `quarterlyRentsBySa2Id`：
+
+```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2：得到 areas 和 regionSa2Ids……
+
+  // 2. 按 SA2 收集租金记录
+  const publishableSa2Ids = new Set();
+  const quarterlyRentsBySa2Id = new Map();
+
+  for (const record of mbieRecords) {
+    const sa2Id = record["Location Id"];
+
+    if (!regionSa2Ids.has(sa2Id)) {
+      continue;
+    }
+
+    if (parseNullableNumber(record["Median Rent"]) !== null) {
+      publishableSa2Ids.add(sa2Id);
+    }
+
+    if (
+      record["Dwelling Type"] === defaultDwellingType &&
+      record["Number Of Beds"] === defaultBedrooms
+    ) {
+      if (!quarterlyRentsBySa2Id.has(sa2Id)) {
+        quarterlyRentsBySa2Id.set(sa2Id, []);
+      }
+      quarterlyRentsBySa2Id.get(sa2Id).push(convertToQuarterlyRent(record));
+    }
+  }
+}
+```
+
+`continue` 结束这一次循环，直接读取下一条记录。
+
+**3. 确定可发布区域。** 读完全部记录后，`areas` 中在 `publishableSa2Ids` 里的 SA2 就是可发布区域，用 `filter` 留下它们。可发布区域再按 SA2 编号排序，输出顺序就不依赖 Stats NZ（区域） 记录的排列。SA2 编号是文本，使用 Step 06 用过的 `localeCompare` 比较。函数的第三部分因此是：
+
+```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2：得到 areas 和 regionSa2Ids……
+
+  // 2. 按 SA2 收集租金记录：得到 publishableSa2Ids 和 quarterlyRentsBySa2Id……
+
+  // 3. 确定可发布区域
+  const publishedAreas = areas
+    .filter((area) => publishableSa2Ids.has(area.sa2Id))
+    .sort((left, right) => left.sa2Id.localeCompare(right.sa2Id));
+}
+```
+
+**4. 计算每个可发布区域的当前租金。** 每个区域的列表交给 `buildCurrentRent` 之前，还要按季度排序。`buildCurrentRent` 要求 `quarterlyRents` 从旧到新排列，fixture 是按这个顺序书写的，真实 CSV 却不是：3.1 的输出中，Greensboro 的 `2026-04-01` 记录排在 `2025-04-01` 之前。不排序的话，`buildCurrentRent` 会把最旧的租金当成当前租金。季度是 `YYYY-MM-DD` 格式的文本，文本顺序就是时间顺序，所以同样使用 `localeCompare`。
+
+一个可发布区域也可能没有任何 `ALL / ALL` 记录：它的有效租金全部来自其他分类，`Map` 中就没有它的列表，`get` 得到 `undefined`。这时用 `?? []` 换成空列表，`buildCurrentRent` 中的 `findLast` 和 `find` 都找不到记录，当前租金中的数值都为 `null`。
+
+最后把区域信息和当前租金组合成列表中的一行：`{ ...area, currentRent: ... }` 中的 `...` 是第 2.6 节测试中用过的展开写法，它把 `area` 的全部字段复制到新对象中，再加上 `currentRent`。
+
+函数的最后一部分对每个可发布区域先排序，再调用 `buildCurrentRent` 得到当前租金，最后和区域信息组合成一行，返回全部结果：
+
+```js
+export function buildAreasWithCurrentRent({ statsNzRecords, mbieRecords, datasetLatestPeriod }) {
+  // 1. 确定这个 Region 的 SA2：得到 areas 和 regionSa2Ids……
+
+  // 2. 按 SA2 收集租金记录：得到 publishableSa2Ids 和 quarterlyRentsBySa2Id……
+
+  // 3. 确定可发布区域：得到 publishedAreas……
+
+  // 4. 计算每个可发布区域的当前租金
+  const areasWithCurrentRent = [];
+
+  for (const area of publishedAreas) {
+    const quarterlyRents = quarterlyRentsBySa2Id.get(area.sa2Id) ?? [];
+    quarterlyRents.sort((left, right) => left.period.localeCompare(right.period));
+
+    areasWithCurrentRent.push({
+      ...area,
+      currentRent: buildCurrentRent(quarterlyRents, datasetLatestPeriod),
+    });
+  }
+
+  return areasWithCurrentRent;
+}
+```
+
+**测试。** 可发布区域和 Area B 的当前租金对照 3.2 的手工答案。排序用另一种方式检查：两份源记录都颠倒顺序，季度变成从新到旧，转换结果必须与原顺序完全相同。
+
+颠倒顺序要用数组的 `reverse`。它会直接修改原数组，而两份源记录还要被其他测试使用，所以先用 `[...数组]` 复制一份再颠倒，这里的 `...` 把原数组的全部元素展开到新数组中。
+
+这些测试都使用同一个 Region 的转换结果，所以导入 `buildAreasWithCurrentRent` 后只调用一次，把结果保存为 `areasWithCurrentRent`：
+
+```js
+const areasWithCurrentRent = buildAreasWithCurrentRent({
+  statsNzRecords,
+  mbieRecords,
+  datasetLatestPeriod: "2026-04-01",
+});
+```
+
+三个测试分别检查可发布区域、Area B 的当前租金和源记录的顺序：
+
+```js
+// 900004 没有 MBIE（租金） 记录；-99 和 900099 不在这个 Region 中。
+it("publishes only Region areas with a valid MBIE（租金） rent", () => {
+  expect(areasWithCurrentRent.map((area) => area.sa2Id)).toEqual([
+    "900001",
+    "900002",
+    "900003",
+  ]);
+});
+
+it("attaches the current rent to each published area", () => {
+  const areaB = areasWithCurrentRent.find((area) => area.sa2Id === "900002");
+
+  expect(areaB.currentRent).toEqual({
+    datasetLatestPeriod: "2026-04-01",
+    observationPeriod: "2025-10-01",
+    medianRent: 470,
+    reportedBonds: 12,
+    yearOverYearChange: null,
+  });
+});
+
+it("does not depend on the order of the source records", () => {
+  const reversedResult = buildAreasWithCurrentRent({
+    statsNzRecords: [...statsNzRecords].reverse(),
+    mbieRecords: [...mbieRecords].reverse(),
+    datasetLatestPeriod: "2026-04-01",
+  });
+
+  expect(reversedResult).toEqual(areasWithCurrentRent);
+});
+```
+
+运行转换测试：
+
+```bash
+npm run test -- data/pipeline/first-slice.test.mjs
+```
+
+输出为：
+
+```text
+✓ data/pipeline/first-slice.test.mjs (7 tests)
+  ✓ rent conversion (7)
+    ……（3.3 和 3.4 的 4 个测试省略）
+    ✓ publishes only Region areas with a valid MBIE（租金） rent
+    ✓ attaches the current rent to each published area
+    ✓ does not depend on the order of the source records
+
+Test Files  1 passed (1)
+     Tests  7 passed (7)
+```
+
+新增的三个测试通过，可发布区域和 Area B 的当前租金与手工答案一致，源记录颠倒顺序后结果不变。这个结果只说明计算出的数值正确，还没有确认每一行都符合第 2 节的 contract。
+
+#### 3.6 用 contract 检查转换结果
+
+前面的测试检查规则选出的数值是否正确。转换结果还要满足第 2 节的 contract，例如编号必须是六位数字、租金必须是数字或 `null`、不能出现定义之外的字段。两类检查互相补充：规则测试能发现“数值选错了”，contract 能发现“形状或类型错了”。
+
+`src/data/contracts.ts` 中的 schema 可以直接在转换测试中使用。Vitest 读取 `vite.config.ts` 中的 `@/` 别名，因此 `data/` 下的测试也能写 `import { areaWithCurrentRentSchema } from "@/data/contracts";`。最后一个测试遍历 `areasWithCurrentRent`，对每一行调用 `parse`：数据不符合 contract 时抛出错误，测试随之失败；全部数据通过时，测试正常结束。
+
+```js
+it("produces rows that satisfy the contract", () => {
+  for (const row of areasWithCurrentRent) {
+    areaWithCurrentRentSchema.parse(row);
+  }
+});
+```
+
+运行完整的转换测试：
+
+```bash
+npm run test -- data/pipeline/first-slice.test.mjs
+```
+
+输出为：
+
+```text
+✓ data/pipeline/first-slice.test.mjs (8 tests)
+  ✓ rent conversion (8)
+    ✓ converts an MBIE（租金） record into a quarterly rent
+    ✓ converts a Stats NZ（区域） record into an area
+    ✓ uses the latest observed quarter as the current rent
+    ✓ calculates the 12-month change only when both quarters exist
+    ✓ publishes only Region areas with a valid MBIE（租金） rent
+    ✓ attaches the current rent to each published area
+    ✓ does not depend on the order of the source records
+    ✓ produces rows that satisfy the contract
+
+Test Files  1 passed (1)
+     Tests  8 passed (8)
+```
+
+8 个测试全部通过。转换代码按 3.1 的规则从两份源文件形状的记录中算出了正确的当前租金，结果也符合第 2 节的 contract。这个结论只针对 fixture：转换代码还没有读取真实的 MBIE（租金） CSV 和 Stats NZ（区域） GeoPackage，也还没有生成任何页面可以读取的文件。
+
+### 4. 生成第一个版本化 Waikato release
+
+第 3 节的转换函数已经在 fixture 上得到正确结果，但页面还没有任何可以读取的正式文件。本节用真实源文件为 Waikato 生成一个带版本号的数据目录，其中包含当前租金、边界和 manifest，并且每个文件都能追溯到生成它的源文件。
+
+#### 4.1 锁定源文件
+
+生成的数值必须能追溯到确切的源文件。MBIE（租金） 数据处于 provisional 状态，以后重新下载同名文件，内容可能已经修订。因此，生成之前先把这次使用的源文件“锁定”：记录来源、许可证、下载日期和 SHA-256，生成脚本运行时重新计算 SHA-256，与记录不一致就停止。
+
+这些信息保存在 `data/source-lock.json`。其中 `release` 记录本次 release 的版本和生成时间：
+
+```json
+{
+  "release": {
+    "version": "2026-04-01.1",
+    "generatedAt": "2026-11-21T00:00:00.000Z"
+  },
+  "sources": [
+    {
+      "id": "mbie-rental",
+      "name": "MBIE Rental Bond Data: Detailed Quarterly Tenancy",
+      "url": "https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/",
+      "licence": "Creative Commons Attribution 3.0 New Zealand",
+      "status": "provisional",
+      "retrievedAt": "2026-10-27",
+      "path": "data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv",
+      "sha256": "b40a39a0ce899362df5da729ed38cf8962cc31058910693aa2301feb9d0be80e"
+    }
+  ]
+}
+```
+
+`sources` 中还有一项 `stats-sa2-2019`，字段相同，记录 Stats NZ（区域） 的来源和许可证（Creative Commons Attribution 4.0 International，来自下载文件附带的元数据）。
+
+- 版本号由数据最新季度和发布序号组成：`2026-04-01.1` 表示数据截至 `2026-04-01` 的第一次发布，同一季度重新发布时序号加 1。
+- `generatedAt` 写在锁定文件中，而不是读取运行时的系统时间。这样相同的源文件和锁定信息，每次都生成完全相同的文件。
+- Stats NZ（区域） 记录的是脚本实际读取的 `.gpkg` 文件的 SHA-256，而不是 Step 06 记录的 ZIP 下载包，因为生成脚本读取的是解压后的文件。
+
+#### 4.2 用真实源文件生成 Waikato 当前租金
+
+第 3 节的转换函数只依赖输入的记录，所以生成脚本只需负责读取文件、调用这些函数并写出结果。转换函数原来所在的 `first-slice.mjs` 现在由正式的生成脚本使用，因此改名为 `current-rents.mjs`，名字直接说明它计算什么，测试文件同步改名为 `current-rents.test.mjs`。
+
+生成脚本是 `data/pipeline/build-release.mjs`。读取源文件时先核对 SHA-256：
+
+```js
+async function readLockedSource(sourceId) {
+  const source = sourceLock.sources.find((item) => item.id === sourceId);
+  const url = new URL(source.path, repositoryRootUrl);
+  const content = await readFile(url);
+  const sha256 = createHash("sha256").update(content).digest("hex");
+
+  if (sha256 !== source.sha256) {
+    throw new Error(
+      `${sourceId} does not match data/source-lock.json: expected ${source.sha256}, got ${sha256}`,
+    );
+  }
+
+  return { url, content };
+}
+```
+
+`createHash` 来自 Node.js 的 `node:crypto`，计算结果与 Step 06 使用的 `shasum -a 256` 相同。
+
+核对通过后，脚本依次完成三件事：
+
+```js
+// 读取全部 MBIE（租金） 记录，取得数据集最新季度。
+const mbieRecords = parse(mbieFile.content, {
+  bom: true,
+  columns: true,
+  skip_empty_lines: true,
+});
+const datasetLatestPeriod = getLatestPeriod(mbieRecords);
+
+// 读取 Waikato 的全部 SA2，计算可发布区域的当前租金。
+const statsNzRecords = readRegionRecords(statsNzFile.url, regionCode);
+const areasWithCurrentRent = buildAreasWithCurrentRent({
+  statsNzRecords,
+  mbieRecords,
+  datasetLatestPeriod,
+});
+```
+
+- MBIE（租金） CSV 文件开头有 UTF-8 BOM。`bom: true` 让 `csv-parse` 去掉它，否则第一个字段名会带上这个不可见字符，`record.TimeFrame` 就读不到值。
+- 数据集最新季度由 `getLatestPeriod` 从全部记录中找出最大的 `TimeFrame`，不手写在脚本中，源文件更新后它会随之变化。季度是 `YYYY-MM-DD` 文本，文本比较的顺序就是时间顺序。
+- `readRegionRecords` 用 Step 07 使用过的 `node:sqlite` 只读打开 GeoPackage，查询 `REGC2019_V1_00 = "03"` 的 SA2，按编号排序。查询结果的字段名与 GeoPackage 相同，可以直接交给 `buildAreasWithCurrentRent`。
+
+脚本中的 Region 编号写在 `regionCodes = ["03"]` 中，每个 Region 生成一组文件。本步只生成 Waikato。
+
+当前租金写入 `areas/current-rents/03.json`，内容就是 `buildAreasWithCurrentRent` 返回的数组。
+
+#### 4.3 生成同一组区域的边界
+
+地图需要边界，而且地图上的区域必须与列表中的区域完全相同。因此边界文件只包含可发布区域：用当前租金中的 `sa2Id` 筛选 GeoPackage 记录，再逐条转换。
+
+GeoPackage 中的边界转换成 GeoJSON 的方法沿用 Step 07：去掉 GeoPackage 头部和 envelope，再用 `wkx` 解析 WKB。这部分逻辑放在 `data/pipeline/geometry.mjs`，并增加一项检查：边界必须是 `Polygon` 或 `MultiPolygon`，否则直接报错，不自动修复。
+
+```js
+export function convertToGeometryFeature(record) {
+  const sa2Id = record.SA22019_V1_00;
+  const geometry = wkx.Geometry.parse(extractGeoPackageWkb(record.geom)).toGeoJSON();
+
+  if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") {
+    throw new Error(`SA2 ${sa2Id} has unsupported geometry type ${geometry.type}`);
+  }
+
+  return {
+    type: "Feature",
+    id: sa2Id,
+    geometry,
+    properties: { sa2Id },
+  };
+}
+```
+
+feature 只保留 `sa2Id`。区域名称等信息已经在当前租金文件中，地图通过 `sa2Id` 与它连接，不在两个文件中重复保存。
+
+生成脚本中的调用：
+
+```js
+const publishedSa2Ids = new Set(areasWithCurrentRent.map((area) => area.sa2Id));
+const geometry = {
+  type: "FeatureCollection",
+  features: statsNzRecords
+    .filter((record) => publishedSa2Ids.has(record.SA22019_V1_00))
+    .map((record) => convertToGeometryFeature(record)),
+};
+```
+
+边界写入 `geometry/regions/03.geo.json`。
+
+#### 4.4 写出 manifest
+
+页面需要一个固定入口来找到当前版本的文件，这个入口就是 manifest。它只包含页面现在需要的信息：版本、生成时间、数据最新季度，以及每个 Region 的区域数量和两个文件的地址。
+
+```js
+const manifest = {
+  version,
+  generatedAt,
+  latestPeriod: datasetLatestPeriod,
+  partitions,
+};
+await writeJson(new URL("manifest.json", releaseUrl), manifest);
+await writeJson(new URL("manifest.json", publicDataUrl), manifest);
+```
+
+同一份 manifest 写到两个位置：
+
+```text
+public/data/releases/2026-04-01.1/manifest.json   随这个版本目录一起保存
+public/data/manifest.json                         页面读取的固定入口，指向当前版本
+```
+
+文件地址以 `/data/` 开头，因为 Vite 把 `public/` 目录中的文件按根路径提供，`public/data/manifest.json` 在页面中的地址就是 `/data/manifest.json`。
+
+`.gitignore` 原来忽略 `public/data/` 下的全部生成文件，现在需要提交 release，因此增加两条例外：
+
+```text
+!public/data/manifest.json
+!public/data/releases/**
+```
+
+生成命令加入 `package.json`：
+
+```json
+"data:release": "node data/pipeline/build-release.mjs"
+```
+
+运行：
+
+```bash
+npm run data:release
+```
+
+输出为：
+
+```text
+{
+  "version": "2026-04-01.1",
+  "latestPeriod": "2026-04-01",
+  "partitions": [
+    {
+      "id": "03",
+      "name": "Waikato Region",
+      "areaCount": 222,
+      "currentRentsUrl": "/data/releases/2026-04-01.1/areas/current-rents/03.json",
+      "geometryUrl": "/data/releases/2026-04-01.1/geometry/regions/03.geo.json"
+    }
+  ]
+}
+```
+
+数据最新季度是从源文件中找出的 `2026-04-01`，可发布区域 222 个，与 Step 07 核对的 Waikato 可发布数量一致。
+
+为了确认相同输入总是得到相同文件，计算全部输出的 SHA-256，再运行一次 `npm run data:release` 并重新计算：
+
+```bash
+find public/data/manifest.json public/data/releases -type f | sort | xargs shasum -a 256
+```
+
+两次结果完全相同：
+
+```text
+58b64635f674c576134df4b7c891ca231a09fc2dff7d1d3fad9032bde45d8b8b  public/data/manifest.json
+bd086972677ce2816636466c016726feee6ec0cec0dfb8d80800410edf7ba75b  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+aa347c98c35d3a698677c5a6829d078f4254123bb4ebc04d5ad5d1c3ca77846b  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+58b64635f674c576134df4b7c891ca231a09fc2dff7d1d3fad9032bde45d8b8b  public/data/releases/2026-04-01.1/manifest.json
+```
+
+两个 manifest 的 SHA-256 相同，说明顶层入口与版本目录中的 manifest 内容一致。
+
+#### 4.5 用测试检查生成的文件
+
+生成的文件要满足三点：每一行符合第 2 节的 contract；manifest、当前租金和边界描述的是同一组区域；真实数据的计算结果与 3.1 手工得到的结果一致。新增的 `data/pipeline/release.test.mjs` 读取生成的文件来检查这三点。
+
+测试按页面请求文件时使用的路径读取，例如 `/data/manifest.json`，所以先写一个读取函数，再从 manifest 中找到 Waikato 的两个文件：
+
+```js
+function readPublishedJson(path) {
+  return JSON.parse(
+    readFileSync(new URL(`../../public${path}`, import.meta.url), "utf8"),
+  );
+}
+
+const manifest = readPublishedJson("/data/manifest.json");
+const [waikato] = manifest.partitions;
+const waikatoCurrentRents = readPublishedJson(waikato.currentRentsUrl);
+const waikatoGeometry = readPublishedJson(waikato.geometryUrl);
+```
+
+其中两个测试检查文件之间的一致性和 Greensboro 的数值：
+
+```js
+it("uses the same areas in the manifest, current rents and geometry", () => {
+  const sa2Ids = waikatoCurrentRents.map((area) => area.sa2Id);
+  const featureIds = waikatoGeometry.features.map((feature) => feature.id);
+
+  expect(waikatoCurrentRents).toHaveLength(waikato.areaCount);
+  expect(featureIds).toEqual(sa2Ids);
+});
+
+it("keeps the Greensboro values from the source records", () => {
+  const greensboro = waikatoCurrentRents.find((area) => area.sa2Id === "179900");
+
+  expect(greensboro).toEqual({
+    sa2Id: "179900",
+    name: "Greensboro",
+    regionCode: "03",
+    regionName: "Waikato Region",
+    territorialAuthorityCode: "016",
+    territorialAuthorityName: "Hamilton City",
+    currentRent: {
+      datasetLatestPeriod: "2026-04-01",
+      observationPeriod: "2026-04-01",
+      medianRent: 350,
+      reportedBonds: 171,
+      yearOverYearChange: 0.0128,
+    },
+  });
+});
+```
+
+另外两个测试检查 manifest 中的文件地址都指向同一个版本目录，以及每一行都通过 `areaWithCurrentRentSchema`。Greensboro 的期望值就是 3.1 从源记录中手工得到的那一行，这个测试把手工核对的结果与真实生成的文件连接起来。
+
+运行转换测试和 release 测试：
+
+```bash
+npm run test -- data/pipeline
+```
+
+输出为：
+
+```text
+✓ data/pipeline/current-rents.test.mjs (8 tests)
+✓ data/pipeline/release.test.mjs (4 tests)
+
+Test Files  2 passed (2)
+     Tests  12 passed (12)
+```
+
+最后确认生成的文件没有被 `.gitignore` 忽略：
+
+```bash
+git status --short public/data
+```
+
+```text
+?? public/data/manifest.json
+?? public/data/releases/
+```
+
+两个位置都显示为未跟踪文件，说明它们可以提交。
+
+到这里，Waikato 已经有一个可以提交的版本化 release：222 个区域的当前租金通过 contract 检查，边界与当前租金使用同一组 SA2，Greensboro 的数值与源记录一致，相同输入生成相同文件。这个结论只覆盖 Waikato 的当前租金和边界；页面还没有读取这些文件。
+
+### 5. 建立 manifest 驱动的数据 repository
+
+第 4 节生成了 manifest、当前租金和边界文件，但前端还没有代码读取它们。Step 07 的 `sample-data.ts` 读取样例文件时，只用 `as` 和类型标注告诉 TypeScript“数据就是这种形状”，并不检查文件内容，这正是 2.1 指出的问题。本节建立前端的数据读取层：先读 manifest，再按其中的地址读取 Region 文件，每份数据都通过 contract 检查后才交给页面。这一层称为 data repository，页面只通过它取得数据，不直接处理文件地址和原始 JSON。
+
+#### 5.1 从 schema 推导 TypeScript 类型
+
+读取函数要声明返回值的类型。如果再手写一套 TypeScript `type`，它与 schema 描述的是同一份数据，以后只要改了一边忘了另一边，类型检查和运行时检查就会互相矛盾。
+
+Zod 可以从 schema 推导出类型：
+
+```ts
+export type AreaWithCurrentRent = z.infer<typeof areaWithCurrentRentSchema>;
+```
+
+- `typeof areaWithCurrentRentSchema` 取得 schema 这个对象的 TypeScript 类型；
+- `z.infer<...>` 从中读出“通过这个 schema 检查后的数据是什么形状”，得到的类型与手写的 `{ sa2Id: string; name: string; ...; currentRent: { medianRent: number | null; ... } }` 相同。
+
+这样，同一份 schema 承担两种检查，它们发生在不同的阶段，拦住不同的错误：
+
+```text
+         开发者这边（编译时）                    用户这边（运行时）
+写代码 ──→ TS 类型检查 ──→ 构建 ──→ 部署 ──→ 浏览器运行 ──→ schema 检查数据
+           拦住：代码错误                                   拦住：数据错误
+```
+
+- **TS 类型**只在编译时存在。编辑器的提示和 `npm run build` 中的 `tsc -b` 用它检查开发者写的代码；构建时类型被删除，浏览器运行的 JavaScript 中没有它。例如组件直接写 `area.currentRent.medianRent.toFixed(0)`，TS 会提示 `medianRent` 可能为 `null`，要求先处理没有租金的区域。`npm run dev` 和 `npm run test` 只去掉类型、不做类型检查，所以类型错误要靠编辑器和 `tsc -b` 发现。
+- **schema** 是真实运行的 JavaScript，检查从外部进入的数据。例如数据文件把租金写成字符串 `"350"`，TS 无法发现，因为文件内容在运行时才读到；schema 会在数据进入页面之前拒绝它。数据文件可以在代码之外单独重新生成，所以这一道检查不能省。
+
+类型由 schema 推导而来，修改 schema 时类型自动随之改变：字段改名后，所有使用旧字段的代码都会在类型检查中报错，两种检查不会分叉。
+
+#### 5.2 为 manifest 和边界补充 contract
+
+页面要读取的三个文件中，只有当前租金已经有 contract。manifest 和边界也要在进入页面前检查，因此在 `src/data/contracts.ts` 中补充它们的 schema，并同样用 `z.infer` 导出类型。
+
+manifest 的 schema 只包含第 4 节生成的字段：
+
+```ts
+export const manifestPartitionSchema = z
+  .object({
+    id: nonEmptyStringSchema,
+    name: nonEmptyStringSchema,
+    areaCount: z.number().int().positive(),
+    currentRentsUrl: nonEmptyStringSchema,
+    geometryUrl: nonEmptyStringSchema,
+  })
+  .strict();
+
+export const manifestSchema = z
+  .object({
+    version: nonEmptyStringSchema,
+    generatedAt: z.iso.datetime(),
+    latestPeriod: periodSchema,
+    partitions: z.array(manifestPartitionSchema).min(1),
+  })
+  .strict();
+
+export type ManifestPartition = z.infer<typeof manifestPartitionSchema>;
+export type DataManifest = z.infer<typeof manifestSchema>;
+```
+
+`z.iso.datetime()` 要求 `generatedAt` 是 ISO 格式的时间，例如 `2026-11-21T00:00:00.000Z`。Region 单独定义成 `manifestPartitionSchema`，因为读取 Region 文件的函数要以一个 Region 作为参数，它需要自己的类型。
+
+边界的 schema 按 GeoJSON 的结构逐层描述：一个点是经度和纬度两个数字，一个环是点的数组，Polygon 是环的数组，MultiPolygon 是 Polygon 的数组。
+
+```ts
+const positionSchema = z.tuple([z.number(), z.number()]);
+const linearRingSchema = z.array(positionSchema);
+
+const sa2GeometrySchema = z.discriminatedUnion("type", [
+  z
+    .object({ type: z.literal("Polygon"), coordinates: z.array(linearRingSchema) })
+    .strict(),
+  z
+    .object({
+      type: z.literal("MultiPolygon"),
+      coordinates: z.array(z.array(linearRingSchema)),
+    })
+    .strict(),
+]);
+
+export const regionGeometrySchema = z
+  .object({
+    type: z.literal("FeatureCollection"),
+    features: z.array(
+      z
+        .object({
+          type: z.literal("Feature"),
+          id: sa2IdSchema,
+          geometry: sa2GeometrySchema,
+          properties: z.object({ sa2Id: sa2IdSchema }).strict(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type RegionGeometry = z.infer<typeof regionGeometrySchema>;
+```
+
+- `z.tuple([z.number(), z.number()])` 表示恰好两个数字的数组。
+- `z.literal("Polygon")` 要求值恰好是这个字符串。
+- `z.discriminatedUnion("type", [...])` 表示“二选一”：按 `type` 字段的值决定使用哪个 schema，`type` 为 `"Polygon"` 时坐标多一层或少一层都会被拒绝。
+- SA2 编号的规则原来直接写在区域信息中，现在边界也要使用，因此提取为共享的 `sa2IdSchema`。
+
+坐标结构完整描述以后，推导出的 `RegionGeometry` 与地图库使用的 GeoJSON 类型结构一致，交给地图时不需要再用 `as`。
+
+生成数据的脚本和读取数据的页面应当遵守同一份 contract。第 4 节的 release 测试原来只检查当前租金，现在改为同时检查 manifest 和边界：
+
+```js
+it("publishes a manifest, current rents and geometry that satisfy the contract", () => {
+  manifestSchema.parse(manifest);
+  for (const row of waikatoCurrentRents) {
+    areaWithCurrentRentSchema.parse(row);
+  }
+  regionGeometrySchema.parse(waikatoGeometry);
+});
+```
+
+#### 5.3 编写读取函数
+
+repository 放在 `src/data/repository.ts`。Explore 和 Area Detail 都会读取同一份数据，因此它不属于某一个页面，而放在 `src/data/` 中，与 contract 在一起。
+
+三个读取函数的步骤相同：请求文件、检查 HTTP 状态、用 schema 检查内容、返回带类型的数据。这些步骤写成一个共用的函数 `fetchJson`：
+
+```ts
+async function fetchJson<T>(
+  url: string,
+  schema: z.ZodType<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Could not load ${url} (HTTP ${response.status})`);
+  }
+
+  const result = schema.safeParse(await response.json());
+
+  if (!result.success) {
+    throw new Error(
+      `${url} does not match the data contract:\n${z.prettifyError(result.error)}`,
+    );
+  }
+
+  return result.data;
+}
+```
+
+- `<T>` 是泛型参数，代表“这次读取的数据类型”。传入 `manifestSchema` 时 `T` 就是 `DataManifest`，传入边界 schema 时就是 `RegionGeometry`，同一个函数可以返回不同的类型。
+- `fetch` 在文件不存在时不会抛出错误，而是返回 `ok` 为 `false` 的响应，所以要自己检查状态。
+- 数据不符合 contract 时，用 `safeParse` 取得错误，再抛出一个带文件地址的错误。`z.prettifyError` 把 Zod 的错误整理成逐个字段的说明，出错时能直接看到是哪个文件、哪个字段。
+- `signal` 是 `AbortSignal`。页面离开、不再需要这份数据时，调用方可以通过它取消请求。
+
+三个读取函数只指定文件地址和 schema：
+
+```ts
+const manifestUrl = "/data/manifest.json";
+
+export function fetchManifest(signal?: AbortSignal): Promise<DataManifest> {
+  return fetchJson(manifestUrl, manifestSchema, signal);
+}
+
+export function fetchRegionCurrentRents(
+  partition: ManifestPartition,
+  signal?: AbortSignal,
+): Promise<AreaWithCurrentRent[]> {
+  return fetchJson(
+    partition.currentRentsUrl,
+    z.array(areaWithCurrentRentSchema),
+    signal,
+  );
+}
+
+export function fetchRegionGeometry(
+  partition: ManifestPartition,
+  signal?: AbortSignal,
+): Promise<RegionGeometry> {
+  return fetchJson(partition.geometryUrl, regionGeometrySchema, signal);
+}
+```
+
+只有 manifest 的地址写在代码中。两个 Region 文件的地址都从 manifest 的 Region 中取得，发布新版本时页面代码不需要修改。
+
+#### 5.4 测试读取函数
+
+读取函数要在三种情况下行为正确：正常读取、文件不存在、内容不符合 contract。测试不发出真实请求，而是用 Vitest 的 `vi.stubGlobal` 把全局的 `fetch` 换成一个模拟函数，让它返回指定的 JSON 和 HTTP 状态；每个测试结束后用 `vi.unstubAllGlobals` 恢复：
+
+```ts
+function mockFetchResponse(body: unknown, status = 200) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })),
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+```
+
+三个测试分别检查：
+
+```ts
+it("reads the manifest from its fixed address", async () => {
+  mockFetchResponse(manifest);
+
+  await expect(fetchManifest()).resolves.toEqual(manifest);
+  expect(fetch).toHaveBeenCalledWith("/data/manifest.json", {
+    signal: undefined,
+  });
+});
+
+it("reports the file address when a request fails", async () => {
+  mockFetchResponse({}, 404);
+
+  await expect(fetchManifest()).rejects.toThrow(
+    "Could not load /data/manifest.json (HTTP 404)",
+  );
+});
+
+// 租金写成了字符串 "350"，不符合 contract。
+it("rejects a data file that does not match the contract", async () => {
+  mockFetchResponse([/* Greensboro 的一行，medianRent 为 "350" */]);
+
+  await expect(
+    fetchRegionCurrentRents(manifest.partitions[0]),
+  ).rejects.toThrow(
+    "/data/releases/2026-04-01.1/areas/current-rents/03.json does not match the data contract",
+  );
+});
+```
+
+读取函数返回 Promise，所以测试使用 `async`，并用 `resolves` 和 `rejects` 检查 Promise 成功时的值和失败时的错误。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test -- --reporter=verbose
+npm run build
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ data/pipeline/release.test.mjs > data release > publishes a manifest, current rents and geometry that satisfy the contract 134ms
+✓ src/data/repository.test.ts > data repository > reads the manifest from its fixed address 16ms
+✓ src/data/repository.test.ts > data repository > reports the file address when a request fails 2ms
+✓ src/data/repository.test.ts > data repository > rejects a data file that does not match the contract 5ms
+
+Test Files  8 passed (8)
+     Tests  33 passed (33)
+```
+
+`npm run build` 中的 `tsc -b` 通过，说明三个读取函数的返回值与 `z.infer` 推导出的类型一致。构建输出中还有一条 JavaScript chunk 超过 500 kB 的提示。它关系到整个应用的打包体积，本节没有处理。
+
+release 测试用新的 schema 检查了第 4 节生成的 manifest、222 行当前租金和 222 个区域的边界，耗时 134 ms。完整检查边界坐标的成本可以接受，因此不需要简化边界 schema。
+
+这些结果说明：读取函数能取得通过 contract 检查的数据，请求失败和数据错误都会给出带文件地址的错误，生成的文件与页面使用同一份 contract。页面本身还没有使用这些函数。
+
+### 6. 用同一份当前租金连接 Explore 列表与地图
+
+第 5 节的 repository 能读取经过 contract 检查的 manifest、当前租金和边界，但还没有页面使用它们。本节建立 `/explore` 页面：区域列表和地图都使用同一份当前租金文件，在其中一边选中区域，另一边同步显示。页面只显示 manifest 中的 Waikato Region，分类固定为 `ALL / ALL`，与这份 release 的内容一致。
+
+#### 6.1 用 TanStack Query 管理读取状态
+
+repository 的函数只返回 Promise。页面还需要知道请求是否仍在进行、是否失败，失败后要能重新请求；同一个文件被多个组件使用时，也不应重复下载。Step 07 已经用 TanStack Query 保存样例文件的这些状态，正式数据沿用同样的方式。
+
+在 `src/data/queries.ts` 中，为三个读取函数各写一个 hook。它们只把 repository 函数接入 TanStack Query，不包含某个页面自己的逻辑，因此与 repository 一起放在 `src/data/` 中：
+
+```ts
+export function useManifest() {
+  return useQuery({
+    queryKey: ["manifest"],
+    queryFn: ({ signal }) => fetchManifest(signal),
+    staleTime: Infinity,
+  });
+}
+
+export function useRegionCurrentRents(partition: ManifestPartition) {
+  return useQuery({
+    queryKey: ["region-current-rents", partition.currentRentsUrl],
+    queryFn: ({ signal }) => fetchRegionCurrentRents(partition, signal),
+    staleTime: Infinity,
+  });
+}
+```
+
+`useRegionGeometry(partition)` 的写法相同，查询键为 `["region-geometry", partition.geometryUrl]`。
+
+- `queryKey` 是这份数据在缓存中的名字。Region 文件的查询键使用文件地址，地址中已经包含版本号和 Region 编号，不同版本、不同 Region 的文件不会共用缓存。
+- `queryFn` 收到的 `signal` 直接交给第 5 节的读取函数。组件卸载后，TanStack Query 通过它取消不再需要的请求。
+- TanStack Query 默认认为数据一取得就已过期，窗口重新获得焦点或组件重新挂载时会再次请求。版本目录中的文件发布后不会再修改，重新请求只会得到相同内容；manifest 在页面打开期间也保持同一个版本，列表和地图因此不会读到不同版本的文件。所以三个查询都设置 `staleTime: Infinity`，读取成功后不再自动重新请求。
+
+#### 6.2 建立 Explore 页面和数据状态
+
+在 `src/app/router/routes.tsx` 中加入路由，并在导航中加入 Explore 入口：
+
+```tsx
+{
+  path: "explore",
+  Component: ExplorePage,
+},
+```
+
+```ts
+{ label: "Explore", to: "/explore" },
+```
+
+页面要依次读取三个文件：先读 manifest，才知道 Region 文件的地址。`ExplorePage` 只负责 manifest，读取失败或仍在进行时提前返回：
+
+```tsx
+export function ExplorePage() {
+  const manifestQuery = useManifest();
+
+  if (manifestQuery.isError) {
+    return (
+      <section className="space-y-6">
+        {pageTitle}
+        <DataLoadError
+          error={manifestQuery.error}
+          onRetry={() => manifestQuery.refetch()}
+        />
+      </section>
+    );
+  }
+
+  if (manifestQuery.isPending) {
+    // ……显示 Loading the data release…
+  }
+
+  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  return (
+    <section className="space-y-6">
+      {pageTitle}
+      <RegionExplorer
+        latestPeriod={manifestQuery.data.latestPeriod}
+        partition={manifestQuery.data.partitions[0]}
+      />
+    </section>
+  );
+}
+```
+
+`DataLoadError` 显示错误信息和 Retry 按钮。第 5 节的读取函数抛出的错误已经包含文件地址，这里直接显示 `error.message`；点击 Retry 时调用 `refetch()` 重新请求。
+
+manifest 就绪后，`RegionExplorer` 读取当前租金和边界。两个 hook 都写在组件开头，所以两个请求同时发出。列表只需要当前租金，地图同时需要两者；边界文件比当前租金大得多，如果整页都等边界，列表也要跟着等待。因此当前租金决定整个区域内容的状态，边界只决定地图位置显示什么：
+
+```tsx
+function RegionExplorer({ latestPeriod, partition }: RegionExplorerProps) {
+  const currentRentsQuery = useRegionCurrentRents(partition);
+  const geometryQuery = useRegionGeometry(partition);
+
+  // ……标题区、当前租金的失败和加载状态
+
+  let mapPanel: ReactNode;
+
+  if (geometryQuery.isError) {
+    mapPanel = (
+      <DataLoadError
+        error={geometryQuery.error}
+        onRetry={() => geometryQuery.refetch()}
+      />
+    );
+  } else if (geometryQuery.isPending) {
+    mapPanel = <p>Loading {partition.name} boundaries…</p>;
+  } else {
+    mapPanel = (
+      <AreaMap
+        areas={areas}
+        geometry={geometryQuery.data}
+        onSelect={selectArea}
+        selectedSa2Id={selectedSa2Id}
+      />
+    );
+  }
+
+  // ……地图、选中区域和列表
+}
+```
+
+标题区显示 Region 名称、区域数量、分类和数据最新季度，在加载、失败和完成三种状态下都显示：
+
+```tsx
+<h1 className="text-3xl font-semibold">{partition.name} rental areas</h1>
+<p className="text-muted-foreground">
+  {partition.areaCount} areas · All dwelling types · All bedroom
+  categories · Data to {latestPeriod}
+</p>
+```
+
+桌面端地图和列表左右分屏，较窄的屏幕上上下排列：
+
+```tsx
+<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+```
+
+#### 6.3 用当前租金显示区域列表
+
+列表的每一行来自当前租金文件中的一个区域。第 2 节确定了当前租金可能出现的几种情况，产品设计也规定了它们的显示方式：
+
+| 数据 | 显示 |
+|---|---|
+| 有租金 | `NZ$350/week` |
+| 租金来自旧季度 | 显示数值，并标出 `Last observed 2021-04-01`，不称为当前价格 |
+| 没有租金或 Reported Bonds | `No data`，不显示为 0 |
+| 没有 12 个月变化 | `N/A` |
+
+列表组件放在 `src/features/explore/AreaList.tsx`。每一行是一个按钮，点击时把 SA2 编号交给父组件：
+
+```tsx
+const {
+  datasetLatestPeriod,
+  observationPeriod,
+  medianRent,
+  reportedBonds,
+  yearOverYearChange,
+} = area.currentRent;
+
+// 缺失值显示为缺失，不当作 0；旧季度的租金标出季度，不称为当前价格。
+const isOlderObservation =
+  observationPeriod !== null && observationPeriod !== datasetLatestPeriod;
+```
+
+```tsx
+<span className="shrink-0 font-semibold">
+  {medianRent === null ? "No data" : `NZ$${medianRent}/week`}
+</span>
+```
+
+```tsx
+{reportedBonds === null ? "No data" : `${reportedBonds} bonds`}
+{" · 12-month change "}
+{yearOverYearChange === null
+  ? "N/A"
+  : changeFormatter.format(yearOverYearChange)}
+```
+
+```tsx
+{isOlderObservation && (
+  <span className="block text-xs text-muted-foreground">
+    Last observed {observationPeriod}
+  </span>
+)}
+```
+
+`observationPeriod` 是租金实际所在的季度，`datasetLatestPeriod` 是整个数据集的最新季度。两者不同，说明这个区域在最新季度没有租金，显示的是更早的值。
+
+12 个月变化在数据中以比例保存，例如 `0.0128`。浏览器内置的 `Intl.NumberFormat` 可以把它格式化成百分比：
+
+```ts
+const changeFormatter = new Intl.NumberFormat("en-NZ", {
+  style: "percent",
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+```
+
+`style: "percent"` 把 `0.0128` 显示为 `1.3%`；`signDisplay: "exceptZero"` 为正数加上 `+`，负数保留 `-`，0 不加符号。
+
+#### 6.4 用同一份当前租金为地图着色
+
+地图组件放在 `src/features/explore/AreaMap.tsx`，图层和地图设置沿用 Step 07 的做法。不同之处是数据来源：第 4 节生成的边界文件只有 SA2 编号，没有租金。地图要按租金着色，就要在浏览器中按 SA2 编号把当前租金放进每个区域的属性。列表和地图读取的是同一个当前租金文件，两边的数值不可能不一致。
+
+```tsx
+const mapData = useMemo(() => {
+  const medianRentBySa2Id = new Map(
+    areas.map((area) => [area.sa2Id, area.currentRent.medianRent]),
+  );
+
+  return {
+    ...geometry,
+    features: geometry.features.map((feature) => ({
+      ...feature,
+      properties: {
+        ...feature.properties,
+        medianRent: medianRentBySa2Id.get(feature.id) ?? null,
+      },
+    })),
+  };
+}, [geometry, areas]);
+```
+
+- `new Map(...)` 建立“SA2 编号 → 租金”的查找表，222 个区域只遍历一次，之后按编号直接取值。
+- 展开运算符 `...` 复制原有字段，只增加 `medianRent`，不修改从查询中取得的边界数据。
+- 地图的 Source 收到一个新的 data 对象，就会重新处理全部边界。组件每次重新渲染（例如选中另一个区域）都重新连接，会产生一个新对象。`useMemo` 只在 `geometry` 或 `areas` 改变时重新计算，其余时候返回上一次的结果。
+
+JavaScript 内置的 `Map` 在这里用于查找表，因此地图组件的默认导出改名为 `MapView`，避免两者重名：
+
+```ts
+import MapView, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
+```
+
+填色和图例使用同一组分段和颜色，写在同一个常量中：
+
+```ts
+const missingColour = "#94a3b8";
+const rentBands = [
+  { label: "Under $400", colour: "#57c8b8" },
+  { label: "$400–under $600", colour: "#e6ad5c" },
+  { label: "$600 and over", colour: "#c45d55" },
+];
+```
+
+```ts
+"fill-color": [
+  "case",
+  ["==", ["get", "medianRent"], null],
+  missingColour,
+  [
+    "step",
+    ["number", ["get", "medianRent"]],
+    rentBands[0].colour,
+    400,
+    rentBands[1].colour,
+    600,
+    rentBands[2].colour,
+  ],
+],
+```
+
+没有租金的区域使用灰色；其余区域按 400 和 600 两个阈值分成三段。图例遍历 `rentBands` 生成，再加上 `No data` 一项，标题为 `Latest observed median weekly rent`，说明颜色表示的是最近一次观测到的租金。
+
+地图打开时，用所有区域的坐标求出能容纳整个 Region 的经纬度范围，作为初始视野。边界只有 Polygon 和 MultiPolygon 两种，把 Polygon 包成只有一个元素的数组后，两者可以用同一组循环处理：
+
+```ts
+function getMapBounds(features: RegionGeometry["features"]): MapBounds {
+  let west = Infinity;
+  // ……south、east、north 同样初始化
+
+  for (const feature of features) {
+    const polygons =
+      feature.geometry.type === "Polygon"
+        ? [feature.geometry.coordinates]
+        : feature.geometry.coordinates;
+
+    for (const polygon of polygons) {
+      for (const ring of polygon) {
+        for (const [longitude, latitude] of ring) {
+          west = Math.min(west, longitude);
+          // ……south、east、north 同样更新
+        }
+      }
+    }
+  }
+
+  return [[west, south], [east, north]];
+}
+```
+
+#### 6.5 用 URL 连接列表和地图的选择
+
+列表和地图都可以选中区域，两边必须显示同一个选择。如果选择保存在某个组件的 state 中，刷新页面或复制链接后就会丢失。选择因此保存在 URL 的查询参数中，例如 `/explore?sa2=179900`。列表和地图都从 URL 读取当前选择，点击时更新 URL。
+
+```tsx
+const [searchParams, setSearchParams] = useSearchParams();
+const selectedSa2Id = searchParams.get("sa2");
+
+function selectArea(sa2Id: string) {
+  setSearchParams({ sa2: sa2Id }, { replace: true });
+}
+```
+
+- `useSearchParams` 是 React Router 读取和修改查询参数的 hook。`searchParams.get("sa2")` 没有这个参数时返回 `null`，表示还没有选中区域。
+- `replace: true` 用新地址替换当前历史记录，而不是新增一条。否则每选一个区域都会增加一条记录，后退按钮要逐个退回之前选过的区域。
+
+`selectArea` 同时交给列表和地图：列表在按钮的 `onClick` 中调用它，地图在点击事件中取出区域编号后调用它。
+
+```tsx
+function handleMapClick(event: MapLayerMouseEvent) {
+  const id = event.features?.[0]?.id;
+
+  if (typeof id === "string") {
+    onSelect(id);
+  }
+}
+```
+
+Step 07 已经为 Source 设置 `promoteId="sa2Id"`，点击事件中的 `id` 是字符串形式的 SA2 编号。
+
+选中后，列表中对应的行加上背景色，地图上加一层只绘制选中区域的轮廓：
+
+```tsx
+<Layer
+  id="sa2-selected"
+  type="line"
+  filter={["==", ["id"], selectedSa2Id ?? ""]}
+  paint={{ "line-color": "#102a2d", "line-width": 4 }}
+/>
+```
+
+列表有 222 行，选中的行常常不在可见范围内。列表上方因此加一张卡片，显示当前选中区域的名称和所属 territorial authority；没有选择时显示 `No area selected`。
+
+#### 6.6 在浏览器中检查选择并修正
+
+启动 `npm run dev` 后打开 `/explore`，页面显示 Waikato 的列表和地图，标题为 `222 areas · All dwelling types · All bedroom categories · Data to 2026-04-01`。检查选择时发现两个问题：
+
+- 点击地图上的区域后，列表中对应的行虽然高亮，但没有出现在列表的可见范围内。
+- 点击列表中的区域后，地图上看不出哪个区域被选中。Hamilton 市区的 SA2 在整个 Region 的视野中只有几个像素宽，即使有轮廓也很难看到。
+
+**列表滚动到选中的行**
+
+浏览器提供 `scrollIntoView()`，但它会滚动所有可以滚动的外层元素，包括整个页面。较窄的屏幕上列表位于地图下方，点击地图后整个页面会被拉到列表。这里只需要列表自己滚动，因此直接计算并设置列表的 `scrollTop`：
+
+```tsx
+useEffect(() => {
+  const list = listRef.current;
+  const index = areas.findIndex((area) => area.sa2Id === selectedSa2Id);
+
+  if (!list || index === -1) {
+    return;
+  }
+
+  const row = list.children[index] as HTMLElement;
+  const rowTop = row.offsetTop;
+  const rowBottom = rowTop + row.offsetHeight;
+  const isVisible =
+    rowTop >= list.scrollTop && rowBottom <= list.scrollTop + list.clientHeight;
+
+  if (!isVisible) {
+    list.scrollTop = rowTop - (list.clientHeight - row.offsetHeight) / 2;
+  }
+}, [areas, selectedSa2Id]);
+```
+
+- `useRef` 保存对 `<ul>` 元素的引用，`listRef.current` 就是浏览器中的这个元素。
+- `useEffect` 在页面更新之后运行，这时新的高亮已经显示，可以读取元素的位置。依赖数组 `[areas, selectedSa2Id]` 表示只有数据或选择改变时才重新运行。
+- `offsetTop` 是行顶部到参照元素的距离，`scrollTop` 是列表已经向上滚过的距离，`clientHeight` 是列表可见部分的高度。行的上下边都在可见范围内时不滚动；否则把它滚到列表中间。
+
+列表的高度限制和滚动条也从页面移到了 `<ul>` 上，并加上 `relative`。`offsetTop` 以最近的定位元素为参照，`<ul>` 设置 `relative` 后，每一行的 `offsetTop` 才是相对于列表的距离：
+
+```tsx
+<ul
+  className="relative max-h-[28rem] divide-y overflow-y-auto rounded-xl border bg-card lg:max-h-[560px]"
+  ref={listRef}
+>
+```
+
+**地图移动到选中的区域**
+
+react-map-gl 的地图组件可以通过 ref 取得地图对象，调用它的 `fitBounds` 把视野移动到一个经纬度范围。选中区域变化时，地图移动到这个区域，让地图视野与 URL 中的选择保持一致：
+
+```tsx
+const mapRef = useRef<MapRef>(null);
+
+useEffect(() => {
+  const selectedFeature = geometry.features.find(
+    (feature) => feature.id === selectedSa2Id,
+  );
+
+  if (selectedFeature) {
+    mapRef.current?.fitBounds(getMapBounds([selectedFeature]), selectedAreaFitOptions);
+  }
+}, [geometry, selectedSa2Id]);
+```
+
+```ts
+const selectedAreaFitOptions = { padding: 80, maxZoom: 12 };
+```
+
+`getMapBounds` 原来计算整个 Region 的范围，传入只有一个区域的数组，就得到这个区域的范围。`maxZoom: 12` 限制最大缩放级别，避免很小的区域被放得过大、看不到周围的位置。
+
+打开带 `?sa2=` 的链接时，地图在第一次渲染之后才创建，effect 第一次运行时 `mapRef.current` 还是 `null`，`fitBounds` 不会执行。所以地图的初始视野也要考虑 URL 中的选择：
+
+```tsx
+const [initialViewState] = useState(() => {
+  const selectedFeature = geometry.features.find(
+    (feature) => feature.id === selectedSa2Id,
+  );
+
+  if (selectedFeature) {
+    return {
+      bounds: getMapBounds([selectedFeature]),
+      fitBoundsOptions: selectedAreaFitOptions,
+    };
+  }
+
+  return {
+    bounds: getMapBounds(geometry.features),
+    fitBoundsOptions: { padding: 40 },
+  };
+});
+```
+
+`initialViewState` 只在地图创建时读取一次。`useState` 传入函数时，这个函数只在第一次渲染时运行，之后选中其他区域，也不会重新计算整个 Region 的范围。
+
+**选中轮廓没有显示**
+
+修改后从列表选中 Whitianga South（`167100`），地图移动到了这个区域，但区域周围仍然只有普通边界，没有深色轮廓。在浏览器中用 MapLibre 的 `querySourceFeatures` 按不同条件查询这个区域：
+
+| 筛选条件 | 结果数 |
+|---|---|
+| `["==", ["id"], "167100"]` | 0 |
+| `["==", ["id"], 167100]` | 4 |
+| `["==", ["get", "sa2Id"], "167100"]` | 4 |
+
+同一个区域被切分到多个地图瓦片中，每个瓦片返回一条，所以能匹配时结果是 4 条。第一行和第二行的差别说明：图层筛选中的 `["id"]` 读到的是 GeoJSON 原始的 `id`，并且已经被转成数字。Step 07 注意到瓦片处理可能把数字形式的字符串转成数字，但当时认为 `promoteId` 也会让图层过滤使用字符串编号；实际上 `promoteId` 只影响点击事件和查询结果中的 `id`。选中轮廓的筛选条件用字符串和数字比较，从来没有匹配到任何区域。
+
+每个区域的属性中已经保存了字符串形式的 `sa2Id`，筛选条件改为读取这个属性。同时，轮廓改为两层：下面一层较宽的白线，上面一层较窄的深色线。白线在任何填色上都能把深色线和普通边界分开：
+
+```tsx
+<Layer
+  id="sa2-selected-casing"
+  type="line"
+  filter={["==", ["get", "sa2Id"], selectedSa2Id ?? ""]}
+  paint={{ "line-color": "#ffffff", "line-width": 5 }}
+/>
+<Layer
+  id="sa2-selected"
+  type="line"
+  filter={["==", ["get", "sa2Id"], selectedSa2Id ?? ""]}
+  paint={{ "line-color": "#102a2d", "line-width": 2 }}
+/>
+```
+
+再次检查的结果：
+
+| 操作 | 结果 |
+|---|---|
+| 打开 `/explore?sa2=167100` | 地图直接显示 Whitianga South，选中轮廓清楚可见 |
+| 点击地图上的 Ohakuri | 地址变为 `?sa2=187800`，卡片显示 Ohakuri · Taupo District；地图移动到 Ohakuri；列表滚动到这一行，页面本身没有滚动 |
+| 点击列表中的 Marotiri | 地址变为 `?sa2=187700`，地图移动到 Marotiri 并显示选中轮廓 |
+| 375px 宽度下点击地图 | 地图和列表上下排列，没有横向滚动；只有列表内部滚动，页面停在顶部 |
+
+#### 6.7 测试页面行为并完成检查
+
+页面测试放在 `src/pages/ExplorePage.test.tsx`。jsdom 无法运行 MapLibre，地图组件沿用 Step 07 的模拟方式：用一个按钮代替地图，点击时发出选中 Greensboro 的事件；Source 和 Layer 不渲染任何内容。
+
+```tsx
+vi.mock("react-map-gl/maplibre", () => ({
+  default: ({ children, onClick }: {
+    children: ReactNode;
+    onClick: (event: { features: { id: string }[] }) => void;
+  }) => (
+    <div>
+      <button onClick={() => onClick({ features: [{ id: "179900" }] })} type="button">
+        Click Greensboro on the map
+      </button>
+      {children}
+    </div>
+  ),
+  Source: ({ children }: { children: ReactNode }) => children,
+  Layer: () => null,
+  NavigationControl: () => null,
+}));
+```
+
+测试数据包含三个区域，对应三种租金状态：Greensboro 有最新季度的租金；Cooks Beach-Ferry Landing 的租金来自 2021-04-01；第三个是测试用的虚构区域，没有租金。`fetch` 按请求地址返回 manifest、当前租金和边界，传入的地址在第一次请求时返回 503：
+
+```ts
+function serveRelease(failOnce: string[] = []) {
+  const failedUrls = new Set<string>();
+
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (failOnce.includes(url) && !failedUrls.has(url)) {
+      failedUrls.add(url);
+      return new Response(null, { status: 503 });
+    }
+
+    if (url === "/data/manifest.json") return Response.json(manifest);
+    if (url === currentRentsUrl) return Response.json(currentRents);
+    if (url === geometryUrl) return Response.json(geometry);
+
+    throw new Error(`Unexpected data request: ${url}`);
+  }));
+}
+```
+
+每个测试用 `createMemoryRouter` 创建独立的路由，并使用新的 `QueryClient`，关闭自动重试，让失败状态立即显示。四个测试分别检查：
+
+| 测试 | 检查内容 |
+|---|---|
+| `lists each area with its rent, period and missing values` | `NZ$350/week`、`171 bonds · 12-month change +1.3%`、`Last observed 2021-04-01`、`12-month change N/A`，以及没有租金时显示 `No data` 而不是 `NZ$0` |
+| `keeps the map and list selection in the URL` | 打开 `?sa2=167300` 时恢复选择；点击地图和列表后，卡片标题和 URL 都随之改变 |
+| `recovers from a failed current-rents request using the retry button` | 当前租金请求失败时显示带文件地址的错误，点击 Retry 后显示列表 |
+| `keeps the list available when the boundaries fail to load` | 边界请求失败时列表仍然显示，点击 Retry 后显示地图 |
+
+URL 的测试直接读取路由对象中的地址：
+
+```tsx
+it("keeps the map and list selection in the URL", async () => {
+  serveRelease();
+  const router = renderExplore("/explore?sa2=167300");
+
+  // 打开带 ?sa2= 的地址时恢复选择。
+  expect(await screen.findByRole("heading", { level: 2, name: "Cooks Beach-Ferry Landing" })).toBeInTheDocument();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Click Greensboro on the map" }));
+  expect(screen.getByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
+  expect(router.state.location.search).toBe("?sa2=179900");
+
+  fireEvent.click(screen.getByRole("button", { name: /^Area Without Rent/ }));
+  expect(screen.getByRole("heading", { level: 2, name: "Area Without Rent" })).toBeInTheDocument();
+  expect(router.state.location.search).toBe("?sa2=100100");
+});
+```
+
+列表按钮的名称是整行文字，以区域名称开头，所以用 `/^Greensboro/` 这样的正则匹配开头，避免同时匹配到地图模拟中的 `Click Greensboro on the map`。
+
+这些测试的范围有限。地图图层被模拟成不渲染任何内容，测试无法发现 6.6 中筛选条件匹配不到区域的问题；jsdom 不计算页面布局，也不运行 MapLibre，列表滚动和地图移动同样无法在这里验证。这三项只在浏览器中检查过。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+lint 没有报错。测试结果为：
+
+```text
+✓ src/pages/ExplorePage.test.tsx (4 tests) 494ms
+
+Test Files  9 passed (9)
+     Tests  37 passed (37)
+```
+
+`npm run build` 通过。
+
+这些结果说明：Explore 页面从 manifest 开始读取正式 release，列表和地图使用同一份当前租金；缺失值、旧季度租金和无法计算的 12 个月变化按产品规则显示；选择保存在 URL 中，在列表和地图之间同步；当前租金或边界读取失败时，页面显示带文件地址的错误并可以重试。页面还没有显示数据来源、provisional 状态和单个区域的详细信息。
+
+### 7. 建立最小 Area Detail 数据链路
+
+第 6 节的 Explore 页面可以选中区域，但选中区域卡片只显示名称和所属 territorial authority。产品设计为每个区域规定了详情页 `/areas/:sa2Id`。本节建立这个页面，它读取的是与列表、地图相同的当前租金文件。
+
+产品设计中的详情页还包括历史租金和每季度的 Reported Bonds，这需要每个区域多个季度的租金，而这份 release 只为每个区域生成了一行当前租金。因此本节只显示当前租金已经包含的内容：
+
+| 显示 | 来源 |
+|---|---|
+| 区域名称、SA2 编号、territorial authority、Region | 区域信息 |
+| 最新观测中位租金和它所在的季度 | `medianRent`、`observationPeriod` |
+| 数据集最新季度 | `datasetLatestPeriod` |
+| Reported Bonds、12 个月变化 | `reportedBonds`、`yearOverYearChange` |
+| 分类 | 固定为 `ALL / ALL` |
+
+#### 7.1 从 URL 中的 SA2 编号找到区域
+
+在 `src/app/router/routes.tsx` 中加入路由：
+
+```tsx
+{
+  path: "areas/:sa2Id",
+  Component: AreaDetailPage,
+},
+```
+
+`:sa2Id` 是路径参数：访问 `/areas/179900` 时，React Router 把 `179900` 作为 `sa2Id` 交给页面，页面用 `useParams` 读取。
+
+详情页的地址只有 SA2 编号，没有 Region。要找到这个区域，页面仍然从 manifest 开始：先取得 Region 的当前租金文件，再在其中按编号查找。`AreaDetailPage` 与 `ExplorePage` 的结构相同，只负责 manifest 的三种状态：
+
+```tsx
+export function AreaDetailPage() {
+  const manifestQuery = useManifest();
+
+  if (manifestQuery.isError) {
+    // ……显示 DataLoadError
+  }
+
+  if (manifestQuery.isPending) {
+    // ……显示 Loading the data release…
+  }
+
+  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  return (
+    <section className="space-y-6">
+      <AreaDetails partition={manifestQuery.data.partitions[0]} />
+    </section>
+  );
+}
+```
+
+`AreaDetails` 读取当前租金，再按地址中的编号查找区域：
+
+```tsx
+function AreaDetails({ partition }: AreaDetailsProps) {
+  const { sa2Id } = useParams();
+  const currentRentsQuery = useRegionCurrentRents(partition);
+
+  // ……当前租金的失败和加载状态
+
+  const area = currentRentsQuery.data.find((item) => item.sa2Id === sa2Id);
+
+  // 编号格式不对，或者这份 release 中没有这个区域。
+  if (!area) {
+    return (
+      <>
+        <title>Area not found | RoostMap</title>
+        <h1 className="text-3xl font-semibold">Area not found</h1>
+        <p className="text-muted-foreground">
+          The current data release has no rental area with SA2 code {sa2Id}.
+        </p>
+        <Link className={buttonVariants({ variant: "outline" })} to="/explore">
+          Back to Explore
+        </Link>
+      </>
+    );
+  }
+
+  // ……显示区域详情
+}
+```
+
+详情页使用第 6 节的 `useManifest` 和 `useRegionCurrentRents`，查询键也相同。TanStack Query 按查询键保存数据，三个查询又设置了 `staleTime: Infinity`，所以从 Explore 进入详情页时，`useRegionCurrentRents` 直接返回已经下载的当前租金，不再发出请求。直接打开详情页地址时，缓存中没有数据，才会下载。
+
+地址中的编号来自用户，可能是任何文字。`find` 找不到时返回 `undefined`，无论编号格式不对，还是这份 release 中没有这个区域，页面都显示 `Area not found`，并提供返回 Explore 的链接。
+
+#### 7.2 共用 Explore 的显示规则
+
+详情页要显示的租金、Reported Bonds 和 12 个月变化，与列表遵守同样的规则：缺失值显示为 `No data` 或 `N/A`，旧季度的租金不称为当前价格。这些规则现在写在 `AreaList` 里。如果详情页再写一份，以后修改其中一份时，两个页面对同一个值就会显示不同的文字。
+
+现在两个页面都要使用这些规则，因此把它们从 `AreaList` 移到 `src/lib/format.ts`：
+
+```ts
+// 当前租金的显示规则，Explore 列表和 Area Detail 共用。
+// 缺失值显示为缺失，不当作 0。
+
+const changeFormatter = new Intl.NumberFormat("en-NZ", {
+  style: "percent",
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+export function formatRent(medianRent: number | null): string {
+  return medianRent === null ? "No data" : `NZ$${medianRent}/week`;
+}
+
+export function formatBonds(reportedBonds: number | null): string {
+  return reportedBonds === null ? "No data" : `${reportedBonds} bonds`;
+}
+
+export function formatChange(yearOverYearChange: number | null): string {
+  return yearOverYearChange === null
+    ? "N/A"
+    : changeFormatter.format(yearOverYearChange);
+}
+
+// 租金所在季度早于数据集最新季度时返回 true；这时的租金不能称为当前价格。
+export function isOlderObservation(
+  observationPeriod: string | null,
+  datasetLatestPeriod: string,
+): boolean {
+  return observationPeriod !== null && observationPeriod !== datasetLatestPeriod;
+}
+```
+
+`AreaList` 改为调用这些函数，显示结果不变：
+
+```tsx
+<span className="shrink-0 font-semibold">
+  {formatRent(medianRent)}
+</span>
+```
+
+```tsx
+{formatBonds(reportedBonds)}
+{" · 12-month change "}
+{formatChange(yearOverYearChange)}
+```
+
+```tsx
+{/* 旧季度的租金标出季度，不称为当前价格。 */}
+{isOlderObservation(observationPeriod, datasetLatestPeriod) && (
+```
+
+显示读取错误和 Retry 按钮的 `DataLoadError` 也是同样的情况。它原来定义在 `ExplorePage.tsx` 中，现在详情页也要使用，因此移到 `src/components/DataLoadError.tsx`，两个页面都从这里导入。
+
+#### 7.3 显示区域的当前租金
+
+找到区域后，页面先显示区域的身份，再显示当前租金：
+
+```tsx
+<div className="space-y-2">
+  <p className="text-sm text-muted-foreground">SA2 {area.sa2Id}</p>
+  <h1 className="text-3xl font-semibold">{area.name}</h1>
+  <p className="text-muted-foreground">
+    {area.territorialAuthorityName} · {area.regionName}
+  </p>
+  <p className="text-muted-foreground">
+    All dwelling types · All bedroom categories
+  </p>
+</div>
+```
+
+当前租金是一组“标签和数值”。HTML 的 `<dl>` 就是为这种结构准备的：`<dt>` 是标签，`<dd>` 是对应的数值，每一对用 `<div>` 包起来，便于排版：
+
+```tsx
+<dl className="grid gap-6 rounded-xl border bg-card p-6 sm:grid-cols-2">
+  <div className="space-y-1">
+    <dt className="text-sm text-muted-foreground">
+      Latest observed median weekly rent
+    </dt>
+    <dd className="text-2xl font-semibold">{formatRent(medianRent)}</dd>
+    {isOlderObservation(observationPeriod, datasetLatestPeriod) && (
+      <dd className="text-sm text-muted-foreground">
+        No rent is available for {datasetLatestPeriod}; this value is
+        from an earlier quarter.
+      </dd>
+    )}
+  </div>
+  <div className="space-y-1">
+    <dt className="text-sm text-muted-foreground">Observation period</dt>
+    <dd className="text-lg font-medium">{observationPeriod ?? "No data"}</dd>
+  </div>
+  {/* ……Dataset latest period、Reported Bonds、12-month change 写法相同 */}
+</dl>
+```
+
+- 租金的标签是 `Latest observed median weekly rent`，与地图图例一致，说明它是最近一次观测到的值。
+- 详情页同时显示 `Observation period` 和 `Dataset latest period`。两者不同时，租金下方再用一句话说明最新季度没有租金、这个值来自更早的季度。
+- `observationPeriod ?? "No data"`：`??` 在左边为 `null` 或 `undefined` 时使用右边的值。
+
+浏览器标签页的标题使用区域名称：
+
+```tsx
+<title>{`${area.name} | RoostMap`}</title>
+```
+
+`<title>` 中只能有一段文字。写成 `{area.name} | RoostMap` 时，JSX 会把它拆成两段，因此用模板字符串拼成一段。
+
+#### 7.4 连接 Explore 和详情页
+
+现在只有手动输入地址才能打开详情页。Explore 的选中区域卡片中加入详情链接：
+
+```tsx
+<Link
+  className={buttonVariants({
+    className: "mt-3",
+    size: "sm",
+    variant: "outline",
+  })}
+  to={`/areas/${selectedArea.sa2Id}`}
+>
+  View details
+</Link>
+```
+
+详情页顶部加入返回链接。链接地址带上当前区域的编号，回到 Explore 时仍然选中这个区域，地图也直接显示它：
+
+```tsx
+<Link
+  className={buttonVariants({ size: "sm", variant: "ghost" })}
+  to={`/explore?sa2=${area.sa2Id}`}
+>
+  <ArrowLeftIcon aria-hidden="true" data-icon="inline-start" />
+  Back to Explore
+</Link>
+```
+
+`buttonVariants` 来自 Step 04 加入的 shadcn/ui Button，它只生成按钮样式的 class，因此链接可以保持 `<a>` 元素，同时看起来像按钮。
+
+#### 7.5 测试并在浏览器中检查
+
+第 6 节的测试数据（manifest、三个区域的当前租金、边界和模拟的 `fetch`）写在 `ExplorePage.test.tsx` 中。详情页的测试需要同一份数据，因此把它们移到 `src/test/release-fixtures.ts`，两个测试文件都从这里导入：
+
+```ts
+import { currentRentsUrl, serveRelease } from "@/test/release-fixtures";
+```
+
+详情页的测试在 `src/pages/AreaDetailPage.test.tsx` 中。详情中的每个数值紧跟在它的标签后面，测试用一个小函数按标签取得数值：
+
+```ts
+function getValue(label: string) {
+  return screen.getByText(label).nextElementSibling;
+}
+```
+
+```ts
+expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$350/week");
+expect(getValue("Reported Bonds")).toHaveTextContent("171 bonds");
+expect(getValue("12-month change")).toHaveTextContent("+1.3%");
+```
+
+五个测试分别检查：
+
+| 测试 | 检查内容 |
+|---|---|
+| `shows the area and its rent for the latest quarter` | Greensboro 的名称、编号、所属地理和各项数值；没有旧季度说明 |
+| `marks a rent from an earlier quarter` | Cooks Beach-Ferry Landing 的 Observation period 为 `2021-04-01`，并显示旧季度说明 |
+| `shows missing values without replacing them with zero` | 没有租金的区域显示 `No data` 和 `N/A`，页面中没有 `NZ$0` |
+| `shows a not-found message for an SA2 outside the release` | `/areas/999999` 显示 `Area not found`，返回链接指向 `/explore` |
+| `recovers from a failed current-rents request using the retry button` | 当前租金请求失败后显示带文件地址的错误，Retry 后显示详情 |
+
+两个页面之间的跳转放在 `ExplorePage.test.tsx` 中检查。测试路由同时包含 Explore 和详情页：
+
+```tsx
+it("opens the area details without downloading the current rents again", async () => {
+  serveRelease();
+  const router = renderExplore("/explore?sa2=179900");
+
+  fireEvent.click(await screen.findByRole("link", { name: "View details" }));
+  expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe("/areas/179900");
+
+  // 详情页使用 Explore 已经下载的当前租金。
+  const currentRentRequests = vi.mocked(fetch).mock.calls.filter(([url]) => url === currentRentsUrl);
+  expect(currentRentRequests).toHaveLength(1);
+
+  // 返回 Explore 时保留原来的选择。
+  fireEvent.click(screen.getByRole("link", { name: "Back to Explore" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
+  expect(router.state.location.search).toBe("?sa2=179900");
+});
+```
+
+`vi.mocked(fetch).mock.calls` 是模拟的 `fetch` 收到的全部调用，每一项的第一个元素是请求地址。当前租金地址只出现一次，说明进入详情页时没有再次下载。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ src/pages/AreaDetailPage.test.tsx (5 tests) 292ms
+✓ src/pages/ExplorePage.test.tsx (5 tests) 471ms
+
+Test Files  10 passed (10)
+     Tests  43 passed (43)
+```
+
+`npm run build` 通过。
+
+然后在 `npm run dev` 中检查：
+
+| 操作 | 结果 |
+|---|---|
+| 在 Explore 选中 Puniu，点击 View details | 进入 `/areas/185700`，标签页标题为 `Puniu \| RoostMap`，租金 `NZ$535/week`、`6 bonds`、`+6.4%`，与列表一致 |
+| 进入详情页前后查看浏览器的网络请求 | 进入详情页时没有新的数据请求，所有数据请求都发生在打开 Explore 时 |
+| 点击 Back to Explore | 回到 `/explore?sa2=185700`，仍然选中 Puniu，没有新的数据请求 |
+| 打开 `/areas/999999` | 显示 `Area not found` 和返回链接 |
+| 375px 宽度打开 `/areas/167300` | 内容上下排列，没有横向滚动，旧季度说明正常显示 |
+
+网络请求中，打开 Explore 时每个数据文件都先出现一次 `ERR_ABORTED`，紧接着再成功请求一次。`src/main.tsx` 用 React 的 `StrictMode` 包裹整个应用，开发模式下它会把组件挂载、卸载再挂载一次，用来暴露副作用中的问题。第一次挂载被卸载时，TanStack Query 通过 `signal` 取消了第一次请求；第二次挂载重新请求并成功。生产构建中 `StrictMode` 不会重复挂载组件。
+
+这些结果说明：详情页按地址中的编号，从与 Explore 相同的当前租金中找到区域，数值和显示规则与列表一致；从 Explore 进入时不重复下载数据，返回时保留选择；地址中的编号不存在时有明确的提示。页面还没有显示数据来源和 provisional 状态。
+
+### 8. 让页面表达数据来源、周期与 provisional 状态
+
+第 6、7 节的页面已经显示数据集最新季度和租金所在的季度，缺失值也按规则显示。但页面还没有说明三件事：
+
+- **数据从哪里来**。MBIE 的租金数据使用 Creative Commons Attribution 3.0 New Zealand 许可，Stats NZ 的边界使用 Creative Commons Attribution 4.0 International 许可。两者都要求使用数据时注明来源和许可证。
+- **数据是否可能修订**。第 4 节的 source lock 记录了 MBIE 数据的状态为 `provisional`，产品设计要求这时相关页面显示状态说明。否则用户在数据更新后看到数字变化，会以为是市场变化。
+- **数据表示什么**。这些数字是新提交的私人部门 bond，不是实时房源，也不是全部出租住房。
+
+这些信息目前只在 `data/source-lock.json` 中，而页面只能读取 release 中的文件。第 4 节生成的 manifest 只有 `version`、`generatedAt`、`latestPeriod` 和 `partitions`。
+
+#### 8.1 在 manifest 中发布状态和来源
+
+状态说明是一段要给用户看的文字，它和状态本身一起决定页面怎样描述数据，因此和状态一起写在 source lock 的 MBIE 来源中：
+
+```json
+"status": "provisional",
+"notice": "MBIE marks this rental bond data as provisional. Recent quarters may be revised, so a change between releases is not necessarily a market change.",
+```
+
+MBIE 的数据将来变为 final 时，只需修改 source lock，页面代码不变。
+
+生成 manifest 时，从 source lock 复制状态、说明和每个来源的名称、地址、许可证。在 `data/pipeline/build-release.mjs` 的第 4 步中：
+
+```js
+// 租金数据的状态和说明、各来源的名称、地址和许可证都取自 source lock，页面据此注明来源。
+const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
+const manifest = {
+  version,
+  generatedAt,
+  latestPeriod: datasetLatestPeriod,
+  partitions,
+  rentalDataStatus: mbieSource.status,
+  rentalDataNotice: mbieSource.notice ?? null,
+  sources: sourceLock.sources.map(({ id, name, url, licence }) => ({
+    id,
+    name,
+    url,
+    licence,
+  })),
+};
+```
+
+- `sources` 只复制页面要显示的四个字段。source lock 中的 `path` 是本地文件位置，`sha256` 和 `retrievedAt` 是生成数据时使用的信息，页面现在不显示它们。
+- `mbieSource.notice ?? null`：source lock 没有写说明时，manifest 中写 `null`。
+
+manifest 的 contract 同样增加这三个字段。在 `src/data/contracts.ts` 中：
+
+```ts
+// manifest 中的一个数据来源：名称、官方地址和许可证，页面用它注明来源。
+// 地址会显示为链接，因此只接受 https 地址。
+const manifestSourceSchema = z
+  .object({
+    id: z.enum(["mbie-rental", "stats-sa2-2019"]),
+    name: nonEmptyStringSchema,
+    url: z.url({ protocol: /^https$/ }),
+    licence: nonEmptyStringSchema,
+  })
+  .strict();
+```
+
+```ts
+rentalDataStatus: z.enum(["provisional", "final"]),
+rentalDataNotice: nonEmptyStringSchema.nullable(),
+sources: z.array(manifestSourceSchema).min(1),
+```
+
+- `z.enum([...])` 只接受列出的几个值。状态只有 provisional 和 final 两种，来源也只有这两个。
+- `z.url({ protocol: /^https$/ })` 要求值是合法的 URL，并且协议必须是 `https`。来源地址会直接成为页面上链接的 `href`，这条规则同时拒绝了 `javascript:` 这类可以执行代码的地址。
+- `sources` 至少有一项，页面才能注明来源。
+
+技术规范中 manifest 的 `sources` 类型原来没有名称字段，而页面要显示来源名称，因此在 `docs/TECHNICAL_SPEC.md` 的类型定义中加入 `name: string`。
+
+#### 8.2 重新生成 release 并检查
+
+这次只修改了 manifest 的内容，release 版本号仍然是 `2026-04-01.1`。版本发布之后不再修改；这个 release 还没有合并或部署，修改它不会让已经读取过的用户得到不同的内容。
+
+重新生成：
+
+```bash
+npm run data:release
+```
+
+输出中的 Region 信息与第 4 节相同，`areaCount` 仍为 222。确认只有 manifest 改变：
+
+```bash
+git status --short public/data
+```
+
+```text
+ M public/data/manifest.json
+ M public/data/releases/2026-04-01.1/manifest.json
+```
+
+再比较四个文件的 SHA-256：
+
+```bash
+shasum -a 256 public/data/manifest.json public/data/releases/2026-04-01.1/manifest.json public/data/releases/2026-04-01.1/areas/current-rents/03.json public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+```text
+4e49c31964b368b4ecab92e09c584fe9bcb6ba41977eda1d0830ee909cc6f892  public/data/manifest.json
+4e49c31964b368b4ecab92e09c584fe9bcb6ba41977eda1d0830ee909cc6f892  public/data/releases/2026-04-01.1/manifest.json
+bd086972677ce2816636466c016726feee6ec0cec0dfb8d80800410edf7ba75b  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+aa347c98c35d3a698677c5a6829d078f4254123bb4ebc04d5ad5d1c3ca77846b  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+两个 manifest 从第 4 节的 `58b64635…` 变为 `4e49c319…`；当前租金和边界的值与第 4 节相同。这说明这次只在 manifest 中加入了状态和来源，222 个区域的数据没有任何变化。
+
+release 测试增加一条，确认 manifest 中的状态、说明和来源与 source lock 一致：
+
+```js
+it("copies the rental data status and sources from the source lock", () => {
+  const sourceLock = JSON.parse(
+    readFileSync(new URL("../source-lock.json", import.meta.url), "utf8"),
+  );
+  const mbieSource = sourceLock.sources.find((source) => source.id === "mbie-rental");
+
+  expect(manifest.rentalDataStatus).toBe(mbieSource.status);
+  expect(manifest.rentalDataNotice).toBe(mbieSource.notice);
+  expect(manifest.sources).toEqual(
+    sourceLock.sources.map(({ id, name, url, licence }) => ({ id, name, url, licence })),
+  );
+});
+```
+
+#### 8.3 在 Explore 和详情页显示数据说明
+
+两个页面显示同一份说明，因此写成共享组件 `src/components/DataReleaseNotice.tsx`。两个页面都要有：详情页的地址可以直接分享，打开链接的人不经过 Explore，详情页的数字也需要自带说明。
+
+第一版把说明写成一张卡片，放在 Explore 的标题下方：
+
+```tsx
+<aside className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+  {manifest.rentalDataStatus === "provisional" && (
+    <p>
+      <span className="mr-2 rounded-md border px-2 py-0.5 text-xs font-semibold">
+        Provisional
+      </span>
+      {manifest.rentalDataNotice}
+    </p>
+  )}
+  {/* ……数据含义和来源列表 */}
+</aside>
+```
+
+在浏览器中检查，内容和链接都正确，但 375px 宽度下这张卡片高 314px，地图从页面顶部 696px 处才开始，812px 高的屏幕上几乎看不到地图。说明虽然必要，却把页面的核心内容推到了后面。
+
+#### 8.4 把状态放在数据季度旁，说明放在页面底部
+
+说明中的几部分并不都需要出现在最前面：
+
+- **状态**要紧挨着数据季度，用户看到季度时就知道它是 provisional。这只需要一个很小的标记。
+- **状态说明、数据含义、来源和许可证**只要在同一页面中能找到即可。
+
+因此把状态单独写成一个标记组件 `src/components/DataStatusBadge.tsx`：
+
+```tsx
+// 紧挨着数据季度显示的状态标记；数据为 final 时不显示。
+export function DataStatusBadge({ status }: DataStatusBadgeProps) {
+  if (status !== "provisional") {
+    return null;
+  }
+
+  return (
+    <span className="rounded-md border px-1.5 py-0.5 text-xs font-medium">
+      Provisional
+    </span>
+  );
+}
+```
+
+`DataStatusBadgeProps` 中 `status` 的类型写作 `DataManifest["rentalDataStatus"]`，即从 manifest 的类型中取出这个字段的类型 `"provisional" | "final"`。
+
+Explore 的标题行和详情页的 `Dataset latest period` 都在季度后面加上这个标记：
+
+```tsx
+<p className="text-muted-foreground">
+  {partition.areaCount} areas · All dwelling types · All bedroom
+  categories · Data to {manifest.latestPeriod}{" "}
+  <DataStatusBadge status={manifest.rentalDataStatus} />
+</p>
+```
+
+```tsx
+<dd className="text-lg font-medium">
+  {datasetLatestPeriod}{" "}
+  <DataStatusBadge status={manifest.rentalDataStatus} />
+</dd>
+```
+
+`DataReleaseNotice` 去掉卡片的边框和背景，改为小号灰色文字，并在最后加入 Methodology 的入口：
+
+```tsx
+<aside className="space-y-1 border-t pt-4 text-xs leading-5 text-muted-foreground">
+  {manifest.rentalDataStatus === "provisional" && (
+    <p>{manifest.rentalDataNotice}</p>
+  )}
+
+  <p>
+    Figures describe new private-sector bonds lodged with MBIE. They are
+    not live listings or a record of all rented homes.
+  </p>
+
+  <ul>
+    {manifest.sources.map((source) => (
+      <li key={source.id}>
+        Source:{" "}
+        <a
+          className="underline underline-offset-2 hover:text-foreground"
+          href={source.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {source.name}
+        </a>{" "}
+        · {source.licence}
+      </li>
+    ))}
+  </ul>
+
+  <p>
+    See{" "}
+    <Link
+      className="underline underline-offset-2 hover:text-foreground"
+      to="/methodology"
+    >
+      Methodology
+    </Link>{" "}
+    for how the data is processed.
+  </p>
+</aside>
+```
+
+- 来源链接指向其他网站，`target="_blank"` 在新标签页打开，不离开 RoostMap；`rel="noreferrer"` 不把 RoostMap 的地址传给对方网站，新页面也无法通过 `window.opener` 控制 RoostMap 的页面。
+- 数据页面只放理解数字所需的最少说明。数据的处理方法、隐私抑制规则和已知限制属于 Methodology，这里只提供入口。
+
+Explore 中，说明从标题下方移到地图和列表之后；详情页中，它原本就在租金卡片下方，位置不变。
+
+#### 8.5 测试并完成检查
+
+manifest 的 contract 测试增加两条，放在 `src/data/contracts.test.ts` 中：
+
+```ts
+it("rejects an unknown data status, a missing source list and a non-https source link", () => {
+  // 状态只能是 provisional 或 final。
+  expect(
+    manifestSchema.safeParse({ ...validManifest, rentalDataStatus: "draft" }).success,
+  ).toBe(false);
+  // 页面必须能注明来源。
+  expect(
+    manifestSchema.safeParse({ ...validManifest, sources: [] }).success,
+  ).toBe(false);
+  // 来源地址会显示为链接，只接受 https。
+  expect(
+    manifestSchema.safeParse({
+      ...validManifest,
+      sources: [{ ...validManifest.sources[0], url: "javascript:alert(1)" }],
+    }).success,
+  ).toBe(false);
+});
+```
+
+另一条确认完整的 manifest 能通过检查。第 5 节 repository 测试和第 7 节共享测试数据中的 manifest 也加入了这三个字段，否则它们会被新的 contract 拒绝。
+
+两个页面各增加一个测试，检查状态标记、说明文字、来源链接和 Methodology 链接。Explore 的测试为：
+
+```tsx
+it("shows the rental data status and sources from the manifest", async () => {
+  serveRelease();
+  renderExplore();
+
+  // 状态标记在标题行，读取 manifest 后显示；数据说明在页面底部，当前租金读取后显示。
+  expect(await screen.findByText("Provisional")).toBeInTheDocument();
+  expect(await screen.findByText(rentalDataNotice)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "MBIE Rental Bond Data" })).toHaveAttribute("href", mbieSourceUrl);
+  expect(screen.getByText(/Creative Commons Attribution 3\.0 New Zealand/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
+});
+```
+
+说明移到页面底部后，这个测试第一次运行失败：说明文字找不到。原因是两部分出现的时机不同。状态标记在标题行，manifest 读取完成就显示；说明在地图和列表之后，要等当前租金也读取完成才显示。测试找到标记后立即用 `getByText` 查找说明，这时说明还没有出现。改为同样用 `findByText` 等待说明出现后，测试通过。
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ data/pipeline/release.test.mjs (5 tests) 253ms
+✓ src/data/contracts.test.ts (7 tests) 16ms
+✓ src/pages/AreaDetailPage.test.tsx (6 tests) 437ms
+✓ src/pages/ExplorePage.test.tsx (6 tests) 676ms
+
+Test Files  10 passed (10)
+     Tests  48 passed (48)
+```
+
+`npm run build` 通过。
+
+在浏览器中检查：
+
+| 检查 | 结果 |
+|---|---|
+| Explore 标题行 | `… · Data to 2026-04-01` 后显示 `Provisional` 标记，下面直接是地图和列表 |
+| Explore 页面底部 | 列表之后显示状态说明、数据含义、两条来源和 Methodology 入口 |
+| 详情页 `/areas/167300` | `Dataset latest period` 显示为 `2026-04-01` 加 `Provisional` 标记；租金卡片下方是同样的说明 |
+| 来源链接 | 分别打开 tenancy.govt.nz 的 Rental Bond Data 页面和 Stats NZ Datafinder 的 SA2 2019 图层，在新标签页中打开 |
+| 375px 宽度的 Explore | 没有横向滚动；地图从页面顶部 358px 处开始，说明位于列表之后 |
+
+这些结果说明：页面显示的状态、说明和来源都来自 manifest，而 manifest 中的这些信息来自 source lock；release 中的租金和边界没有因此改变。数据页面在季度旁显示状态，在页面底部注明数据含义、来源和许可证，并提供 Methodology 入口，地图和列表仍然位于页面前部。
+
+### 9. 更新公开说明并移除技术样例
+
+正式的 Explore、详情页和数据说明已经完成，但应用中还留着两类旧内容：
+
+- **Step 07 的技术样例**。`/spike/map-chart` 页面读取样例目录中的文件，导航栏里也有它的入口。正式页面完成后，它与正式页面并存，会让人以为应用有两套数据。
+- **与产品不一致的公开说明**。Home 写着 RoostMap 结合了历史租金和通勤需求，而通勤不在产品范围内，历史趋势也还没有实现；Methodology 只列出了两个数据来源的名称。
+
+本节先移除技术样例，再让 Home 和 Methodology 如实说明产品和当前 release。
+
+#### 9.1 移除技术样例
+
+技术样例包括：
+
+| 内容 | 文件 |
+|---|---|
+| 页面和测试 | `src/pages/MapChartPage.tsx`、`src/pages/MapChartPage.test.tsx` |
+| 样例代码 | `src/features/explore/sample-data.ts`、`src/features/explore/RentHistoryChart.tsx` |
+| 生成样例数据的脚本 | `data/scripts/` 中的 `prepare-map-chart-sample.mjs`、`prepare-map-chart-comparison.mjs`、`measure-map-chart-data.mjs` |
+| 样例数据 | `public/data/spike/` |
+| 路由、导航和忽略规则 | `routes.tsx` 中的 `spike/map-chart`、导航中的 MapChart、`.gitignore` 中放行样例数据的规则 |
+
+`RentHistoryChart` 读取的是样例数据的类型，正式数据还没有租金历史的 contract，它不能直接用于正式页面；三个脚本只生成样例数据，数据删除后也就没有用处。Git 历史保留着它们，需要时可以找回。`data/scripts/` 中 Step 06 的数据核查脚本不属于样例，保留。
+
+先在 `routes.tsx` 中删除样例页面的导入和路由，在 `AppShell.tsx` 中删除导航项，并修改 `.gitignore`：
+
+```gitignore
+# Keep directories traversable, then include only the published data release
+!public/data/**/
+!public/data/manifest.json
+!public/data/releases/**
+```
+
+然后用 `git rm` 删除文件。它会删除工作区中的文件，同时暂存这次删除：
+
+```bash
+git rm src/pages/MapChartPage.tsx src/pages/MapChartPage.test.tsx src/features/explore/sample-data.ts src/features/explore/RentHistoryChart.tsx data/scripts/prepare-map-chart-sample.mjs data/scripts/prepare-map-chart-comparison.mjs data/scripts/measure-map-chart-data.mjs
+git rm -r public/data/spike
+```
+
+第一条命令输出 7 行 `rm '…'`，第二条输出 38 行，与 Git 跟踪的样例数据文件数相同。
+
+`git rm` 只删除 Git 跟踪的文件。之后 `public/data/spike/` 下还剩三层文件夹，每层有一个 `.DS_Store`。这是 macOS 的 Finder 记录文件夹显示方式的文件，`.gitignore` 已经忽略它，所以不会被提交，但 `vite build` 会把 `public/` 中的所有内容复制到 `dist/`。剩下的文件夹用 `rm -r public/data/spike` 删除。
+
+删除后，代码中如果还有对样例文件的引用，`tsc` 会报告找不到模块。lint 和类型检查都没有报错，说明正式页面没有依赖样例代码。
+
+#### 9.2 让 Home 说明产品用途和当前 release
+
+Home 的主标题 "Make clearer rental decisions with area-level evidence." 符合产品定位，保留不变。下面的说明改为只描述现在真实存在的内容：
+
+```tsx
+<p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+  RoostMap shows the weekly rents recorded in official rental bond
+  data for each Statistical Area 2 (SA2), so you can compare areas
+  using the same data definitions.
+</p>
+
+<p className="mt-4 max-w-2xl text-muted-foreground">
+  It does not show live listings or tell you where to live.
+</p>
+```
+
+原来列出产品原则的卡片改为 "Current data release"，从 manifest 读取当前 release 覆盖的 Region、区域数量、数据季度和状态。用户在 Home 就能知道现在能查看哪些区域、数据截至哪个季度：
+
+```tsx
+function ReleaseSummary({ manifest }: ReleaseSummaryProps) {
+  const regionNames = manifest.partitions.map((partition) => partition.name).join(", ");
+  const areaCount = manifest.partitions.reduce(
+    (total, partition) => total + partition.areaCount,
+    0,
+  );
+
+  return (
+    <dl className="space-y-3 text-sm">
+      <div>
+        <dt className="text-muted-foreground">Coverage</dt>
+        <dd className="font-medium">
+          {regionNames} · {areaCount} areas
+        </dd>
+      </div>
+      {/* ……Data to（季度和状态标记）、Classification */}
+    </dl>
+  );
+}
+```
+
+`reduce` 把每个 Region 的区域数量依次加到 `total` 上，初始值为 0，得到所有 Region 的区域总数。
+
+产品介绍不依赖 manifest。manifest 读取失败时，只有这张卡片显示错误和 Retry 按钮，标题、说明和入口照常显示：
+
+```tsx
+let releaseSummary: ReactNode;
+
+if (manifestQuery.isError) {
+  releaseSummary = (
+    <DataLoadError
+      error={manifestQuery.error}
+      onRetry={() => manifestQuery.refetch()}
+    />
+  );
+} else if (manifestQuery.isPending) {
+  // ……Loading the current data release…
+} else {
+  releaseSummary = <ReleaseSummary manifest={manifestQuery.data} />;
+}
+```
+
+说明下方加入 "Explore rental areas" 入口，页面底部使用第 8 节的 `DataReleaseNotice`，注明来源并提供 Methodology 入口。
+
+Home 现在会读取 manifest，`routes.test.tsx` 中渲染整个路由表的辅助函数因此也要提供 `QueryClient` 和模拟的数据文件，否则 `useQuery` 找不到 QueryClient：
+
+```tsx
+function renderRoute(pathname: string) {
+  const router = createMemoryRouter(routes, {
+    initialEntries: [pathname],
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+  serveRelease();
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
+```
+
+#### 9.3 让 Methodology 说明来源和计算规则
+
+Methodology 是查看数据细节的地方：每个数字怎样计算、缺失值怎样处理、数据由哪个源文件生成。其中来源的下载日期和源文件的 SHA-256 记录在 source lock 中，manifest 还没有。
+
+在 `build-release.mjs` 中，`sources` 额外复制这两个字段：
+
+```js
+sources: sourceLock.sources.map(({ id, name, url, licence, retrievedAt, sha256 }) => ({
+  id,
+  name,
+  url,
+  licence,
+  retrievedAt,
+  sha256,
+})),
+```
+
+contract 同样增加：
+
+```ts
+retrievedAt: z.iso.date(),
+sha256: z.string().regex(/^[0-9a-f]{64}$/),
+```
+
+`z.iso.date()` 要求 `YYYY-MM-DD` 格式的日期；SHA-256 是 64 位十六进制字符。release 测试中比较 manifest 与 source lock 的部分也加入这两个字段。
+
+重新生成 release 并比较哈希：
+
+```bash
+npm run data:release
+shasum -a 256 public/data/manifest.json public/data/releases/2026-04-01.1/manifest.json public/data/releases/2026-04-01.1/areas/current-rents/03.json public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+```text
+82e3fdc3580558fa91971a3892575c20826b539b524ba78e57dbd9de01d249d7  public/data/manifest.json
+82e3fdc3580558fa91971a3892575c20826b539b524ba78e57dbd9de01d249d7  public/data/releases/2026-04-01.1/manifest.json
+bd086972677ce2816636466c016726feee6ec0cec0dfb8d80800410edf7ba75b  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+aa347c98c35d3a698677c5a6829d078f4254123bb4ebc04d5ad5d1c3ca77846b  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+```
+
+两个 manifest 从第 8 节的 `4e49c319…` 变为 `82e3fdc3…`，当前租金和边界仍与第 4 节相同。
+
+Methodology 的内容分为两部分。计算规则写在页面中，它们来自前面几节实现的数据处理代码：
+
+| 小节 | 内容 | 依据 |
+|---|---|---|
+| What the figures describe | 新提交的私人部门 bond，按 tenancy start date 统计；不是实时房源或挂牌租金；不给区域排名或推荐 | 产品设计的数据口径 |
+| Current rent | 最新观测中位租金取自最后一个有租金的季度；Reported Bonds 取自同一季度；12 个月变化为数据集最新季度与上一年同季度 Geometric Mean Rent 之比减 1，任一季度缺失时为 N/A | 第 3 节的 `buildCurrentRent` |
+| Missing data | bonds 少于 5 时 MBIE 不发布，部分记录没有租金；显示为 No data，不用 0、其他分类或估计值代替 | 第 2 节的 contract 和产品设计的缺失规则 |
+| Geography | 使用 SA2 2019；区域在任一分类有租金、且 SA2 编号能关联到 Stats NZ 边界时发布 | 第 3 节的发布规则 |
+
+当前 release 和数据来源从 manifest 读取。每个来源显示名称和链接、许可证、下载日期和源文件的 SHA-256：
+
+```tsx
+{manifest.sources.map((source) => (
+  <li className="space-y-1" key={source.id}>
+    <a
+      className="font-medium text-foreground underline underline-offset-4"
+      href={source.url}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {source.name}
+    </a>
+    <p>Licence: {source.licence}</p>
+    <p>Retrieved: {source.retrievedAt}</p>
+    <p className="break-all">
+      SHA-256 of the source file:{" "}
+      <code className="text-xs">{source.sha256}</code>
+    </p>
+  </li>
+))}
+```
+
+SHA-256 是 64 个连续字符，中间没有空格，浏览器不会自动换行。`break-all` 允许在任意字符处换行，避免它在窄屏上撑出横向滚动。
+
+与 Home 一样，计算规则不依赖 manifest，读取失败时只有 release 和来源部分显示错误。
+
+#### 9.4 测试并完成检查
+
+两个页面各增加测试：
+
+| 测试 | 检查内容 |
+|---|---|
+| `shows the current data release from the manifest` | Home 显示 `Waikato Region · 3 areas`、`2026-04-01 Provisional`，Explore 入口指向 `/explore` |
+| `keeps the introduction when the manifest fails to load` | manifest 请求失败时显示带文件地址的错误，主标题和 Explore 入口仍然显示 |
+| `shows the release and each source with its licence, retrieval date and checksum` | Methodology 显示 release 版本、覆盖范围、来源链接、许可证、下载日期和 SHA-256 |
+
+运行全部检查：
+
+```bash
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+```
+
+lint 没有报错。测试结果中与本节有关的部分为：
+
+```text
+✓ src/pages/MethodologyPage.test.tsx (1 test) 317ms
+✓ src/pages/HomePage.test.tsx (2 tests) 411ms
+✓ src/app/router/routes.test.tsx (4 tests) 363ms
+
+Test Files  11 passed (11)
+     Tests  46 passed (46)
+```
+
+第 8 节结束时是 10 个文件、48 个测试。`MapChartPage.test.tsx` 的 5 个测试随样例删除，Home 和 Methodology 增加 3 个，共 46 个。
+
+`npm run build` 的结果：
+
+```text
+✓ 2272 modules transformed.
+dist/assets/index-DhYCEUvL.js                              1,617.96 kB │ gzip: 459.27 kB
+```
+
+第 8 节的 build 转换了 2647 个模块，JavaScript 为 1,988.70 kB（gzip 565.87 kB）。这次少了 375 个模块，JavaScript 减少 370.74 kB（gzip 减少 106.60 kB）。样例页面是唯一使用 Recharts 的地方，删除后 Recharts 不再被任何页面导入，构建工具也就不再把它打包。JavaScript 仍然超过 500 kB，构建提示依然存在。
+
+Playwright 的浏览器测试检查 Home、导航、未找到页面和主题：
+
+```text
+  ✓  1 …ts/e2e/app-shell.spec.ts:20:1 › navigates to the methodology page (5.7s)
+  ✓  2 …ts/e2e/app-shell.spec.ts:54:1 › persists an explicit theme choice (7.2s)
+  ✓  3 …-shell.spec.ts:40:1 › shows the not-found page for an unknown URL (5.7s)
+  ✓  4 …] › tests/e2e/app-shell.spec.ts:6:1 › loads the application shell (5.9s)
+
+  4 passed (10.5s)
+```
+
+Home 和 Methodology 的主标题没有改变，导航中的 Methodology 链接仍然存在，所以这些测试不需要修改。
+
+在 `npm run dev` 中检查：
+
+| 页面 | 结果 |
+|---|---|
+| Home | 导航只有 Home、Explore 和 Methodology；"Current data release" 显示 `Waikato Region · 222 areas`、`2026-04-01` 加 `Provisional` 标记和分类；页面底部显示数据说明 |
+| Methodology | 四节计算规则；release 版本 `2026-04-01.1`、生成日期 `2026-11-21` 和状态说明；两个来源的许可证、下载日期 `2026-10-27` 和 SHA-256，SHA-256 与 source lock 中的值相同 |
+| 375px 宽度的 Methodology | SHA-256 换成 3 行显示，页面没有横向滚动 |
+| `/spike/map-chart` | 显示 Page not found |
+
+这些结果说明：技术样例已经从应用、数据目录和打包结果中移除；Home 只描述现在存在的功能，并从 manifest 显示当前 release 的覆盖范围、季度和状态；Methodology 说明每个数字的计算和缺失规则，并显示每个来源的许可证、下载日期和源文件 SHA-256。
+
+### 10. 验证完整纵向链路并完成 Git 操作
+
+前面各节在本地验证了每一段：源文件锁定、当前租金的计算、release 的生成、contract 检查、页面显示。还剩两处没有验证：
+
+- **部署环境如何处理数据文件的请求**。`public/staticwebapp.config.json` 的 SPA fallback 只排除了 `/assets/*`。Azure Static Web Apps 收到一个不存在的路径时，会返回 `index.html`。如果某个数据文件的地址写错，页面得到的是 HTML，最终显示的会是 contract 或 JSON 解析错误，而不是第 5 节设计的 `Could not load … (HTTP 404)`。
+- **源值是否显示在部署后的页面上**。第 6、7 节的页面测试使用的是模拟数据，还没有测试在部署环境中读取真实 release、检查页面上的数值。
+
+#### 10.1 让部署环境对缺失的数据文件返回 404
+
+技术规范要求部署配置包含 `/data/*` 排除规则。在 `navigationFallback` 的 `exclude` 中加入它：
+
+```json
+"exclude": ["/assets/*", "/data/*"]
+```
+
+`exclude` 中的路径不使用 fallback：文件存在时正常返回，不存在时返回 404。
+
+这个配置只由 Azure 读取。本地的 Vite 开发服务器有自己的 fallback，用 `curl` 请求 `npm run dev` 中的几个地址：
+
+```text
+missing json: 200 text/html
+manifest: 200 application/json
+deep link: 200 text/html
+```
+
+不存在的 `/data/releases/missing.json` 在本地同样返回 `200` 和 HTML。因此这条规则只能在部署环境中验证。
+
+#### 10.2 用浏览器测试覆盖正式数据链路
+
+在 `tests/e2e/data-slice.spec.ts` 中加入三个 Playwright 测试。Playwright 在本地运行时测试 `npm run dev`；设置了 `PLAYWRIGHT_BASE_URL` 时，它测试部署后的地址，CI 的 Deployed smoke test 就是这样测试 Preview 的。
+
+```ts
+// Greensboro（179900）的源记录已手工核对：ALL / ALL 租金 350，Bonds 171，12 个月变化 +1.3%。
+// 这些测试确认同样的值经过 release 文件后显示在页面上。
+
+test("shows the Greensboro rent from the published release in Explore", async ({ page }) => {
+  await page.goto("/explore");
+
+  const greensboro = page.getByRole("button", { name: /^Greensboro/ });
+  await expect(greensboro).toContainText("NZ$350/week");
+  await expect(greensboro).toContainText("171 bonds");
+  await expect(greensboro).toContainText("+1.3%");
+});
+
+test("opens an area page directly from its address", async ({ page }) => {
+  await page.goto("/areas/179900");
+
+  await expect(page).toHaveTitle("Greensboro | RoostMap");
+  const details = page.locator("dl");
+  await expect(details).toContainText("NZ$350/week");
+  await expect(details).toContainText("171 bonds");
+  await expect(details).toContainText("+1.3%");
+});
+
+test("returns 404 for a data file that does not exist", async ({ request }) => {
+  test.skip(!process.env.PLAYWRIGHT_BASE_URL, "Only the deployed site applies staticwebapp.config.json");
+
+  const response = await request.get("/data/releases/missing.json");
+  expect(response.status()).toBe(404);
+});
+```
+
+- 前两个测试读取真实的 release。Greensboro 的值已在 3.1 中由源记录手工核对，第 4 节的 release 测试确认它们进入了 release 文件，这里确认它们显示在页面上。三者连起来，同一个源值可以从源记录一直追踪到页面。
+- 第二个测试直接打开 `/areas/179900`。部署环境中，这个路径没有对应的文件，要靠 SPA fallback 返回 `index.html`，再由 React Router 显示详情页。
+- 第三个测试的 `request` 直接发送 HTTP 请求，不打开页面。`test.skip(条件, 原因)` 在条件成立时跳过这个测试：没有设置 `PLAYWRIGHT_BASE_URL` 就是在测试本地 Vite，而本地不应用这条规则。
+- 测试不检查地图本身。地图依赖 WebGL 和 MapTiler 的底图，已经在浏览器中人工检查过。
+
+#### 10.3 本地完整检查
+
+`npm run check` 依次运行 lint、单元与组件测试、生产构建和 Playwright，与 CI 的 Quality job 相同：
+
+```bash
+npm run check
+```
+
+lint 没有报错，测试为 11 个文件、46 个测试全部通过，build 与第 9 节相同。Playwright 运行 7 个测试，6 个通过；404 测试按预期在本地跳过，显示为 `1 skipped`。
+
+#### 10.4 推送并在 Preview 上验证
+
+提交这两个文件，并第一次推送这个分支：
+
+```bash
+git add public/staticwebapp.config.json tests/e2e/data-slice.spec.ts
+git commit -m "test: verify the published data slice in deployed environments"
+git push -u origin feat/data-first-slice
+```
+
+`-u` 让本地分支跟踪远程分支，之后在这个分支上直接运行 `git push` 即可。随后在 GitHub 页面上，从 `feat/data-first-slice` 向 `main` 创建 Pull Request #10，标题为 `feat: build the first formal data slice`。
+
+Pull Request 创建后，CI 依次运行三个 job：
+
+| Job | 结果 | 内容 |
+|---|---|---|
+| Quality | 通过 | `npm run check`，与本地相同 |
+| Deploy | 通过 | 把 Quality 生成的 `dist` 部署为 Azure Preview |
+| Deployed smoke test | 通过 | 用 Preview 地址作为 `PLAYWRIGHT_BASE_URL` 运行 Playwright |
+
+`Close Preview` 只在 Pull Request 关闭时运行，此时显示为跳过。
+
+Deployed smoke test 的 Playwright 结果为：
+
+```text
+Running 7 tests using 2 workers
+
+  ✓  1 [chromium] › tests/e2e/app-shell.spec.ts:6:1 › loads the application shell (779ms)
+  ✓  2 [chromium] › tests/e2e/app-shell.spec.ts:20:1 › navigates to the methodology page (984ms)
+  ✓  3 [chromium] › tests/e2e/app-shell.spec.ts:40:1 › shows the not-found page for an unknown URL (667ms)
+  ✓  4 [chromium] › tests/e2e/app-shell.spec.ts:54:1 › persists an explicit theme choice (1.1s)
+  ✓  5 [chromium] › tests/e2e/data-slice.spec.ts:8:1 › shows the Greensboro rent from the published release in Explore (886ms)
+  ✓  7 [chromium] › tests/e2e/data-slice.spec.ts:31:1 › returns 404 for a data file that does not exist (59ms)
+  ✓  6 [chromium] › tests/e2e/data-slice.spec.ts:18:1 › opens an area page directly from its address (560ms)
+
+  7 passed (6.6s)
+```
+
+这次 7 个测试全部运行，404 测试在 Preview 上通过，说明 `/data/*` 排除规则在 Azure 上生效。
+
+Deploy job 的日志最后给出 Preview 地址。用 `curl` 检查 Preview 上的几个路径：
+
+```text
+200 application/json  /data/manifest.json
+404 text/html  /data/releases/missing.json
+200 application/json  /data/releases/2026-04-01.1/areas/current-rents/03.json
+200 text/html  /areas/179900
+200 text/html  /explore
+200 text/html  /spike/map-chart
+404 text/html  /data/spike/map-chart/waikato.geo.json
+```
+
+- 存在的数据文件返回 JSON，不存在的数据文件返回 404。
+- `/areas/179900` 和 `/explore` 由 fallback 返回 `index.html`。`/spike/map-chart` 同样返回 `index.html`，页面中由路由显示 Page not found。
+- 原来的样例数据已经不在部署结果中。
+
+Preview 上 `/data/manifest.json` 的 SHA-256 为 `82e3fdc3…`，与本地生成的 manifest 相同，部署后的页面读取的就是第 9 节生成的 release。
+
+最后在浏览器中检查 Preview：地图底图、SA2 着色和图例正常显示；直接打开 `/areas/179900`，详情显示 `NZ$350/week`、`171 bonds`、`+1.3%`，`Dataset latest period` 旁有 `Provisional` 标记，页面底部有来源和许可证。
+
+这些结果说明：Greensboro 的源值从源记录经过 release 文件，显示在部署后的 Explore 和详情页上；部署环境对缺失的数据文件返回 404，对页面地址返回应用；Pull Request 的质量检查、Preview 部署和部署后测试全部通过。
+
+### Step 08 完成状态
+
+```text
+✅ 区域列表所需的数据 contract 已用 Zod 定义，TypeScript 类型由 schema 推导
+✅ 当前租金的计算规则已由答案已知的小型 fixture 覆盖
+✅ 第一个版本化 Waikato release 已由锁定的源文件生成，结果可以重复生成
+✅ manifest 驱动的 repository 只向页面提供通过 contract 检查的数据
+✅ Explore 的列表和地图使用同一份当前租金，选择保存在 URL 中
+✅ 最小 Area Detail 与 Explore 共用当前租金，进入详情页时不重复下载
+✅ 页面显示数据季度、observation period、provisional 状态、数据来源和许可证
+✅ Home 和 Methodology 的说明与当前 release 一致，技术样例已经移除
+✅ Greensboro 的源值可以从源记录追踪到部署后的页面
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
 ```

@@ -1,21 +1,34 @@
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { routes } from "@/app/router/routes";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { RouteErrorPage } from "@/pages/RouteErrorPage";
+import { serveRelease } from "@/test/release-fixtures";
 
 /* --------- 测试辅助方法 -------- */
 // Create an isolated Memory Router for each test case.
+// Home 和 Methodology 会读取 manifest，因此同时提供 QueryClient 和模拟的数据文件。
 function renderRoute(pathname: string) {
   const router = createMemoryRouter(routes, {
     initialEntries: [pathname],
   });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-  render(<RouterProvider router={router} />);
+  serveRelease();
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /* --------- 路由测试场景 -------- */
 describe("application routes", () => {

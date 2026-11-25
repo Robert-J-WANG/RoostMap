@@ -1,0 +1,178 @@
+import { ArrowLeftIcon } from "lucide-react";
+import { Link, useParams } from "react-router";
+
+import { DataLoadError } from "@/components/DataLoadError";
+import { DataReleaseNotice } from "@/components/DataReleaseNotice";
+import { DataStatusBadge } from "@/components/DataStatusBadge";
+import { buttonVariants } from "@/components/ui/button";
+import type { DataManifest, ManifestPartition } from "@/data/contracts";
+import { useManifest, useRegionCurrentRents } from "@/data/queries";
+import {
+  formatBonds,
+  formatChange,
+  formatRent,
+  isOlderObservation,
+} from "@/lib/format";
+
+// 还没有找到区域时（加载中或读取失败）使用的页面标题。
+const defaultTitle = <title>Area details | RoostMap</title>;
+
+// 页面入口：先读取 manifest，再从其中 Region 的当前租金中找到地址里的 SA2。
+export function AreaDetailPage() {
+  const manifestQuery = useManifest();
+
+  if (manifestQuery.isError) {
+    return (
+      <section className="space-y-6">
+        {defaultTitle}
+        <DataLoadError
+          error={manifestQuery.error}
+          onRetry={() => manifestQuery.refetch()}
+        />
+      </section>
+    );
+  }
+
+  if (manifestQuery.isPending) {
+    return (
+      <section className="space-y-6">
+        {defaultTitle}
+        <p>Loading the data release…</p>
+      </section>
+    );
+  }
+
+  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  return (
+    <section className="space-y-6">
+      <AreaDetails
+        manifest={manifestQuery.data}
+        partition={manifestQuery.data.partitions[0]}
+      />
+    </section>
+  );
+}
+
+type AreaDetailsProps = {
+  manifest: DataManifest;
+  partition: ManifestPartition;
+};
+
+// 一个区域的详情：与 Explore 的列表和地图读取同一份当前租金。
+// 查询键相同，从 Explore 进入时直接使用已经下载的数据，不再请求。
+function AreaDetails({ manifest, partition }: AreaDetailsProps) {
+  const { sa2Id } = useParams();
+  const currentRentsQuery = useRegionCurrentRents(partition);
+
+  if (currentRentsQuery.isError) {
+    return (
+      <>
+        {defaultTitle}
+        <DataLoadError
+          error={currentRentsQuery.error}
+          onRetry={() => currentRentsQuery.refetch()}
+        />
+      </>
+    );
+  }
+
+  if (currentRentsQuery.isPending) {
+    return (
+      <>
+        {defaultTitle}
+        <p>Loading {partition.name} rents…</p>
+      </>
+    );
+  }
+
+  const area = currentRentsQuery.data.find((item) => item.sa2Id === sa2Id);
+
+  // 编号格式不对，或者这份 release 中没有这个区域。
+  if (!area) {
+    return (
+      <>
+        <title>Area not found | RoostMap</title>
+        <h1 className="text-3xl font-semibold">Area not found</h1>
+        <p className="text-muted-foreground">
+          The current data release has no rental area with SA2 code {sa2Id}.
+        </p>
+        <Link className={buttonVariants({ variant: "outline" })} to="/explore">
+          Back to Explore
+        </Link>
+      </>
+    );
+  }
+
+  const {
+    datasetLatestPeriod,
+    observationPeriod,
+    medianRent,
+    reportedBonds,
+    yearOverYearChange,
+  } = area.currentRent;
+
+  return (
+    <>
+      <title>{`${area.name} | RoostMap`}</title>
+
+      {/* 返回 Explore 时保留这个区域的选择。 */}
+      <Link
+        className={buttonVariants({ size: "sm", variant: "ghost" })}
+        to={`/explore?sa2=${area.sa2Id}`}
+      >
+        <ArrowLeftIcon aria-hidden="true" data-icon="inline-start" />
+        Back to Explore
+      </Link>
+
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">SA2 {area.sa2Id}</p>
+        <h1 className="text-3xl font-semibold">{area.name}</h1>
+        <p className="text-muted-foreground">
+          {area.territorialAuthorityName} · {area.regionName}
+        </p>
+        <p className="text-muted-foreground">
+          All dwelling types · All bedroom categories
+        </p>
+      </div>
+
+      {/* 当前租金：每一项都有标签；缺失值显示为缺失，旧季度的租金不称为当前价格。 */}
+      <dl className="grid gap-6 rounded-xl border bg-card p-6 sm:grid-cols-2">
+        <div className="space-y-1">
+          <dt className="text-sm text-muted-foreground">
+            Latest observed median weekly rent
+          </dt>
+          <dd className="text-2xl font-semibold">{formatRent(medianRent)}</dd>
+          {isOlderObservation(observationPeriod, datasetLatestPeriod) && (
+            <dd className="text-sm text-muted-foreground">
+              No rent is available for {datasetLatestPeriod}; this value is
+              from an earlier quarter.
+            </dd>
+          )}
+        </div>
+        <div className="space-y-1">
+          <dt className="text-sm text-muted-foreground">Observation period</dt>
+          <dd className="text-lg font-medium">{observationPeriod ?? "No data"}</dd>
+        </div>
+        <div className="space-y-1">
+          <dt className="text-sm text-muted-foreground">Dataset latest period</dt>
+          <dd className="text-lg font-medium">
+            {datasetLatestPeriod}{" "}
+            <DataStatusBadge status={manifest.rentalDataStatus} />
+          </dd>
+        </div>
+        <div className="space-y-1">
+          <dt className="text-sm text-muted-foreground">Reported Bonds</dt>
+          <dd className="text-lg font-medium">{formatBonds(reportedBonds)}</dd>
+        </div>
+        <div className="space-y-1">
+          <dt className="text-sm text-muted-foreground">12-month change</dt>
+          <dd className="text-lg font-medium">
+            {formatChange(yearOverYearChange)}
+          </dd>
+        </div>
+      </dl>
+
+      <DataReleaseNotice manifest={manifest} />
+    </>
+  );
+}
