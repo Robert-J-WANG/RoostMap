@@ -6,6 +6,8 @@ RoostMap provides regional statistical evidence rather than live rental listings
 
 Live site: <https://victorious-island-0bcdf8f10.3.azurestaticapps.net>
 
+![The RoostMap Explore page: Wellington rental areas coloured by median weekly rent, with Thorndon selected on the map and in the area list](public/images/explore-preview.jpg)
+
 ## What you can do
 
 - Explore the SA2 areas of any New Zealand Region on a map and in a list
@@ -13,6 +15,18 @@ Live site: <https://victorious-island-0bcdf8f10.3.azurestaticapps.net>
 - Open an area to see its latest observed rent, Reported Bonds, 12-month change and quarterly rent history
 - Share or reload a page and keep the selected Region, category and area, which are stored in the URL
 - Check data periods, provisional status, sources, licences and known limitations on the Methodology page
+
+## Technical highlights
+
+- **Versioned static data release.** Node.js scripts read the MBIE CSV and the Stats NZ GeoPackage, keep only the published categories, join records on the SA2 2019 code and write one current-rents, boundary and rent-history file per Region, plus a manifest. `data/source-lock.json` records each source file's SHA-256, and the same inputs produce the same release.
+- **Data contracts.** Zod schemas check the generated release in the pipeline tests and every file the browser loads, so a malformed file shows an error instead of wrong numbers.
+- **Missing data stays missing.** Values that MBIE does not publish are shown as No data, never as zero, an estimate or a value from another category. Rent history breaks the line at missing quarters.
+- **Shareable state.** The selected Region, category and area live in the URL, so a link reopens the same view. TanStack Query caches each Region file by its URL, so switching back to a recently viewed Region uses the cached data.
+- **Tested delivery.** Vitest and React Testing Library cover the pipeline rules and page behaviour, and Playwright follows the core journey in a real browser. GitHub Actions run the checks, deploy every pull request to an Azure Static Web Apps preview and test it there, then deploy `main` to production and run the same tests.
+
+## Tech stack
+
+React 19, TypeScript (strict), Vite, React Router, TanStack Query, Zod, MapLibre GL JS with react-map-gl and MapTiler, Recharts, Tailwind CSS and shadcn/ui; Node.js data scripts; Vitest, React Testing Library and Playwright; GitHub Actions and Azure Static Web Apps.
 
 ## Data sources
 

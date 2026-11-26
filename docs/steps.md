@@ -15856,7 +15856,9 @@ Step 12 发布了 `v0.1.0`：全国 16 个 Region 的 Explore、按分类筛选�
 → Explore：一屏内的地图和列表、地图交互
 → Area Detail：区域边界和指标层次
 → Home 和 Methodology：区块结构、背景和来源说明
-→ 测试、浏览器检查和 Git 操作
+→ 验证并提交界面优化
+→ 补上项目的入口：README、分享预览和源代码链接
+→ 验证并完成 Git 操作
 ```
 
 本步完成后，主要页面在桌面、手机和深色模式下都有清楚的层次，显示的数据与 Step 12 相同，现有测试全部通过。
@@ -16237,7 +16239,7 @@ sips --resampleWidth 1600 -s format jpeg -s formatOptions 55 cropped.jpg --out p
 
 Methodology 原来是一列 `max-w-3xl` 的长文。现在占满内容宽度：标题下用一行三个要点概括整页最重要的规则；桌面上左侧是 "On this page" 目录，滚动时固定在窗口中，右侧是各节说明，行宽仍保持在 `max-w-3xl`。每节有 `id` 供目录跳转，`scroll-mt-24` 让跳转后标题不被固定的页头挡住。已知限制改为两列小块，左侧的珊瑚色边线提示这是需要注意的内容；当前 release 改为一行四项的统计，两个数据来源并排显示。
 
-### 7. 验证并完成 Git 操作
+### 7. 验证界面优化并提交
 
 #### 7.1 测试的调整
 
@@ -16292,9 +16294,131 @@ git push -u origin feat/mvp-ui-polish
 
 在 GitHub 上从 `feat/mvp-ui-polish` 向 `main` 创建 Pull Request，标题为 `feat: polish the MVP interface`。Quality 在 runner 上运行 `npm run check`；Deploy 把 `dist` 部署为 Azure Preview；Deployed smoke test 用 Preview 地址运行 Playwright。Preview 的地址不在 MapTiler key 的允许列表中，Preview 上不显示底图，浏览器测试不依赖底图。三个 job 全部通过。
 
-#### 7.6 合并并完成收尾
+### 8. 补上项目的入口
 
-用 squash merge 合并 Pull Request。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+界面完成后，第一次接触 RoostMap 的人还有三个入口没有处理：GitHub 上的 README 只有文字说明；把网址分享到 LinkedIn 或聊天软件时，只显示一个光秃秃的链接；网站上找不到源代码在哪里。这三处也属于首次体验，在同一个分支上继续完成，作为第二个提交加入同一个 Pull Request。
+
+#### 8.1 README 的截图和技术亮点
+
+README 在公开地址下面加入 Explore 页面的截图，直接使用首页的同一张图片：
+
+```markdown
+![The RoostMap Explore page: Wellington rental areas coloured by median weekly rent, with Thorndon selected on the map and in the area list](public/images/explore-preview.jpg)
+```
+
+再加入 "Technical highlights" 和 "Tech stack" 两节。技术亮点只写已经实现并可以在代码中找到的内容：版本化的静态数据 release、Zod 数据 contract、缺失值保持缺失、URL 状态和查询缓存，以及测试和部署流程。其中缓存的说法按实际行为写成 "switching back to a recently viewed Region uses the cached data"，因为查询数据只在不再使用后的 5 分钟内保留。
+
+```markdown
+- **Shareable state.** The selected Region, category and area live in the URL, so a link reopens the same view. TanStack Query caches each Region file by its URL, so switching back to a recently viewed Region uses the cached data.
+```
+
+#### 8.2 分享预览卡片
+
+把网址贴到 LinkedIn、Slack 或聊天软件时，这些平台会读取页面 `<head>` 中的 Open Graph 标签，显示标题、描述和图片。`index.html` 加入这些标签：
+
+```html
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="RoostMap" />
+<meta property="og:title" content="RoostMap · New Zealand rental-area evidence" />
+<meta property="og:description"
+  content="Compare New Zealand rental areas with official MBIE rental bond data: latest rents, Reported Bonds and quarterly rent history for each SA2 area." />
+<meta property="og:url" content="https://victorious-island-0bcdf8f10.3.azurestaticapps.net/" />
+<meta property="og:image" content="https://victorious-island-0bcdf8f10.3.azurestaticapps.net/images/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+```
+
+社交平台从自己的服务器读取图片，不知道页面在哪个域名下，所以 `og:image` 和 `og:url` 必须是完整的公开地址，不能写成 `/images/og-image.jpg`。X（Twitter）在没有自己的标签时会读取 Open Graph 标签，`twitter:card` 只用来要求显示大图。
+
+预览图使用 Open Graph 推荐的 1200×630，用 Playwright 截取首页顶部。第一次截取时，首页的 "Current data release" 区块在 630px 的底边被截断一半，所以截图时临时把这个区块隐藏，页面代码不变：
+
+```js
+const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
+await page.goto("http://localhost:5173/");
+// 只在截图时隐藏首页的当前 release 区块，避免它在 630px 的底边被截断。
+await page.evaluate(() => {
+  const heading = [...document.querySelectorAll("h2")].find((h) => h.textContent === "Current data release");
+  heading.parentElement.style.display = "none";
+});
+await page.screenshot({ path: "public/images/og-image.jpg", type: "jpeg", quality: 82 });
+```
+
+结果为 94 KB 的 `public/images/og-image.jpg`。
+
+#### 8.3 源代码链接
+
+页脚标题的右侧加入 "Source code on GitHub" 链接。项目使用的 Lucide 版本已经没有 GitHub 等品牌图标，所以使用文字加外部链接图标：
+
+```tsx
+<a
+  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+  href="https://github.com/Robert-J-WANG/RoostMap"
+  rel="noreferrer"
+  target="_blank"
+>
+  Source code on GitHub
+  <ExternalLinkIcon aria-hidden="true" className="size-3.5" />
+</a>
+```
+
+`target="_blank"` 在新标签页打开 GitHub，`rel="noreferrer"` 让新页面无法通过 `window.opener` 控制 RoostMap 的页面，也不发送来源地址。链接加入之前，先确认仓库是公开的，否则其他人点开会看到 404：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://github.com/Robert-J-WANG/RoostMap
+```
+
+```text
+200
+```
+
+#### 8.4 测试
+
+路由测试在检查页脚来源说明之后，加入一项检查：页脚的 GitHub 链接指向仓库地址。首页的浏览器测试加入一项检查：`og:image` 指向 `/images/og-image.jpg`。
+
+### 9. 验证并完成 Git 操作
+
+#### 9.1 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 通过。测试结果为：
+
+```text
+Test Files  15 passed (15)
+     Tests  76 passed (76)
+```
+
+构建结果中与本节有关的部分：
+
+```text
+dist/index.html                                                            1.70 kB │ gzip:   0.85 kB
+dist/assets/index-DtF8MiTE.js                                          2,036.46 kB │ gzip: 583.54 kB
+```
+
+`index.html` 从 0.63 kB 变为 1.70 kB，增加的是分享预览标签；JavaScript 增加 0.63 kB，来自页脚的链接和图标。Playwright 运行 11 个测试，10 个通过，404 测试按预期在本地跳过。
+
+#### 9.2 提交并推送
+
+这些修改作为第二个提交推送到同一个分支，已经打开的 Pull Request 会自动加入这个提交并重新运行检查：
+
+```bash
+git add README.md docs index.html public/images/og-image.jpg src tests
+git commit -m "feat: add the README showcase, share preview and source link"
+git push
+```
+
+分支在第一次推送时已经用 `-u` 设置了跟踪的远程分支，之后直接运行 `git push` 即可。
+
+#### 9.3 Pull Request 和 Preview
+
+Pull Request 在新的提交上重新运行 Quality、Deploy 和 Deployed smoke test，三个 job 全部通过。
+
+#### 9.4 合并并完成收尾
+
+用 squash merge 合并 Pull Request，两个提交合并为 `main` 上的一个提交。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
 
 ```bash
 git switch main
@@ -16315,6 +16439,8 @@ git push origin --delete feat/mvp-ui-polish
 ✅ Area Detail 显示区域边界，指标区分主次，12 个月变化区分涨跌
 ✅ Home 有产品截图、照片背景和清楚的区块；数据来源统一放在页脚
 ✅ Methodology 加宽，有本页目录和整理后的已知限制
+✅ README 有产品截图、技术亮点和技术栈
+✅ 页面有分享预览所需的 Open Graph 标签和 1200×630 预览图，页脚链接到公开的源代码仓库
 ✅ 桌面、手机和深色模式下的主要页面已在浏览器中检查，没有横向滚动
 ✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
 ✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过

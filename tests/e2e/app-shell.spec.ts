@@ -12,6 +12,10 @@ test("loads the application shell", async ({ page }) => {
     /New Zealand rental areas/,
   );
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/favicon.svg");
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    /\/images\/og-image\.jpg$/,
+  );
 
   await expect(
     page.getByRole("heading", {

@@ -1,3 +1,4 @@
+import { ExternalLinkIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 
@@ -70,9 +71,21 @@ export function AppShell({ children }: AppShellProps) {
           CC BY 许可要求注明来源，统一放在每页的页脚，下载日期、校验值和计算规则在 Methodology 中。 */}
       <footer className="border-t bg-muted">
         <div className="mx-auto w-full max-w-[var(--content-max-width)] space-y-2 px-[var(--page-gutter)] py-6 text-xs leading-5 text-muted-foreground">
-          <p className="text-sm font-medium text-foreground">
-            RoostMap · New Zealand rental-area evidence from official data
-          </p>
+          {/* 标题和源代码链接：一个独立设计开发的作品集项目，代码公开在 GitHub。 */}
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-foreground">
+              RoostMap · New Zealand rental-area evidence from official data
+            </p>
+            <a
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              href="https://github.com/Robert-J-WANG/RoostMap"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Source code on GitHub
+              <ExternalLinkIcon aria-hidden="true" className="size-3.5" />
+            </a>
+          </div>
           <p className="max-w-3xl">
             Data: MBIE Rental Bond Data (CC BY 3.0 NZ) · Stats NZ Statistical
             Area 2 Higher Geographies 2019 (CC BY 4.0 International). Basemap ©
