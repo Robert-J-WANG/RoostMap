@@ -14285,3 +14285,79 @@ release 测试用 contract 检查了全国 79.1 MB 的数据，包括每个边�
 | Explore `?sa2=179900` | 显示 Waikato 的 222 个区域，选中 Greensboro，列表和地图正常 |
 
 Explore 只请求了 manifest，以及 `2026-04-01.2` 中 Waikato 的当前租金和边界，没有请求租金历史文件，其他 Region 的文件也没有下载。
+
+#### 7.2 分两次提交并推送
+
+代码和生成的数据分成两个提交。代码提交只包含流水线、contract、页面、测试和笔记，审查时不会被几十 MB 的数据淹没；数据提交只包含 release 文件，以后需要回滚数据时，可以只 revert 这一个提交。
+
+旧版本的删除和新版本属于数据的变化，所以先把之前暂存的删除撤出暂存区，留到数据提交：
+
+```bash
+git add data/fixtures/first-slice/mbie-records.csv data/pipeline/build-release.mjs data/pipeline/current-rents.mjs data/pipeline/current-rents.test.mjs data/pipeline/release.test.mjs data/pipeline/rent-history.mjs data/pipeline/rent-history.test.mjs data/source-lock.json docs/steps.md src/data/contracts.test.ts src/data/contracts.ts src/data/repository.test.ts src/data/repository.ts src/data/selection.ts src/features/explore/AreaList.tsx src/features/explore/AreaMap.tsx src/lib/format.ts src/pages/AreaDetailPage.tsx src/pages/ExplorePage.tsx src/pages/HomePage.tsx src/pages/MethodologyPage.tsx src/test/release-fixtures.ts
+git restore --staged public/data/releases/2026-04-01.1
+git commit -m "feat: extend the data pipeline to national rents and rent history"
+```
+
+`git restore --staged` 只改变暂存状态，旧版本的文件仍然是删除状态。
+
+```bash
+git add public/data
+git commit -m "data: publish the national 2026-04-01.2 release"
+```
+
+数据提交的输出中有一行：
+
+```text
+rename public/data/releases/{2026-04-01.1 => 2026-04-01.2}/geometry/regions/03.geo.json (100%)
+```
+
+Git 发现旧版本的 Waikato 边界与新版本中的一个文件内容完全相同，就把这一对删除和新增显示为重命名。这说明 Waikato 的边界在新版本中没有任何变化。
+
+推送分支：
+
+```bash
+git push -u origin feat/national-data
+```
+
+```text
+Writing objects: 100% (96/96), 18.89 MiB | 4.29 MiB/s, done.
+```
+
+79.1 MB 的 JSON 压缩后实际上传 18.89 MiB。
+
+#### 7.3 Pull Request 和 Preview
+
+在 GitHub 上从 `feat/national-data` 向 `main` 创建 Pull Request，标题为 `feat: generate the national data release`。CI 依次运行三个 job：Quality 在 runner 上运行 `npm run check`；Deploy 把包含全国数据的 `dist` 部署为 Azure Preview；Deployed smoke test 用 Preview 地址运行 Playwright，包括只在部署环境中运行的 404 测试。三个 job 全部通过。
+
+#### 7.4 合并并完成收尾
+
+用 squash merge 合并 Pull Request。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+
+在本地切换到更新后的 main，删除已经合并的分支，并为这个 Step 打上 tag：
+
+```bash
+git switch main
+git pull --ff-only
+git branch -D feat/national-data
+git push origin --delete feat/national-data
+git tag step-09-complete
+git push origin step-09-complete
+```
+
+### Step 09 完成状态
+
+```text
+✅ 发布分类使用白名单，不发布的卧室值不进入任何文件
+✅ 当前租金覆盖全部发布的住宅类型和卧室数
+✅ 1 卧的 12 个月变化不跨越 2024-10-01 的分类变化计算
+✅ 每个 Region 都有与当前租金使用同一组区域的租金历史
+✅ 全国 release 2026-04-01.2 包含 16 个 Region、2,009 个区域，结果可以重复生成
+✅ 全国数据体积在 GitHub 和 Azure Static Web Apps 的限制以内
+✅ 4 个代表区域的值与源记录手工计算一致
+✅ 现有页面读取新的数据结构，显示内容与之前相同
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+✅ 全国数据 release 已通过 squash merge 合并到 main
+✅ Production 部署和 Production smoke test 全部通过
+✅ main 上已打 tag step-09-complete，已完成的分支已删除
+```

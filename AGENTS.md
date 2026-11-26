@@ -346,11 +346,14 @@ Rules:
 - begin the next step only after the current acceptance criteria pass;
 - record useful mistakes and fixes instead of hiding the learning path.
 
-The final section and status block of each Step record the squash merge to
-`main`, the Production smoke test and the `step-NN-complete` tag as the
-expected results. They are written before the merge so that they are part of
-the Step's own Pull Request. If a real result differs, correct the record
-through a `fix/` branch. The next Step does not backfill these results.
+The final section and status block of each Step record the Pull Request checks
+(Quality, Deploy and Deployed smoke test), the squash merge to `main`, the
+Production smoke test and the `step-NN-complete` tag as the expected results.
+They are written after the local checks pass and before the first push, so the
+whole note is part of the Step's own Pull Request. Local checks are still
+recorded only from real output. If a real result differs, correct the code or
+the record before merging, or through a `fix/` branch after merging. The next
+Step does not backfill these results.
 
 Do not introduce a later dependency, folder, database field or abstraction early
 unless the current step genuinely requires it.
@@ -533,9 +536,9 @@ improbable failures unless the owner explicitly requests them.
 
 Never describe an unexecuted test, build, workflow, Preview or deployment as
 passing. If a check cannot run, state the exact blocker and whether it is caused
-by the change or the environment. The only exception is the expected merge,
-Production smoke test and tag recorded at the end of each Step, as defined in
-Section 7.
+by the change or the environment. The only exception is the expected Pull Request
+checks, merge, Production smoke test and tag recorded at the end of each Step,
+as defined in Section 7.
 
 The CI baseline is created after the project quality scripts and application
 shell are stable, then extended in the same Step that introduces each new
