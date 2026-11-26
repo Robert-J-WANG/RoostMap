@@ -1,13 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/bricolage-grotesque";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Geist Variable", sans-serif;
+  /* 正文使用 DM Sans，标题使用更有个性的 Bricolage Grotesque。 */
+  --font-heading: "Bricolage Grotesque Variable", sans-serif;
+  --font-sans: "DM Sans Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -17,6 +19,8 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
+  --color-highlight: var(--highlight);
+  --color-highlight-soft: var(--highlight-soft);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
@@ -49,99 +53,106 @@
 }
 
 :root {
-  --background: #f4f8f7;
-  --foreground: #102a2d;
+  --background: #f5f7fb;
+  --foreground: #14213d;
 
   --card: #ffffff;
-  --card-foreground: #102a2d;
+  --card-foreground: #14213d;
 
   --popover: #ffffff;
-  --popover-foreground: #102a2d;
+  --popover-foreground: #14213d;
 
-  --primary: #0b766e;
-  --primary-foreground: #f7fffd;
+  --primary: #1f4e9c;
+  --primary-foreground: #f5f8ff;
 
-  --secondary: #dcefeb;
-  --secondary-foreground: #174f4b;
+  --secondary: #e4ecf8;
+  --secondary-foreground: #1a3d78;
 
-  --muted: #e8f0ef;
-  --muted-foreground: #536a6b;
+  --muted: #eceff5;
+  --muted-foreground: #56617a;
 
-  --accent: #c9ebe4;
-  --accent-foreground: #124b47;
+  --accent: #dbe6f7;
+  --accent-foreground: #16376d;
 
   --destructive: #b5473c;
-  --border: #cedddb;
-  --input: #b8ceca;
-  --ring: #138a80;
+  --border: #d6deea;
+  --input: #c3cfe2;
+  --ring: #2c62c0;
 
-  --chart-1: #0f766e;
+  --chart-1: #1f4e9c;
   --chart-2: #2f6f9f;
   --chart-3: #d18b2c;
   --chart-4: #c45d55;
   --chart-5: #7663a6;
 
-  --sidebar: #edf5f3;
-  --sidebar-foreground: #102a2d;
-  --sidebar-primary: #0b766e;
-  --sidebar-primary-foreground: #f7fffd;
-  --sidebar-accent: #dcefeb;
-  --sidebar-accent-foreground: #174f4b;
-  --sidebar-border: #cedddb;
-  --sidebar-ring: #138a80;
+  /* 暖色强调（珊瑚色）：用于品牌点缀、小标题和租金上涨，与主色的蓝色形成对比。 */
+  --highlight: #d9573a;
+  --highlight-soft: #fdebe5;
+
+  --sidebar: #eef2f9;
+  --sidebar-foreground: #14213d;
+  --sidebar-primary: #1f4e9c;
+  --sidebar-primary-foreground: #f5f8ff;
+  --sidebar-accent: #e4ecf8;
+  --sidebar-accent-foreground: #1a3d78;
+  --sidebar-border: #d6deea;
+  --sidebar-ring: #2c62c0;
 
   --radius: 0.75rem;
 
   --content-max-width: 72rem;
   --page-gutter: clamp(1rem, 4vw, 2rem);
   --section-space: clamp(3rem, 8vw, 6rem);
-  --page-glow: rgb(13 148 136 / 0.13);
-  --surface-shadow: 0 24px 60px rgb(16 42 45 / 0.1);
+  --page-glow: rgb(44 98 192 / 0.12);
+  --surface-shadow: 0 24px 60px rgb(20 33 61 / 0.1);
 }
 
 .dark {
-  --background: #0b1719;
-  --foreground: #e7f2ef;
+  --background: #0b1220;
+  --foreground: #e6ecf7;
 
-  --card: #122326;
-  --card-foreground: #e7f2ef;
+  --card: #111a2c;
+  --card-foreground: #e6ecf7;
 
-  --popover: #15292c;
-  --popover-foreground: #e7f2ef;
+  --popover: #131d31;
+  --popover-foreground: #e6ecf7;
 
-  --primary: #5fd3c4;
-  --primary-foreground: #07201e;
+  --primary: #7aa7f5;
+  --primary-foreground: #0b1530;
 
-  --secondary: #1b3638;
-  --secondary-foreground: #c5e2dc;
+  --secondary: #1a2740;
+  --secondary-foreground: #c9d7f2;
 
-  --muted: #182a2d;
-  --muted-foreground: #9fb4b2;
+  --muted: #152036;
+  --muted-foreground: #9aa8c2;
 
-  --accent: #214b49;
-  --accent-foreground: #d9f4ee;
+  --accent: #1e3157;
+  --accent-foreground: #dbe6fb;
 
   --destructive: #ff8a7d;
-  --border: #294043;
-  --input: #365054;
-  --ring: #54c9ba;
+  --border: #24324d;
+  --input: #30415f;
+  --ring: #6f9cf0;
 
-  --chart-1: #57c8b8;
+  --chart-1: #7aa7f5;
   --chart-2: #70a7d8;
   --chart-3: #e6ad5c;
   --chart-4: #ef8074;
   --chart-5: #aa91d8;
 
-  --sidebar: #0f2023;
-  --sidebar-foreground: #e7f2ef;
-  --sidebar-primary: #5fd3c4;
-  --sidebar-primary-foreground: #07201e;
-  --sidebar-accent: #1b3638;
-  --sidebar-accent-foreground: #c5e2dc;
-  --sidebar-border: #294043;
-  --sidebar-ring: #54c9ba;
+  --highlight: #f39a7d;
+  --highlight-soft: #3a2219;
 
-  --page-glow: rgb(45 212 191 / 0.12);
+  --sidebar: #0f1829;
+  --sidebar-foreground: #e6ecf7;
+  --sidebar-primary: #7aa7f5;
+  --sidebar-primary-foreground: #0b1530;
+  --sidebar-accent: #1a2740;
+  --sidebar-accent-foreground: #c9d7f2;
+  --sidebar-border: #24324d;
+  --sidebar-ring: #6f9cf0;
+
+  --page-glow: rgb(96 140 230 / 0.12);
   --surface-shadow: 0 26px 70px rgb(0 0 0 / 0.32);
 }
 
@@ -151,6 +162,20 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /* 字号层级：页面只使用下面四级，不随意增加中间字号。
+     1. 标题 text-3xl：每页的 h1、首页的区块标题、详情页的主要租金。
+     2. 小标题 text-lg：卡片和小节的标题（h2、h3）、卡片中的数值。
+     3. 正文 text-sm：界面文字；较长的说明段落用 text-base。
+     4. 标签 text-xs：字段名称、状态标记、地图图例和页脚。
+     唯一的例外是首页主标题，使用更大的 text-5xl 作为展示标题。 */
+
+  /* 所有标题统一使用标题字体，字距略收紧。 */
+  h1,
+  h2,
+  h3 {
+    @apply font-heading tracking-tight;
   }
 
   body {

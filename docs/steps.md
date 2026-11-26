@@ -15839,3 +15839,611 @@ git push origin --delete release/mvp
 ✅ Production 部署和 Production smoke test 全部通过
 ✅ main 上已打 tag v0.1.0，已完成的分支已删除
 ```
+
+---
+
+## Step 13 · 优化 MVP 的首次体验
+
+### 这一步做什么
+
+Step 12 发布了 `v0.1.0`：全国 16 个 Region 的 Explore、按分类筛选、区域详情和租金历史都在 Production 上通过了测试，公开说明也与功能一致。功能和数据已经完整，但打开网站的人最先感受到的是界面，而界面基本停留在搭建功能时的样子：首页只有文字，页面之间缺少视觉层次，地图和列表在常见的笔记本屏幕上放不进第一屏。
+
+本步不增加数据、筛选或页面，只优化已发布页面的首次体验：先在 Production 上实际检查一遍，找出具体问题，再建立统一的视觉规范，依次改进 Home、Explore、Area Detail 和 Methodology。
+
+```text
+在 Production 上检查已发布的 MVP
+→ 建立视觉规范：配色、字体、字号层级和地图底图
+→ Explore：一屏内的地图和列表、地图交互
+→ Area Detail：区域边界和指标层次
+→ Home 和 Methodology：区块结构、背景和来源说明
+→ 验证并提交界面优化
+→ 补上项目的入口：README、分享预览和源代码链接
+→ 验证并完成 Git 操作
+```
+
+本步完成后，主要页面在桌面、手机和深色模式下都有清楚的层次，显示的数据与 Step 12 相同，现有测试全部通过。
+
+### 1. 建立界面优化分支
+
+本步改进已有页面的界面，分支使用 `feat` 类别，`mvp-ui-polish` 说明范围：
+
+```bash
+git switch -c feat/mvp-ui-polish
+```
+
+开发大纲中原来的 Step 13–20 顺延为 Step 14–21，在 Step 12 之后插入本步，V1 和 V2 的版本 tag 随之移到 Step 18 和 Step 21。
+
+### 2. 在 Production 上检查已发布的 MVP
+
+在浏览器中打开 Production，分别用 1440×900 的桌面窗口、375px 的手机宽度和深色模式走一遍各页面，记录看到的问题：
+
+| 位置 | 问题 |
+|---|---|
+| Home | 介绍区只有标题和文字，没有产品画面和图标；页头只有 "RoostMap" 文字 |
+| 所有页面 | `main` 的上下边距最大为 6rem，标题前留出一大块空白 |
+| Explore（桌面） | 地图只露出一部分，图例在第一屏以外；右栏较窄，"Thames-Coromandel District" 折成三行 |
+| Explore（列表） | 区域按文件中的 SA2 编号排列，看起来没有顺序 |
+| Explore（地图） | 深色模式下页面变暗，底图仍是浅色街道图 |
+| Explore（手机） | 三个筛选框占据大半个第一屏，地图从 542px 处才开始；列表在页面滚动中还有自己的滚动区域 |
+| Area Detail | 五个指标使用同样的样式；12 个月变化不区分涨跌；没有区域边界 |
+| 所有页面底部 | 每页都重复显示同一段数据说明 |
+
+产品设计要求 Area Detail 显示 "SA2 名称、上级地理和边界"，边界是 MVP 中遗漏的一项。
+
+页面加载时下载的数据也做了测量。Production 上的 JavaScript 压缩后为 562 KB；Waikato 的边界文件压缩后为 1.83 MB，其中坐标保留了 14 位小数。加载性能留到之后处理，本步只处理界面和交互。
+
+### 3. 建立视觉规范
+
+问题分散在各个页面，但很多来自同一个原因：颜色、字号和圆角没有统一的规则，每个组件各自决定。所以先确定规则，再逐页修改。
+
+#### 3.1 配色
+
+原来的主色是青绿色，界面和地图的低租金分段都偏绿，整体显得单调。主色改为港湾蓝，再加一个珊瑚色作为强调色，用于小标题、租金上涨和 "Provisional" 标记。颜色都定义为 `src/styles/index.css` 中的 CSS 变量，深色模式在 `.dark` 中有对应的值：
+
+```css
+:root {
+  --background: #f5f7fb;
+  --foreground: #14213d;
+  --primary: #1f4e9c;
+  --secondary: #e4ecf8;
+  --accent: #dbe6f7;
+  --muted-foreground: #56617a;
+
+  /* 暖色强调（珊瑚色）：用于品牌点缀、小标题和租金上涨，与主色的蓝色形成对比。 */
+  --highlight: #d9573a;
+  --highlight-soft: #fdebe5;
+}
+```
+
+```css
+@theme inline {
+  --color-highlight: var(--highlight);
+  --color-highlight-soft: var(--highlight-soft);
+}
+```
+
+`@theme inline` 把变量注册为 Tailwind 的颜色，组件中可以直接写 `text-highlight`、`bg-highlight-soft`。地图的三个租金分段颜色不变，它们表示的是数据含义。
+
+#### 3.2 字体和字号层级
+
+原来的 Geist 偏正式。正文改为 DM Sans，标题改为更有个性的 Bricolage Grotesque。两个字体都通过 Fontsource 安装，许可证为 OFL-1.1，打包后随网站一起发布，不请求外部字体服务：
+
+```bash
+npm install @fontsource-variable/bricolage-grotesque @fontsource-variable/dm-sans
+npm uninstall @fontsource-variable/geist
+```
+
+```css
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/bricolage-grotesque";
+
+@theme inline {
+  --font-heading: "Bricolage Grotesque Variable", sans-serif;
+  --font-sans: "DM Sans Variable", sans-serif;
+}
+```
+
+原来的页面一共使用了 9 种字号。字号越多，层次反而越不清楚，所以规定只用四级，写在样式文件中，所有页面照此使用：
+
+```css
+/* 字号层级：页面只使用下面四级，不随意增加中间字号。
+   1. 标题 text-3xl：每页的 h1、首页的区块标题、详情页的主要租金。
+   2. 小标题 text-lg：卡片和小节的标题（h2、h3）、卡片中的数值。
+   3. 正文 text-sm：界面文字；较长的说明段落用 text-base。
+   4. 标签 text-xs：字段名称、状态标记、地图图例和页脚。
+   唯一的例外是首页主标题，使用更大的 text-5xl 作为展示标题。 */
+h1,
+h2,
+h3 {
+  @apply font-heading tracking-tight;
+}
+```
+
+卡片圆角统一为 `rounded-xl`；浮在地图上的卡片、图例和卡片中的小块使用 `rounded-lg`。页面内容的上边距从最大 6rem 改为 `pt-8 sm:pt-10`。
+
+#### 3.3 品牌标识和图标
+
+页头的 "RoostMap" 文字前加上与 favicon 相同的房屋图形，组件 `src/components/layout/BrandMark.tsx` 用 CSS 变量着色，深色模式下随主题变化。指标、功能说明和 Methodology 的小节标题使用项目已有的 Lucide 图标。
+
+12 个月变化在列表、选中卡片和详情页中都要区分涨跌，新增共用组件 `src/components/ChangeIndicator.tsx`：
+
+```tsx
+// 12 个月变化：箭头和颜色表示方向，文字仍然是带正负号的百分比。
+// 上涨使用暖色，下降使用主题色，没有变化或无法计算时使用中性色。
+export function ChangeIndicator({ change, className }: ChangeIndicatorProps) {
+  let Icon = MinusIcon;
+  let colour = "text-muted-foreground";
+
+  if (change !== null && change > 0) {
+    Icon = TrendingUpIcon;
+    colour = "text-highlight";
+  } else if (change !== null && change < 0) {
+    Icon = TrendingDownIcon;
+    colour = "text-primary";
+  }
+
+  return (
+    <span className={cn("inline-flex items-center gap-1 tabular-nums", colour, className)}>
+      <Icon aria-hidden="true" className="size-[1em]" />
+      {formatChange(change)}
+    </span>
+  );
+}
+```
+
+颜色只是辅助，文字仍然显示带正负号的百分比，方向不依赖颜色判断。`tabular-nums` 让数字使用等宽字形，列表中上下行的数字对齐。
+
+#### 3.4 地图底图跟随主题
+
+地图相关的设置移到 `src/lib/map.ts`，供各页面的地图共用：Worker 地址、按主题选择的底图样式，以及原来在 `AreaMap` 中计算范围的 `getMapBounds`。
+
+底图从街道图改为 MapTiler 的 `dataviz` 样式。它的颜色较淡，适合在上面叠加租金填色，并且有对应的深色版本：
+
+```ts
+// MapTiler 的 dataviz 底图颜色较淡，适合在上面叠加租金填色；深色模式使用对应的深色版本。
+export function getBasemapStyleUrl(theme: Theme, mapTilerKey: string): string {
+  const style = theme === "dark" ? "dataviz-v4-dark" : "dataviz-v4";
+
+  return `https://api.maptiler.com/maps/${style}/style.json?key=${mapTilerKey}`;
+}
+```
+
+地图需要知道当前主题，而主题只记录在 `<html>` 的 `dark` class 上，由主题切换按钮修改。新增 `src/app/theme/useDocumentTheme.ts`，用 React 的 `useSyncExternalStore` 订阅这个 class 的变化：
+
+```ts
+// 主题记录在 <html> 的 class 上（"dark"）。用 MutationObserver 监听 class 变化，
+// 切换主题时，使用这个 hook 的组件（例如地图）随之重新渲染。
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributeFilter: ["class"] });
+
+  return () => observer.disconnect();
+}
+
+export function useDocumentTheme() {
+  return useSyncExternalStore(subscribe, getDocumentTheme);
+}
+```
+
+`useSyncExternalStore` 用于读取 React 之外的数据：`subscribe` 告诉 React 数据什么时候可能变化，`getDocumentTheme` 读出当前值。切换主题后地图收到新的 `mapStyle`，换成对应的底图。
+
+租金分段的阈值和颜色原来写在 `AreaMap` 中。列表也要用同样的颜色标记每个区域，所以移到 `src/lib/rentBands.ts`，地图填色、图例和列表共用。
+
+### 4. Explore：一屏内的地图和列表
+
+#### 4.1 布局
+
+标题和筛选压缩后，地图和列表所在的网格在桌面上占满第一屏剩余的高度：
+
+```tsx
+<div className="grid grid-cols-1 gap-4 lg:h-[calc(100svh-19rem)] lg:min-h-[480px] lg:grid-cols-[minmax(0,1fr)_23rem]">
+```
+
+`100svh` 是窗口高度，减去页头、标题和筛选占用的约 19rem，就是地图和列表可用的高度。在 1440×900 的窗口中，网格底边位于 894px，地图和列表完整显示在第一屏内。列表在右栏内滚动，图例叠放在地图左下角。
+
+筛选改为一行带图标的工具栏。原生 `<select>` 的箭头离右边框太近，用 `appearance-none` 去掉浏览器自带的箭头，在右侧放一个与左侧图标对称的 `ChevronDownIcon`。
+
+#### 4.2 列表
+
+列表改为按区域名称排列。排序生成新数组，不改变查询缓存中的数据：
+
+```tsx
+// 文件中的区域按 SA2 编号排列，列表改为按名称排列，便于查找。
+// 排序生成新数组，不改变查询缓存中的数据。
+const sortedAreas = useMemo(
+  () => [...areas].sort((a, b) => a.name.localeCompare(b.name)),
+  [areas],
+);
+```
+
+`Array.prototype.sort` 会修改原数组，而 `areas` 是 TanStack Query 缓存中的同一个数组，地图也在使用它，所以先用展开语法复制一份再排序。
+
+每一行前面加一个与地图填色相同的小圆点，12 个月变化使用 `ChangeIndicator`。各部分之间保留空格，文字仍然是一句完整的 "171 bonds · 12-month change +1.3%"，原有的测试不需要修改。
+
+#### 4.3 选中区域卡片
+
+选中区域的卡片原来在右栏、列表上方。点击地图时，视线在地图上，不容易注意到右栏的变化。新增 `src/features/explore/SelectedAreaCard.tsx`，桌面上浮在地图左上角，手机上排在地图下方。卡片使用半透明背景加模糊，仍能隐约看到下面的地图；显示所选分类的租金和 12 个月变化，详情按钮单独一行、占满卡片宽度。
+
+#### 4.4 地图交互
+
+点击一个区域后，地图原来会自动放大到这个区域。在一个 Region 中连续比较几个区域时，每点一次就放大一次，还要再缩小才能看到其他区域。现在地图打开时显示整个 Region，选中只用边框标出，不改变缩放：
+
+```tsx
+// 地图创建时显示整个 Region，URL 中已有的选择用边框标出，不自动放大。
+const [initialViewState] = useState(() => ({
+  bounds: getMapBounds(geometry.features),
+  fitBoundsOptions: { padding: 40 },
+}));
+
+// 选中区域变化时不改变缩放级别。在列表中选中一个不在当前视野内的区域时，
+// 地图平移到它的中心，否则选中的边框看不到；在地图上点击的区域本来就在视野内，地图不动。
+useEffect(() => {
+  const map = mapRef.current;
+  const selectedFeature = geometry.features.find(
+    (feature) => feature.id === selectedSa2Id,
+  );
+
+  if (!map || !selectedFeature) {
+    return;
+  }
+
+  const [[west, south], [east, north]] = getMapBounds([selectedFeature]);
+  const centre: [number, number] = [(west + east) / 2, (south + north) / 2];
+
+  if (!map.getBounds().contains(centre)) {
+    map.easeTo({ center: centre });
+  }
+}, [geometry, selectedSa2Id]);
+```
+
+桌面上地图和列表已经放进一屏，页面几乎不需要滚动，鼠标滚轮直接缩放地图。
+
+#### 4.5 手机宽度下的横向滚动
+
+在 375px 的手机宽度下检查时，页面宽度为 459px，出现了横向滚动。原因是网格在手机上没有指定列，只有一列时列宽由内容决定，地图的 canvas 把列撑宽了。加上 `grid-cols-1`，单列宽度等于容器宽度，地图和右栏的子元素再加上 `min-w-0`：
+
+```tsx
+{/* grid-cols-1 让手机上的单列宽度等于页面宽度，地图不会把页面撑宽。 */}
+<div className="grid grid-cols-1 gap-4 lg:h-[calc(100svh-19rem)] ...">
+```
+
+修改后页面宽度为 375px。手机上的图例也从地图上移到地图下方，不再遮挡地图；筛选改为 Region 占一整行、两个分类并排，地图的起点从 542px 提前到 467px。列表在手机上不再有自己的滚动区域，跟随页面滚动。
+
+#### 4.6 快速连续筛选时丢失选择
+
+浏览器测试先选择 House、再选择 3 卧时，有时 URL 只剩 `?bedrooms=3`，House 的选择丢失了：
+
+```text
+Expected pattern: /\/explore\?dwelling=House&bedrooms=3$/
+Received string:  "http://127.0.0.1:5173/explore?bedrooms=3"
+```
+
+在两次选择之间等待 URL 变为 `?dwelling=House` 之后，问题仍然偶尔出现，说明 URL 已经更新，页面却还在使用旧的选择。React Router 默认把 URL 更新放进 React 的 transition：URL 先改变，页面重新渲染被安排在稍后进行。Explore 的重新渲染要处理地图的全部边界和列表的 222 行，第二次选择发生在重新渲染之前，选择框的 `onChange` 使用的仍是上一次渲染时的 `selection`，于是基于 `dwelling=ALL` 写出了新的 URL。
+
+`setSearchParams` 的 `flushSync` 选项让这次更新立即渲染，而不是放进 transition：
+
+```tsx
+// React Router 默认把 URL 更新放进 React transition，页面稍后才重新渲染；
+// flushSync 让页面立即按新的选择渲染，紧接着的下一次选择不会基于旧的选择。
+function changeSelection(selection: Selection) {
+  setSearchParams(toSearch(selection), {
+    replace: true,
+    preventScrollReset: true,
+    flushSync: true,
+  });
+}
+```
+
+修改后，三个涉及筛选的浏览器测试各连续运行 4 次，12 次全部通过。两个测试在每次选择后都检查一次 URL，确认每次选择都保存下来。
+
+### 5. Area Detail：区域边界和指标层次
+
+#### 5.1 区域边界
+
+新增 `src/features/areas/AreaBoundaryMap.tsx`，显示这个 SA2 的边界和周围的区域。地图只用于确认位置，设置 `interactive={false}`，不能拖动或点击。边界来自与 Explore 相同的 Region 边界查询，从 Explore 进入时直接使用缓存：
+
+```tsx
+// 租金历史只在详情页读取，与当前租金同时开始请求；它的加载和失败只影响历史部分。
+// 边界与 Explore 共用同一个查询，从 Explore 进入时不再下载。
+const rentHistoryQuery = useRegionRentHistory(partition);
+const geometryQuery = useRegionGeometry(partition);
+```
+
+地图的 `paint` 属性是交给 MapLibre 的数值，不能读取 CSS 变量，所以按主题直接写出与主色相同的颜色值：
+
+```tsx
+// 地图的 paint 属性不能读取 CSS 变量，这里使用与主题主色相同的颜色值。
+const areaColour = theme === "dark" ? "#7aa7f5" : "#1f4e9c";
+```
+
+#### 5.2 指标的主次
+
+最新观测的中位租金是页面最重要的数值，使用标题级的 `text-3xl`。其余四项放进带图标的小卡片，数值使用小标题级的 `text-lg`，手机上两列排列。每项仍然是 `<dt>` 标签加 `<dd>` 数值，原有的测试按标签找到数值，不需要修改。
+
+### 6. Home 和 Methodology：区块结构和来源说明
+
+#### 6.1 数据说明统一放到页脚
+
+Home、Explore 和 Area Detail 底部原来都显示同一段数据说明：状态说明、数据含义、来源和许可证。CC BY 许可要求注明来源，但不要求每页单独一块。说明改为全站页脚中的一行小字，`DataReleaseNotice` 组件删除：
+
+```tsx
+<footer className="border-t bg-muted">
+  <div className="... space-y-2 py-6 text-xs leading-5 text-muted-foreground">
+    <p className="text-sm font-medium text-foreground">
+      RoostMap · New Zealand rental-area evidence from official data
+    </p>
+    <p className="max-w-3xl">
+      Data: MBIE Rental Bond Data (CC BY 3.0 NZ) · Stats NZ Statistical
+      Area 2 Higher Geographies 2019 (CC BY 4.0 International). Basemap ©
+      MapTiler © OpenStreetMap contributors. Home photo: Sebastian
+      Schuster on Unsplash. Figures describe new bonds lodged with MBIE,
+      not live listings.
+    </p>
+  </div>
+</footer>
+```
+
+页脚使用与页面不同的背景色，`main` 的下边距加大到 `pb-20 sm:pb-24`，页脚与页面内容明显分开。数据的 provisional 状态仍然显示在每个数据季度旁边；"Provisional" 标记改为珊瑚色，鼠标停留时说明含义，完整的说明在 Methodology 中。
+
+#### 6.2 Home
+
+Home 分为三个部分：
+
+- **介绍**：左边是标题、说明、两个按钮和当前数据 release；当前 release 用一行三项的统计显示，用竖线分隔。右边是 Explore 页面的截图，截图后方有点阵和一团柔和的珊瑚色光晕作为装饰。
+- **功能**：三列编号说明，每列顶部一条分隔线，加上圆形图标和 01、02、03。
+- **数据来源**：一行说明和 "How the data is processed" 链接，详细内容在 Methodology 中。
+
+截图用项目已有的 Playwright 从本地页面截取，是真实的界面：
+
+```js
+const page = await browser.newPage({ viewport: { width: 1280, height: 1060 }, deviceScaleFactor: 1.5 });
+await page.goto("http://localhost:5173/explore?region=09&sa2=250900");
+await page.locator(".maplibregl-canvas").waitFor();
+await page.waitForTimeout(4500);
+const grid = page.locator(".maplibregl-map").locator('xpath=ancestor::div[contains(@class,"grid")][1]');
+await grid.screenshot({ path: "public/images/explore-preview.jpg", type: "jpeg", quality: 80 });
+```
+
+得到 1632×1134、159 KB 的 `public/images/explore-preview.jpg`。
+
+介绍区的背景是一张惠灵顿港的照片，作者为 Sebastian Schuster，按 Unsplash License 免费使用。原图 1920×1440、478 KB，先下载到单独的文件夹，确认是 JPEG 后，用 macOS 自带的 `sips` 裁掉大部分天空、缩小并压缩：
+
+```bash
+sips -c 900 1920 --cropOffset 420 0 wellington.jpg --out cropped.jpg
+sips --resampleWidth 1600 -s format jpeg -s formatOptions 55 cropped.jpg --out public/images/wellington-harbour.jpg
+```
+
+结果为 1600×750、204 KB。照片铺满整个页面宽度，降低不透明度和饱和度，再叠一层背景色渐变，只隐约可见：
+
+```tsx
+<div
+  aria-hidden="true"
+  className="pointer-events-none absolute -top-24 bottom-0 left-1/2 -z-20 w-screen -translate-x-1/2 overflow-hidden"
+>
+  <img
+    alt=""
+    className="h-full w-full object-cover object-[center_65%] opacity-45 saturate-[0.7] dark:opacity-25"
+    src="/images/wellington-harbour.jpg"
+  />
+  <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/55 to-background" />
+</div>
+```
+
+照片只是装饰，`alt=""` 和 `aria-hidden` 让它不被当作内容。`w-screen` 让它超出内容区、铺满窗口宽度，页面根元素因此加上 `overflow-x-clip`，避免出现横向滚动。照片作者写在页脚和 README 中。
+
+页面内容底部还有一个很淡的城市剪影 `src/components/CitySkyline.tsx`，用 SVG 画出远山、十栋楼和两条水面线，左右两端用 `mask-image` 渐隐。所有页面顶部共用一条很淡的等高线背景 `src/components/ContourBackdrop.tsx`，由页面根元素 `AppShell` 统一放置。
+
+在 390px 的手机宽度下检查首页时，页面宽度为 394px。截图后方的点阵用 `-right-5` 向右超出了 20px，而手机上页面两侧的边距只有 16px。改为手机上 `-right-3`、`sm:` 以上 `-right-5` 后，首页、Explore、详情页和 Methodology 在 360、390、768 和 1440px 四种宽度下都没有横向滚动。
+
+#### 6.3 Methodology
+
+Methodology 原来是一列 `max-w-3xl` 的长文。现在占满内容宽度：标题下用一行三个要点概括整页最重要的规则；桌面上左侧是 "On this page" 目录，滚动时固定在窗口中，右侧是各节说明，行宽仍保持在 `max-w-3xl`。每节有 `id` 供目录跳转，`scroll-mt-24` 让跳转后标题不被固定的页头挡住。已知限制改为两列小块，左侧的珊瑚色边线提示这是需要注意的内容；当前 release 改为一行四项的统计，两个数据来源并排显示。
+
+### 7. 验证界面优化并提交
+
+#### 7.1 测试的调整
+
+页面测试中，原来检查每页底部数据说明的两个测试，改为检查数据季度旁边的 "Provisional" 标记；来源和许可证改由路由测试检查页脚。首页测试中 Methodology 的链接改为 "How the data is processed"。详情页的测试加入与 Explore 相同的 MapLibre mock，因为详情页现在也渲染地图。
+
+#### 7.2 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 通过。测试结果为：
+
+```text
+Test Files  15 passed (15)
+     Tests  76 passed (76)
+```
+
+构建结果：
+
+```text
+✓ 2658 modules transformed.
+dist/assets/dm-sans-latin-wght-normal-Xz1IZZA0.woff2                      36.93 kB
+dist/assets/bricolage-grotesque-latin-wght-normal-DLoelf7F.woff2          41.34 kB
+dist/assets/index-BTNgvbQA.css                                           120.12 kB │ gzip:  19.39 kB
+dist/assets/index-BPDY8g0k.js                                          2,035.83 kB │ gzip: 583.32 kB
+```
+
+与 Step 12 的 2,001.91 kB（gzip 570.04 kB）相比，JavaScript 增加 33.92 kB（gzip 增加 13.28 kB），来自新增的组件、图标和等高线等装饰图形。浏览器只下载页面实际使用的字符集对应的字体文件。
+
+Playwright 运行 11 个测试，10 个通过，404 测试按预期在本地跳过。
+
+#### 7.3 在浏览器中检查
+
+在 `npm run dev` 中检查了桌面 1440px、手机 375 和 390px 以及深色模式下的 Home、Explore、Area Detail 和 Methodology：
+
+- 深色模式下 Explore 和详情页的边界地图使用深色底图；
+- Explore 的地图和列表在 1440×900 窗口的第一屏内；
+- 点击地图上的区域时地图不移动，在列表中选中视野外的区域时地图平移过去；
+- 详情页显示区域边界，主要租金为 `text-3xl`；
+- 各页面在 360、390、768 和 1440px 宽度下都没有横向滚动。
+
+#### 7.4 提交并推送
+
+```bash
+git add README.md docs package.json package-lock.json public src tests
+git commit -m "feat: polish the MVP interface"
+git push -u origin feat/mvp-ui-polish
+```
+
+#### 7.5 Pull Request 和 Preview
+
+在 GitHub 上从 `feat/mvp-ui-polish` 向 `main` 创建 Pull Request，标题为 `feat: polish the MVP interface`。Quality 在 runner 上运行 `npm run check`；Deploy 把 `dist` 部署为 Azure Preview；Deployed smoke test 用 Preview 地址运行 Playwright。Preview 的地址不在 MapTiler key 的允许列表中，Preview 上不显示底图，浏览器测试不依赖底图。三个 job 全部通过。
+
+### 8. 补上项目的入口
+
+界面完成后，第一次接触 RoostMap 的人还有三个入口没有处理：GitHub 上的 README 只有文字说明；把网址分享到 LinkedIn 或聊天软件时，只显示一个光秃秃的链接；网站上找不到源代码在哪里。这三处也属于首次体验，在同一个分支上继续完成，作为第二个提交加入同一个 Pull Request。
+
+#### 8.1 README 的截图和技术亮点
+
+README 在公开地址下面加入 Explore 页面的截图，直接使用首页的同一张图片：
+
+```markdown
+![The RoostMap Explore page: Wellington rental areas coloured by median weekly rent, with Thorndon selected on the map and in the area list](public/images/explore-preview.jpg)
+```
+
+再加入 "Technical highlights" 和 "Tech stack" 两节。技术亮点只写已经实现并可以在代码中找到的内容：版本化的静态数据 release、Zod 数据 contract、缺失值保持缺失、URL 状态和查询缓存，以及测试和部署流程。其中缓存的说法按实际行为写成 "switching back to a recently viewed Region uses the cached data"，因为查询数据只在不再使用后的 5 分钟内保留。
+
+```markdown
+- **Shareable state.** The selected Region, category and area live in the URL, so a link reopens the same view. TanStack Query caches each Region file by its URL, so switching back to a recently viewed Region uses the cached data.
+```
+
+#### 8.2 分享预览卡片
+
+把网址贴到 LinkedIn、Slack 或聊天软件时，这些平台会读取页面 `<head>` 中的 Open Graph 标签，显示标题、描述和图片。`index.html` 加入这些标签：
+
+```html
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="RoostMap" />
+<meta property="og:title" content="RoostMap · New Zealand rental-area evidence" />
+<meta property="og:description"
+  content="Compare New Zealand rental areas with official MBIE rental bond data: latest rents, Reported Bonds and quarterly rent history for each SA2 area." />
+<meta property="og:url" content="https://victorious-island-0bcdf8f10.3.azurestaticapps.net/" />
+<meta property="og:image" content="https://victorious-island-0bcdf8f10.3.azurestaticapps.net/images/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+```
+
+社交平台从自己的服务器读取图片，不知道页面在哪个域名下，所以 `og:image` 和 `og:url` 必须是完整的公开地址，不能写成 `/images/og-image.jpg`。X（Twitter）在没有自己的标签时会读取 Open Graph 标签，`twitter:card` 只用来要求显示大图。
+
+预览图使用 Open Graph 推荐的 1200×630，用 Playwright 截取首页顶部。第一次截取时，首页的 "Current data release" 区块在 630px 的底边被截断一半，所以截图时临时把这个区块隐藏，页面代码不变：
+
+```js
+const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
+await page.goto("http://localhost:5173/");
+// 只在截图时隐藏首页的当前 release 区块，避免它在 630px 的底边被截断。
+await page.evaluate(() => {
+  const heading = [...document.querySelectorAll("h2")].find((h) => h.textContent === "Current data release");
+  heading.parentElement.style.display = "none";
+});
+await page.screenshot({ path: "public/images/og-image.jpg", type: "jpeg", quality: 82 });
+```
+
+结果为 94 KB 的 `public/images/og-image.jpg`。
+
+#### 8.3 源代码链接
+
+页脚标题的右侧加入 "Source code on GitHub" 链接。项目使用的 Lucide 版本已经没有 GitHub 等品牌图标，所以使用文字加外部链接图标：
+
+```tsx
+<a
+  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+  href="https://github.com/Robert-J-WANG/RoostMap"
+  rel="noreferrer"
+  target="_blank"
+>
+  Source code on GitHub
+  <ExternalLinkIcon aria-hidden="true" className="size-3.5" />
+</a>
+```
+
+`target="_blank"` 在新标签页打开 GitHub，`rel="noreferrer"` 让新页面无法通过 `window.opener` 控制 RoostMap 的页面，也不发送来源地址。链接加入之前，先确认仓库是公开的，否则其他人点开会看到 404：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://github.com/Robert-J-WANG/RoostMap
+```
+
+```text
+200
+```
+
+#### 8.4 测试
+
+路由测试在检查页脚来源说明之后，加入一项检查：页脚的 GitHub 链接指向仓库地址。首页的浏览器测试加入一项检查：`og:image` 指向 `/images/og-image.jpg`。
+
+### 9. 验证并完成 Git 操作
+
+#### 9.1 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 通过。测试结果为：
+
+```text
+Test Files  15 passed (15)
+     Tests  76 passed (76)
+```
+
+构建结果中与本节有关的部分：
+
+```text
+dist/index.html                                                            1.70 kB │ gzip:   0.85 kB
+dist/assets/index-DtF8MiTE.js                                          2,036.46 kB │ gzip: 583.54 kB
+```
+
+`index.html` 从 0.63 kB 变为 1.70 kB，增加的是分享预览标签；JavaScript 增加 0.63 kB，来自页脚的链接和图标。Playwright 运行 11 个测试，10 个通过，404 测试按预期在本地跳过。
+
+#### 9.2 提交并推送
+
+这些修改作为第二个提交推送到同一个分支，已经打开的 Pull Request 会自动加入这个提交并重新运行检查：
+
+```bash
+git add README.md docs index.html public/images/og-image.jpg src tests
+git commit -m "feat: add the README showcase, share preview and source link"
+git push
+```
+
+分支在第一次推送时已经用 `-u` 设置了跟踪的远程分支，之后直接运行 `git push` 即可。
+
+#### 9.3 Pull Request 和 Preview
+
+Pull Request 在新的提交上重新运行 Quality、Deploy 和 Deployed smoke test，三个 job 全部通过。
+
+#### 9.4 合并并完成收尾
+
+用 squash merge 合并 Pull Request，两个提交合并为 `main` 上的一个提交。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+
+```bash
+git switch main
+git pull --ff-only
+git branch -D feat/mvp-ui-polish
+git push origin --delete feat/mvp-ui-polish
+```
+
+### Step 13 完成状态
+
+```text
+✅ 在 Production 上检查了已发布的 MVP，列出具体的界面和交互问题
+✅ 配色、字体、四级字号层级和圆角规则统一定义在样式文件中
+✅ 地图底图跟随主题，深色模式使用深色底图
+✅ Explore 的地图和列表在桌面一屏内显示，列表按名称排列，选中卡片浮在地图上
+✅ 选中区域时地图不自动放大，视野外的区域只平移过去
+✅ 快速连续筛选不再丢失之前的选择
+✅ Area Detail 显示区域边界，指标区分主次，12 个月变化区分涨跌
+✅ Home 有产品截图、照片背景和清楚的区块；数据来源统一放在页脚
+✅ Methodology 加宽，有本页目录和整理后的已知限制
+✅ README 有产品截图、技术亮点和技术栈
+✅ 页面有分享预览所需的 Open Graph 标签和 1200×630 预览图，页脚链接到公开的源代码仓库
+✅ 桌面、手机和深色模式下的主要页面已在浏览器中检查，没有横向滚动
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+✅ MVP 界面优化已通过 squash merge 合并到 main
+✅ Production 部署和 Production smoke test 全部通过，已完成的分支已删除
+```

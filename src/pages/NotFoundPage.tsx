@@ -8,11 +8,11 @@ export function NotFoundPage() {
       <title>Page not found | RoostMap</title>
 
       <section className="mx-auto max-w-xl text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           404
         </p>
 
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+        <h1 className="mt-4 text-3xl font-semibold">
           Page not found
         </h1>
 

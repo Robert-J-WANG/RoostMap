@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 
 import { DataLoadError } from "@/components/DataLoadError";
-import { DataReleaseNotice } from "@/components/DataReleaseNotice";
 import { DataStatusBadge } from "@/components/DataStatusBadge";
+import { LoadingPanel } from "@/components/LoadingPanel";
 import { OneBedroomNotice } from "@/components/OneBedroomNotice";
-import { buttonVariants } from "@/components/ui/button";
 import type { DataManifest, ManifestPartition } from "@/data/contracts";
 import {
   useManifest,
@@ -13,6 +12,7 @@ import {
   useRegionGeometry,
 } from "@/data/queries";
 import {
+  findCurrentRent,
   findPartition,
   readSelection,
   toSearch,
@@ -21,6 +21,7 @@ import {
 import { AreaList } from "@/features/explore/AreaList";
 import { AreaMap } from "@/features/explore/AreaMap";
 import { ExploreFilters } from "@/features/explore/ExploreFilters";
+import { SelectedAreaCard } from "@/features/explore/SelectedAreaCard";
 import { formatBedrooms, formatDwellingType } from "@/lib/format";
 
 const pageTitle = <title>Explore | RoostMap</title>;
@@ -32,10 +33,16 @@ export function ExplorePage() {
   // Region、分类和选中的 SA2 都保存在 URL 中，刷新或分享链接后可以恢复。
   // 改变选择时替换当前历史记录，后退按钮不会逐个回到之前的每一次选择。
   // 改变选择仍停留在这个页面，preventScrollReset 保持当前滚动位置，不回到页面顶部。
+  // React Router 默认把 URL 更新放进 React transition，页面稍后才重新渲染；
+  // flushSync 让页面立即按新的选择渲染，紧接着的下一次选择不会基于旧的选择。
   const [searchParams, setSearchParams] = useSearchParams();
 
   function changeSelection(selection: Selection) {
-    setSearchParams(toSearch(selection), { replace: true, preventScrollReset: true });
+    setSearchParams(toSearch(selection), {
+      replace: true,
+      preventScrollReset: true,
+      flushSync: true,
+    });
   }
 
   if (manifestQuery.isError) {
@@ -104,9 +111,11 @@ function RegionExplorer({
   // 标题区和筛选在加载、失败和完成三种状态下都显示；数据状态紧挨着数据季度。
   const header = (
     <>
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold">{partition.name} rental areas</h1>
-        <p className="text-muted-foreground">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-semibold">
+          {partition.name} rental areas
+        </h1>
+        <p className="text-sm text-muted-foreground">
           {partition.areaCount} areas · {formatDwellingType(dwellingType)} ·{" "}
           {formatBedrooms(bedrooms)} · Data to {manifest.latestPeriod}{" "}
           <DataStatusBadge status={manifest.rentalDataStatus} />
@@ -139,7 +148,7 @@ function RegionExplorer({
     return (
       <>
         {header}
-        <p>Loading {partition.name} rents…</p>
+        <LoadingPanel className="h-[360px] lg:h-[calc(100svh-19rem)] lg:min-h-[480px]" label={`Loading ${partition.name} rents…`} />
       </>
     );
   }
@@ -159,7 +168,7 @@ function RegionExplorer({
       />
     );
   } else if (geometryQuery.isPending) {
-    mapPanel = <p>Loading {partition.name} boundaries…</p>;
+    mapPanel = <LoadingPanel className="h-[360px] lg:h-full" label={`Loading ${partition.name} boundaries…`} />;
   } else {
     // key 使地图在切换 Region 时重新创建，按新 Region 的边界计算初始范围。
     mapPanel = (
@@ -179,52 +188,31 @@ function RegionExplorer({
     <>
       {header}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div>{mapPanel}</div>
-
-        <div className="space-y-4">
-          {/* 选中区域卡片：列表较长时，用它确认当前选中了哪个区域。 */}
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-sm text-muted-foreground">Selected area</p>
-            {selectedArea ? (
-              <>
-                <h2 className="text-lg font-semibold">{selectedArea.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {selectedArea.territorialAuthorityName}
-                </p>
-                <Link
-                  className={buttonVariants({
-                    className: "mt-3",
-                    size: "sm",
-                    variant: "outline",
-                  })}
-                  to={`/areas/${selectedArea.sa2Id}${toSearch({ ...selection, sa2Id: null })}`}
-                >
-                  View details
-                </Link>
-              </>
-            ) : (
-              <>
-                <h2 className="text-lg font-semibold">No area selected</h2>
-                <p className="text-sm text-muted-foreground">
-                  Select an area on the map or in the list.
-                </p>
-              </>
-            )}
+      {/* 桌面上地图和列表高度相同，与标题和筛选一起放进第一屏；列表在自己的区域内滚动。
+          grid-cols-1 让手机上的单列宽度等于页面宽度，地图不会把页面撑宽。 */}
+      <div className="grid grid-cols-1 gap-4 lg:h-[calc(100svh-19rem)] lg:min-h-[480px] lg:grid-cols-[minmax(0,1fr)_23rem]">
+        {/* 选中区域卡片在桌面上浮在地图左上角，手机上排在地图下方。 */}
+        <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:relative lg:block">
+          {mapPanel}
+          <div className="lg:absolute lg:top-3 lg:left-3 lg:z-10 lg:w-72">
+            <SelectedAreaCard
+              area={selectedArea}
+              currentRent={
+                selectedArea ? findCurrentRent(selectedArea, dwellingType, bedrooms) : null
+              }
+              detailsHref={`/areas/${selectedSa2Id}${toSearch({ ...selection, sa2Id: null })}`}
+            />
           </div>
-
-          <AreaList
-            areas={areas}
-            bedrooms={bedrooms}
-            dwellingType={dwellingType}
-            onSelect={selectArea}
-            selectedSa2Id={selectedSa2Id}
-          />
         </div>
-      </div>
 
-      {/* 数据说明放在地图和列表之后，不推后核心内容。 */}
-      <DataReleaseNotice manifest={manifest} />
+        <AreaList
+          areas={areas}
+          bedrooms={bedrooms}
+          dwellingType={dwellingType}
+          onSelect={selectArea}
+          selectedSa2Id={selectedSa2Id}
+        />
+      </div>
     </>
   );
 }
