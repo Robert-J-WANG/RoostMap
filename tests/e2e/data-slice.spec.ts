@@ -65,7 +65,40 @@ test("shows the Greensboro rent history on its area page", async ({ page }) => {
   await expect(page.locator(".recharts-line-curve")).toBeVisible();
 });
 
-/* --------- 测试 6：部署环境中不存在的数据文件返回 404 -------- */
+/* --------- 测试 6：MVP 的核心流程 -------- */
+// 从首页进入 Explore，切换 Region 和分类，选中区域，查看详情和租金历史，再返回 Explore。
+// Thorndon（250900）House / 3 的源记录已手工核对：2026-04-01 租金 743，Bonds 6，
+// 12 个月变化 722 ÷ 796 − 1 ≈ −9.3%；源文件有 25 个季度的记录，缺少 2021-07-01。
+test("follows the core journey from Home to an area's rent history", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Explore rental areas" }).click();
+
+  await page.getByLabel("Region").selectOption("09");
+  await page.getByLabel("Dwelling type").selectOption("House");
+  await page.getByLabel("Bedrooms").selectOption("3");
+
+  const thorndon = page.getByRole("button", { name: /^Thorndon/ });
+  await expect(thorndon).toContainText("NZ$743/week");
+  await thorndon.click();
+  await page.getByRole("link", { name: "View details" }).click();
+
+  await expect(page).toHaveURL(/\/areas\/250900\?region=09&dwelling=House&bedrooms=3$/);
+  const details = page.locator("dl");
+  await expect(details).toContainText("NZ$743/week");
+  await expect(details).toContainText("6 bonds");
+  await expect(details).toContainText("-9.3%");
+
+  // 25 个季度有租金；缺少的 2021-07-01 把折线分成两段。
+  await expect(page.locator(".recharts-line-dot")).toHaveCount(25);
+  const path = await page.locator(".recharts-line-curve").getAttribute("d");
+  expect(path?.split("M")).toHaveLength(3);
+
+  await page.getByRole("link", { name: "Back to Explore" }).click();
+  await expect(page).toHaveURL(/\/explore\?region=09&dwelling=House&bedrooms=3&sa2=250900$/);
+  await expect(page.getByRole("heading", { level: 2, name: "Thorndon" })).toBeVisible();
+});
+
+/* --------- 测试 7：部署环境中不存在的数据文件返回 404 -------- */
 // 这条规则由 staticwebapp.config.json 在 Azure 上生效；本地 Vite 会对不存在的文件返回 index.html，
 // 因此只在测试部署地址（设置了 PLAYWRIGHT_BASE_URL）时运行。
 test("returns 404 for a data file that does not exist", async ({ request }) => {

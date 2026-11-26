@@ -58,7 +58,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <footer className="border-t border-border/80 bg-card/70">
         <div className="mx-auto w-full max-w-[var(--content-max-width)] px-[var(--page-gutter)] py-6 text-sm text-muted-foreground">
-          RoostMap · New Zealand rental-area decision support
+          RoostMap · New Zealand rental-area evidence
         </div>
       </footer>
     </div>

@@ -53,6 +53,13 @@ export function HomePage() {
             using the same data definitions.
           </p>
 
+          {/* 页面上可以做的三件事，与 Explore 和 Area Detail 的实际功能一一对应。 */}
+          <ul className="mt-6 max-w-2xl list-disc space-y-2 pl-5 text-muted-foreground">
+            <li>Explore the areas of any New Zealand Region on a map and in a list.</li>
+            <li>Filter by dwelling type and bedroom category.</li>
+            <li>Open an area to see its latest rent and quarterly rent history.</li>
+          </ul>
+
           <p className="mt-4 max-w-2xl text-muted-foreground">
             It does not show live listings or tell you where to live.
           </p>

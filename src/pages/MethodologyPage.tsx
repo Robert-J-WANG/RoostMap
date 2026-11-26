@@ -133,6 +133,43 @@ export function MethodologyPage() {
           </p>
         </MethodologySection>
 
+        {/* 已知限制：数据和产品本身的限制，与上面各节的规则一致。 */}
+        <MethodologySection title="Known limitations">
+          <ul className="list-disc space-y-2 pl-6">
+            <li>
+              Figures only cover new private-sector tenancies with a bond lodged
+              with MBIE. They do not describe existing tenancies, asking rents
+              or homes currently available.
+            </li>
+            <li>
+              The most recent quarters can be provisional, and MBIE may revise
+              them in later data.
+            </li>
+            <li>
+              Combinations with fewer than five bonds are not published, so
+              smaller areas and less common categories often have no data or
+              only a few quarters of history.
+            </li>
+            <li>
+              1-bedroom figures from 2024-10-01 follow a changed source
+              classification, so their 12-month change is N/A.
+            </li>
+            <li>
+              The current rent is a median and the history is a geometric mean,
+              so the two can differ for the same quarter.
+            </li>
+            <li>
+              Boundaries are the generalised SA2 2019 boundaries. They are
+              simplified for the map and do not match current suburb names or
+              property boundaries.
+            </li>
+            <li>
+              Each data release is a fixed copy of the source data. RoostMap
+              does not update automatically when MBIE publishes a new quarter.
+            </li>
+          </ul>
+        </MethodologySection>
+
         {releaseDetails}
       </article>
     </>

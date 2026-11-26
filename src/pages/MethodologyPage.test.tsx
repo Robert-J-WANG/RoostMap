@@ -26,5 +26,8 @@ describe("Methodology page", () => {
     expect(screen.getByText("Licence: Creative Commons Attribution 3.0 New Zealand")).toBeInTheDocument();
     expect(screen.getAllByText("Retrieved: 2026-10-27")).toHaveLength(2);
     expect(screen.getByText(mbieSourceSha256)).toBeInTheDocument();
+
+    // 发布要求数据来源、版本和已知限制都能在 Methodology 中找到。
+    expect(screen.getByRole("heading", { level: 2, name: "Known limitations" })).toBeInTheDocument();
   });
 });

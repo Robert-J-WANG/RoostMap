@@ -7,6 +7,11 @@ test("loads the application shell", async ({ page }) => {
   await page.goto("/");
 
   await expect(page).toHaveTitle("Home | RoostMap");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    /New Zealand rental areas/,
+  );
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/favicon.svg");
 
   await expect(
     page.getByRole("heading", {

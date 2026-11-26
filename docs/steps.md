@@ -15453,3 +15453,389 @@ git push origin --delete feat/area-history
 ✅ 区域租金历史已通过 squash merge 合并到 main
 ✅ Production 部署和 Production smoke test 全部通过，已完成的分支已删除
 ```
+
+---
+
+## Step 12 · 发布 MVP
+
+### 这一步做什么
+
+Step 11 完成后，`main` 上的应用已经具备 MVP 的全部功能：16 个 Region 的列表和地图、按住宅类型和卧室数筛选、区域详情中的当前租金和租金历史。每次合并后，Production Delivery 都会重新部署，并用正式地址运行全部浏览器测试。
+
+功能完成不等于可以公开发布。README、Home 和 Methodology 是第一次打开 RoostMap 的人读到的说明。README 写于开发开始时，Home 和 Methodology 随各个 Step 逐步修改，需要逐条核对是否与现在的实际功能一致。部署环境中还有几项发布条件从未逐项检查过：MapTiler key 的域名限制、地图和数据的署名、直接打开深层地址的行为，以及安全 headers。
+
+本步把这些内容作为一次发布来完成：公开说明与实际功能一致，部署条件逐项有证据，Production 测试覆盖一条完整的核心流程，然后打上第一个版本 tag。
+
+```text
+核对公开说明与实际功能的差异
+→ 更新 README、Home 和 Methodology
+→ 核查部署边界
+→ 用一条核心流程测试覆盖 MVP
+→ 本地检查、发布和版本 tag
+```
+
+本步完成后，RoostMap 的公开说明只描述已经存在的功能，Methodology 列出已知限制，Production 通过核心流程测试，`main` 上有 tag `v0.1.0`。
+
+### 1. 建立发布分支
+
+本步不增加新功能，交付的是一次发布，分支使用 `release` 类别：
+
+```bash
+git switch -c release/mvp
+```
+
+```text
+Switched to a new branch 'release/mvp'
+```
+
+### 2. 核对公开说明与实际功能
+
+逐条对照 README、Home、页脚和 Methodology 中的说法与当前代码，差异如下：
+
+| 位置 | 现在的说法 | 实际情况 |
+|---|---|---|
+| README Product scope | 可以按"optional weekly-rent limit"筛选 | 没有租金上限筛选 |
+| README Product scope | 可以比较最多四个 SA2 | 没有比较功能 |
+| README Data sources | "Publishable geographic coverage will be determined…" | 发布规则已经确定并实现 |
+| README | 没有数据许可证、公开地址和 MapTiler key 的设置方法 | 数据来源有许可证要求；网站已有公开地址；本地运行需要 `VITE_MAPTILER_KEY` |
+| Home | 只说明数据是什么 | 没有说明用户可以做什么 |
+| 页脚 | "rental-area decision support" | 与 Home 的"不告诉你住在哪里"不一致 |
+| Methodology | 有计算规则和缺失数据说明 | 没有集中列出已知限制 |
+| `index.html` | 只有 `<title>` | 没有页面描述，浏览器标签页没有图标 |
+
+README 中的两项是规划中的功能，不是已经实现的功能。公开说明把它们写成现有功能，打开网站的人会找不到它们。
+
+### 3. 更新公开说明
+
+#### 3.1 README
+
+README 是项目的公开入口，按仓库规则只写稳定的项目说明和基本用法，不写开发进度、Step 编号或数据数量。原来的 Product scope 改为 "What you can do"，每一条都对应一个已经存在、可以在页面上操作的功能：
+
+```markdown
+## What you can do
+
+- Explore the SA2 areas of any New Zealand Region on a map and in a list
+- Filter by dwelling type and bedroom category; the map, list and area details use the same category
+- Open an area to see its latest observed rent, Reported Bonds, 12-month change and quarterly rent history
+- Share or reload a page and keep the selected Region, category and area, which are stored in the URL
+- Check data periods, provisional status, sources, licences and known limitations on the Methodology page
+```
+
+数据来源加上官方地址和许可证，地址和许可证与 `data/source-lock.json` 及 manifest 中的记录相同。原来"将来确定"的发布规则改为实际规则，并说明底图的提供方：
+
+```markdown
+- [MBIE Rental Bond Data](https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/), licensed under Creative Commons Attribution 3.0 New Zealand
+- [Stats NZ Statistical Area 2 Higher Geographies 2019 (generalised)](https://datafinder.stats.govt.nz/layer/98779-statistical-area-2-higher-geographies-2019-generalised/), licensed under Creative Commons Attribution 4.0 International
+
+An area is published when its MBIE records include a rent and its SA2 code matches a Stats NZ SA2 2019 boundary. The basemap is provided by MapTiler and OpenStreetMap contributors.
+```
+
+开头加入公开地址 `Live site: <https://victorious-island-0bcdf8f10.3.azurestaticapps.net>`。本地运行需要 MapTiler key，开发说明中补上设置方法：
+
+```markdown
+The map needs a MapTiler Cloud API key. Copy `.env.example` to `.env.local` and set `VITE_MAPTILER_KEY`; the key's allowed HTTP origins must include `localhost`.
+```
+
+`npm run test` 同时运行数据流水线的单元测试和页面的组件测试，命令说明从 "component tests" 改为 "unit and component tests"。
+
+#### 3.2 Home 和页脚
+
+Home 的介绍说明了数据是什么，但没有说明用户可以做什么。在介绍下方加入三条，与 Explore 和详情页的功能一一对应：
+
+```tsx
+{/* 页面上可以做的三件事，与 Explore 和 Area Detail 的实际功能一一对应。 */}
+<ul className="mt-6 max-w-2xl list-disc space-y-2 pl-5 text-muted-foreground">
+  <li>Explore the areas of any New Zealand Region on a map and in a list.</li>
+  <li>Filter by dwelling type and bedroom category.</li>
+  <li>Open an area to see its latest rent and quarterly rent history.</li>
+</ul>
+```
+
+页脚的"New Zealand rental-area decision support"暗示 RoostMap 帮用户做决定，而 Home 和 Methodology 都说明它不推荐住在哪里。页脚改为与 Home 标题上方相同的说法"New Zealand rental-area evidence"。
+
+#### 3.3 Methodology 的已知限制
+
+技术规范的发布条件要求数据来源、版本、Methodology 和已知限制都可以查到。Methodology 前面各节的规则分散在不同位置，在 "Geography" 之后加入 "Known limitations"，集中列出数据和产品本身的限制：
+
+```tsx
+{/* 已知限制：数据和产品本身的限制，与上面各节的规则一致。 */}
+<MethodologySection title="Known limitations">
+  <ul className="list-disc space-y-2 pl-6">
+    <li>
+      Figures only cover new private-sector tenancies with a bond lodged
+      with MBIE. They do not describe existing tenancies, asking rents
+      or homes currently available.
+    </li>
+    <li>
+      The most recent quarters can be provisional, and MBIE may revise
+      them in later data.
+    </li>
+    <li>
+      Combinations with fewer than five bonds are not published, so
+      smaller areas and less common categories often have no data or
+      only a few quarters of history.
+    </li>
+    <li>
+      1-bedroom figures from 2024-10-01 follow a changed source
+      classification, so their 12-month change is N/A.
+    </li>
+    <li>
+      The current rent is a median and the history is a geometric mean,
+      so the two can differ for the same quarter.
+    </li>
+    <li>
+      Boundaries are the generalised SA2 2019 boundaries. They are
+      simplified for the map and do not match current suburb names or
+      property boundaries.
+    </li>
+    <li>
+      Each data release is a fixed copy of the source data. RoostMap
+      does not update automatically when MBIE publishes a new quarter.
+    </li>
+  </ul>
+</MethodologySection>
+```
+
+这里只写数据和产品本身的限制，不写尚未实现的功能。Methodology 的测试加入一项检查，确认这一节存在：
+
+```ts
+// 发布要求数据来源、版本和已知限制都能在 Methodology 中找到。
+expect(screen.getByRole("heading", { level: 2, name: "Known limitations" })).toBeInTheDocument();
+```
+
+#### 3.4 页面描述和图标
+
+`index.html` 只有 `<title>`。分享链接或出现在搜索结果中时，网站会使用 `<meta name="description">` 中的描述；浏览器标签页没有图标时显示一个空白图标。在 `public/` 中加入一个主题色的房屋图标 `favicon.svg`，`index.html` 加入描述和图标：
+
+```html
+<meta name="description"
+  content="Compare New Zealand rental areas with official MBIE rental bond data: latest rents, Reported Bonds and quarterly rent history for each SA2 area." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+```
+
+`public/` 中的文件在构建时原样复制到 `dist/`。Azure 的 `navigationFallback` 只在文件不存在时改写为 `index.html`，所以 `/favicon.svg` 按原文件返回。首页的浏览器测试加入两项检查：
+
+```ts
+await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+  "content",
+  /New Zealand rental areas/,
+);
+await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/favicon.svg");
+```
+
+### 4. 核查部署边界
+
+这些条件由部署环境和外部服务决定，在当前的 Production（`https://victorious-island-0bcdf8f10.3.azurestaticapps.net`）上检查。它们与本步修改的说明无关，不需要等待新的部署。
+
+#### 4.1 MapTiler key 的域名限制
+
+MapTiler key 写在浏览器下载的 JavaScript 中，任何人都可以看到。限制它被滥用的方法是 MapTiler Cloud 中的 Allowed HTTP Origins：浏览器请求底图时会带上 `Origin` header，MapTiler 只处理列表中的来源。这个 key 的列表为：
+
+```text
+victorious-island-0bcdf8f10-8.centralus.3.azurestaticapps.net
+localhost
+victorious-island-0bcdf8f10.3.azurestaticapps.net
+victorious-island-0bcdf8f10-10.centralus.3.azurestaticapps.net
+```
+
+用 `curl` 带不同的 `Origin` 请求底图样式，验证限制是否生效。key 从 `.env.local` 读入变量，不显示在命令输出中：
+
+```bash
+KEY=$(grep '^VITE_MAPTILER_KEY=' .env.local | cut -d= -f2)
+URL="https://api.maptiler.com/maps/streets-v4/style.json?key=$KEY"
+curl -s -o /dev/null -w '%{http_code}' -H "Origin: https://example.com" "$URL"
+```
+
+结果为：
+
+```text
+Production 域名                                          200
+http://localhost:5173                                    200
+新 PR 的 Preview 域名（…-15.centralus…）                  403
+https://example.com                                      403
+不带 Origin                                              403
+```
+
+限制有效：只有列表中的来源可以使用这个 key。
+
+列表中的 `-8` 和 `-10` 是两个早期 Pull Request 的 Preview 域名。每个 Pull Request 的 Preview 地址都不同，PR 关闭后 Azure 删除对应环境，这两个域名已经不再使用，留在列表中只会扩大可以使用 key 的范围。新的 Preview 域名也不在列表中，所以 Preview 不显示底图；浏览器测试检查的是列表、详情和图表，不依赖底图，Preview 的检查不受影响。本地的 Playwright 访问 `http://127.0.0.1:5173`，列表中只有 `localhost`，所以每次本地运行时底图请求都返回 403，而全部浏览器测试仍然通过，包括本步新增的核心流程测试。底图在 localhost 和 Production 上检查。`*.centralus.3.azurestaticapps.net` 这样的通配符会允许同一区域中任何 Azure Static Web Apps 网站使用这个 key，因此不使用。
+
+在 MapTiler Cloud 中删除 `-8` 和 `-10` 两行，保存后再次请求：
+
+```text
+…-8.centralus.3.azurestaticapps.net                      403
+…-10.centralus.3.azurestaticapps.net                     403
+Production 域名                                          200
+http://localhost:5173                                    200
+```
+
+现在只有 Production 和本地开发可以使用这个 key。
+
+#### 4.2 署名
+
+在 Production 打开 `/explore?region=09&dwelling=House&bedrooms=3&sa2=250900`，地图右下角的署名为：
+
+```text
+© MapTiler © OpenStreetMap contributors
+```
+
+两个名称分别链接到 `https://www.maptiler.com/copyright/` 和 `https://www.openstreetmap.org/copyright`。署名来自 MapTiler 的样式文件，地图组件用 `attributionControl={{ compact: false }}` 让它始终展开显示。MBIE 和 Stats NZ 的来源和许可证显示在各页面底部的数据说明和 Methodology 中。
+
+#### 4.3 深层地址和 404
+
+RoostMap 是单页应用：服务器只有一个 `index.html`，`/explore`、`/areas/250900` 这样的地址由浏览器中的 React Router 处理。`staticwebapp.config.json` 的 `navigationFallback` 把不存在的路径改写为 `index.html`，但排除 `/assets/*` 和 `/data/*`。检查各类地址的状态码：
+
+```text
+/                                                         200 text/html
+/explore?region=09&dwelling=House&bedrooms=3&sa2=250900   200 text/html
+/areas/250900?region=09&dwelling=House&bedrooms=3         200 text/html
+/methodology                                              200 text/html
+/unknown-page                                             200 text/html
+/data/manifest.json                                       200 application/json
+/data/releases/missing.json                               404 text/html
+/assets/missing.js                                        404 text/html
+```
+
+带参数的深层地址都返回应用，用户分享或刷新的链接可以直接打开。未知页面也返回应用，由应用显示自己的 "Page not found"，这一点已有浏览器测试覆盖。缺失的数据文件和脚本返回真正的 404，页面收到明确的错误，而不是把 HTML 当作 JSON 解析。
+
+#### 4.4 安全 headers 和压缩
+
+```bash
+curl -sI https://victorious-island-0bcdf8f10.3.azurestaticapps.net/
+```
+
+与本步有关的 headers 为：
+
+```text
+HTTP/2 200
+strict-transport-security: max-age=10886400; includeSubDomains; preload
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+```
+
+`X-Content-Type-Options` 和 `Referrer-Policy` 来自 `staticwebapp.config.json` 的 `globalHeaders`，`Strict-Transport-Security` 由 Azure 提供，要求浏览器只用 HTTPS 访问这个域名。
+
+Auckland 的租金历史文件原始大小为 9.4 MB。带 `Accept-Encoding: gzip, br` 请求时，响应的 `content-encoding` 为 `br`，实际下载 684,230 字节。Azure 用 Brotli 压缩 JSON，最大的历史文件传输量约为 0.68 MB。
+
+### 5. 用一条核心流程测试覆盖 MVP
+
+已有的浏览器测试分别检查了筛选、Region 切换、详情和历史，每个测试从一个固定地址开始。用户实际使用时是从首页一路走下来的，Region、分类和选中的区域在各页面之间靠链接中的 URL 参数传递。没有一条浏览器测试按这个顺序完整走过一次，也就没有在真实部署上检查过整条链路是否连通。
+
+新增一条测试，从首页开始，走完 MVP 的核心流程：进入 Explore，切换到 Wellington，选择 House / 3 卧，选中 Thorndon，打开详情，检查当前租金和历史，再返回 Explore。测试用的值先对照源文件核对：
+
+```text
+2026-04-01,250900,House,3,6,135,12,743,722,778,693,0.1408
+2025-04-01,250900,House,3,6,123,12,795,796,856,708,0.1504
+```
+
+当前租金 743，Bonds 6，12 个月变化为 722 ÷ 796 − 1 ≈ −9.3%。源文件中 Thorndon House / 3 卧共有 25 条记录，2020-01-01 到 2026-04-01 的 26 个季度中只缺少 2021-07-01，所以历史图表应有 25 个点，折线分成两段。
+
+```ts
+test("follows the core journey from Home to an area's rent history", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Explore rental areas" }).click();
+
+  await page.getByLabel("Region").selectOption("09");
+  await page.getByLabel("Dwelling type").selectOption("House");
+  await page.getByLabel("Bedrooms").selectOption("3");
+
+  const thorndon = page.getByRole("button", { name: /^Thorndon/ });
+  await expect(thorndon).toContainText("NZ$743/week");
+  await thorndon.click();
+  await page.getByRole("link", { name: "View details" }).click();
+
+  await expect(page).toHaveURL(/\/areas\/250900\?region=09&dwelling=House&bedrooms=3$/);
+  const details = page.locator("dl");
+  await expect(details).toContainText("NZ$743/week");
+  await expect(details).toContainText("6 bonds");
+  await expect(details).toContainText("-9.3%");
+
+  // 25 个季度有租金；缺少的 2021-07-01 把折线分成两段。
+  await expect(page.locator(".recharts-line-dot")).toHaveCount(25);
+  const path = await page.locator(".recharts-line-curve").getAttribute("d");
+  expect(path?.split("M")).toHaveLength(3);
+
+  await page.getByRole("link", { name: "Back to Explore" }).click();
+  await expect(page).toHaveURL(/\/explore\?region=09&dwelling=House&bedrooms=3&sa2=250900$/);
+  await expect(page.getByRole("heading", { level: 2, name: "Thorndon" })).toBeVisible();
+});
+```
+
+Pull Request 的 Deployed smoke test 和合并后的 Production smoke test 都运行同一组 Playwright 测试，这条测试因此也在 Preview 和 Production 上检查真实部署的数据和页面。
+
+### 6. 发布并完成 Git 操作
+
+#### 6.1 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 和构建通过。测试结果为：
+
+```text
+✓ src/pages/MethodologyPage.test.tsx (1 test)
+
+Test Files  15 passed (15)
+     Tests  76 passed (76)
+```
+
+Playwright 运行 11 个测试，10 个通过，404 测试按预期在本地跳过：
+
+```text
+✓ … › loads the application shell
+✓ … › follows the core journey from Home to an area's rent history
+```
+
+构建中 `dist/index.html` 从 0.37 kB 变为 0.63 kB，增加的是页面描述和图标链接。
+
+#### 6.2 在浏览器中检查
+
+在 375px 的手机宽度下打开 Home：三条功能说明在介绍和"It does not show live listings…"之间，页脚为"RoostMap · New Zealand rental-area evidence"，图标地址为 `/favicon.svg`。打开 Methodology，"Known limitations" 显示 7 条限制。两个页面的宽度都是 375px，没有横向滚动。
+
+#### 6.3 提交并推送
+
+```bash
+git add README.md index.html public/favicon.svg docs/steps.md src tests/e2e
+git commit -m "chore: prepare the MVP release"
+git push -u origin release/mvp
+```
+
+#### 6.4 Pull Request 和 Preview
+
+在 GitHub 上从 `release/mvp` 向 `main` 创建 Pull Request，标题为 `chore: prepare the MVP release`。Quality 在 runner 上运行 `npm run check`；Deploy 把 `dist` 部署为 Azure Preview；Deployed smoke test 用 Preview 地址运行 Playwright，包括核心流程测试。三个 job 全部通过。
+
+#### 6.5 合并、Production 和版本 tag
+
+用 squash merge 合并 Pull Request。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+
+Production 通过后，这个 `main` 提交就是 RoostMap 的第一个公开版本。在本地切换到更新后的 main，为它打上版本 tag：
+
+```bash
+git switch main
+git pull --ff-only
+git tag -a v0.1.0 -m "RoostMap MVP"
+git push origin v0.1.0
+git branch -D release/mvp
+git push origin --delete release/mvp
+```
+
+`-a` 创建附注 tag，除了指向的提交，还记录打 tag 的人、时间和说明，适合标记一个发布版本。`v0.1.0` 按语义化版本表示初始开发阶段的第一个版本，`0.x` 期间功能和接口还可能变化。
+
+### Step 12 完成状态
+
+```text
+✅ README、Home 和页脚只描述已经存在的功能
+✅ README 包含公开地址、数据来源、许可证和 MapTiler key 的设置方法
+✅ Methodology 集中列出数据和产品的已知限制
+✅ 页面有描述和图标
+✅ MapTiler key 只接受 Production 和 localhost，过期的 Preview 域名已删除
+✅ 地图署名、数据来源和许可证在 Production 上可见
+✅ 深层地址直接打开，缺失的数据文件和脚本返回 404，安全 headers 生效
+✅ 核心流程测试从首页走到详情和历史，再返回 Explore
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+✅ MVP 发布已通过 squash merge 合并到 main
+✅ Production 部署和 Production smoke test 全部通过
+✅ main 上已打 tag v0.1.0，已完成的分支已删除
+```
