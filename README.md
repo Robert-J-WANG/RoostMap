@@ -35,14 +35,6 @@ React 19, TypeScript (strict), Vite, React Router, TanStack Query, Zod, MapLibre
 
 An area is published when its MBIE records include a rent and its SA2 code matches a Stats NZ SA2 2019 boundary. The basemap is provided by MapTiler and OpenStreetMap contributors. The Home page background photo of Wellington Harbour is by [Sebastian Schuster on Unsplash](https://unsplash.com/photos/wellington-city-and-harbor-under-a-cloudy-sky-HokQ32FTrZA), used under the Unsplash License.
 
-## Project documentation
-
-The project documents have separate responsibilities:
-
-- [Project design](docs/PROJECT_DESIGN.md) — intended product scope, data meaning and user experience
-- [Technical specification](docs/TECHNICAL_SPEC.md) — architecture, contracts and delivery constraints
-- [Development outline](docs/DEVELOPMENT_OUTLINE.md) — implementation order and stage acceptance
-
 ## Development
 
 Install dependencies:
