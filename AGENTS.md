@@ -115,6 +115,12 @@ If an unrequested concern would materially increase scope or complexity,
 explain it briefly and wait for approval instead of implementing it
 automatically.
 
+The first public milestone is the MVP phase defined in
+`docs/DEVELOPMENT_OUTLINE.md`: national data, dwelling-type and
+bedroom-category filters, rent history and a stable public deployment. Keep
+each MVP Step to the scope listed there; work assigned to later phases waits
+until the MVP is released.
+
 ## 3. Current-state discovery
 
 This file contains stable repository-wide working rules. It does not record the
@@ -340,6 +346,12 @@ Rules:
 - begin the next step only after the current acceptance criteria pass;
 - record useful mistakes and fixes instead of hiding the learning path.
 
+The final section and status block of each Step record the squash merge to
+`main`, the Production smoke test and the `step-NN-complete` tag as the
+expected results. They are written before the merge so that they are part of
+the Step's own Pull Request. If a real result differs, correct the record
+through a `fix/` branch. The next Step does not backfill these results.
+
 Do not introduce a later dependency, folder, database field or abstraction early
 unless the current step genuinely requires it.
 
@@ -521,7 +533,9 @@ improbable failures unless the owner explicitly requests them.
 
 Never describe an unexecuted test, build, workflow, Preview or deployment as
 passing. If a check cannot run, state the exact blocker and whether it is caused
-by the change or the environment.
+by the change or the environment. The only exception is the expected merge,
+Production smoke test and tag recorded at the end of each Step, as defined in
+Section 7.
 
 The CI baseline is created after the project quality scripts and application
 shell are stable, then extended in the same Step that introduces each new

@@ -18,7 +18,7 @@ RoostMap 采用可运行、可验证、可部署的增量开发方式。每个 S
 
 开发原则：
 
-- 先完成不依赖账户和业务后端的 V1 数据产品。
+- 先完成不依赖账户和业务后端的 V1 数据产品；其中先发布可公开使用的 MVP，再完成 V1 的其余功能。
 - V1 稳定上线后才开始 V2 云端关注功能。
 - 数据、地图和图表高风险能力先验证，再形成正式纵向切片。
 - Supabase、PostgreSQL 和 Functions 只在 V2 的真实功能需要时引入。
@@ -55,10 +55,9 @@ stable main
 |---|---:|---|
 | 工程与交付基础 | 01–05 | 应用可在 PR 中验证并由 `main` 自动部署 |
 | 高风险技术可行性 | 06–07 | 数据关联、地图、图表和分片有真实证据 |
-| V1 数据基础 | 08–10 | 全国版本化数据可重复生成、核查和发布 |
-| V1 核心产品 | 11–13 | 用户可探索、分析和比较租赁区域 |
-| V1 稳定发布 | 14–15 | V1 通过发布门禁并稳定上线 |
-| V2 云端关注 | 16–18 | 用户可跨设备保存并查看数据更新摘要 |
+| MVP | 08–12 | 用户可在全国数据中按分类浏览区域、查看租金历史，并通过公开地址使用 |
+| 完成 V1 | 13–17 | 用户可搜索和比较区域；数据质量和更新流程完整；V1 稳定上线 |
+| V2 云端关注 | 18–20 | 用户可跨设备保存并查看数据更新摘要 |
 
 ---
 
@@ -255,7 +254,9 @@ GeoJSON、坐标系统、专题地图、时序图表、bundle 与数据 payload 
 
 ---
 
-## 阶段三：V1 数据基础
+## 阶段三：MVP
+
+MVP 是 V1 的子集：在第一个正式数据切片的基础上，完成全国数据、分类筛选、租金历史和公开发布。V1 的其余功能在 MVP 发布后完成。
 
 ## Step 08 · 建立第一个正式数据纵向切片
 
@@ -285,78 +286,129 @@ fixture、transform、contract 和页面测试通过；源值可逐项追踪到 
 
 使用 `feat/data-first-slice`。
 
-## Step 09 · 完成全国数据流水线
+## Step 09 · 生成全国数据 release
 
 **产出**
 
-可重复生成全国可发布 SA2 集合、搜索索引、Region 分片和质量报告的数据流水线。
+覆盖全部 Region 的版本化 release：每个 Region 的当前租金（全部发布分类）、边界和租金历史。
 
 **主要内容**
 
-- 完成分类、拒绝、join、geometry、12 个月变化和缺失处理。
-- 扩展 contracts：当前租金覆盖全部发布分类，并加入租金历史。
-- 生成 manifest、geography/search index、Region current-rents/geometry/rent-history 和 quality report。
-- 建立 source lock、SHA-256、pipeline version 和 immutable release bundle。
-- 核查主要城市、较小中心和稀疏区域，并确认 Chatham Islands 等没有 MBIE 观测的区域被正确排除。
+- 流水线从 Waikato 扩展到全部 Region；没有 MBIE 观测的区域按现有发布规则自然排除。生成时统计一次是否存在无法归入普通 Region 的记录，只有真实出现时才处理。
+- 规范 Dwelling Type 和 Bedroom Category，排除不发布的卧室值；当前租金覆盖全部发布分类。
+- 生成每个 Region 的租金历史（Geometric Mean Rent 和 Reported Bonds），并为它定义 contract。
+- 应用 1 卧可比性规则：Bedroom Category 为 `1` 时 12 个月变化为空。
+- 在 release 测试中手工核对 3–4 个代表区域，包括一个大城市、一个较小中心和一个只有旧季度数据的区域。
+- 测量每个文件和全部数据的体积，确认没有超过 GitHub 单文件和 Azure Static Web Apps 的限制；只有超过限制时才调整数据结构。
 
 **知识点**
 
-确定性构建、数据血缘、地理分片、质量阈值和可回滚数据发布。
+分类规范、按 Region 分片、时间序列数据 contract 和数据体积测量。
 
 **测试与验收**
 
-contracts 和质量门禁通过；分片计数一致、无重复 SA2、geometry 有效；锁定输入可重复生成相同输出。
+全部 Region 的文件通过 contract；manifest 与各文件的区域数量一致，没有重复 SA2；锁定的输入可以重复生成相同输出；代表区域的值可以追溯到源记录。
 
 **Git 边界**
 
-使用 `feat/national-data-pipeline`；大型生成数据不进入普通功能提交。
+使用 `feat/national-data`；生成的 release 文件单独提交。
 
-## Step 10 · 发布首个版本化数据集与 Methodology
+## Step 10 · 完成全国 Explore 与分类筛选
 
 **产出**
 
-可部署的首个全国版本化数据 bundle，以及与真实 manifest 一致的 Methodology。
+用户可以切换 Region，并按住宅类型和卧室数查看全国 SA2 的列表、地图和详情。
 
 **主要内容**
 
-- 将通过门禁的全国数据打包为 immutable bundle，并由 current manifest 指向该版本。
-- 保留 source lock、quality report 和 SHA-256；bundle 通过 data PR 提交，回滚通过 revert 该 PR 完成。
-- 完成来源、许可证、指标、缺失值、provisional 和数据质量说明。
-- 在 Preview 验证应用能够读取批准的数据版本。
+- 加入 Region 切换，按需读取所选 Region 的当前租金和边界。
+- 加入 Dwelling Type 和 Bedroom Category 筛选；地图、列表和详情使用同一分类的当前租金，缺失分类不回退到其他分类。
+- URL 只保存 Region、两个分类和选中的 SA2。
+- 选择 1 卧分类时显示固定的可比性说明。
 
 **知识点**
 
-数据发布、应用/数据版本分离、来源归属和可重复部署。
+URL state、派生数据和按需加载。
 
 **测试与验收**
 
-bundle、manifest、quality report 和 Methodology 相互一致；锁定输入可重建同一版本；Preview 使用批准版本。
+切换 Region 和分类后，地图、列表和详情一致；刷新和复制 URL 后状态恢复；缺失分类显示为缺失。
 
 **Git 边界**
 
-使用 `data/first-release`。
+使用 `feat/national-explore`。
+
+## Step 11 · 在区域详情中显示租金历史
+
+**产出**
+
+Area Detail 显示所选分类的租金历史。
+
+**主要内容**
+
+- 按需读取所选 Region 的租金历史。
+- 用带数据点的折线显示 Geometric Mean Rent，缺失季度断开；tooltip 显示每个季度的租金和 Reported Bonds。
+- 处理只有少量季度、没有历史和读取失败的情况。
+
+**知识点**
+
+时序数据、图表与缺失值、旧值与当前值的区别。
+
+**测试与验收**
+
+历史与当前租金使用同一分类；缺失季度不连线；读取失败可以重试。
+
+**Git 边界**
+
+使用 `feat/area-history`。
+
+## Step 12 · 发布 MVP
+
+**产出**
+
+可以公开访问、在 Production 通过核心流程测试的 RoostMap MVP，以及与之一致的公开说明。
+
+**主要内容**
+
+- 更新 Home、Methodology 和 README，说明 MVP 的范围：全国数据、分类筛选和租金历史。
+- 核查 MapTiler key 的域名限制、数据署名、SPA 路由和 `/data/*` 规则。
+- Production smoke test 覆盖核心流程：切换 Region、筛选分类、查看详情和历史。
+- 在 Methodology 中列出 MVP 的已知限制。
+
+**知识点**
+
+发布范围、公开说明与实现一致、Production smoke test。
+
+**测试与验收**
+
+完整质量门禁通过；Production 上核心流程可用；公开说明与实际功能一致。
+
+**Git 边界**
+
+使用 `release/mvp`。
 
 ---
 
-## 阶段四：V1 核心产品
+## 阶段四：完成 V1
 
-## Step 11 · 完成区域探索
+MVP 发布后，按以下顺序补齐 V1 的其余功能。
+
+## Step 13 · 完成区域探索
 
 **产出**
 
-可在全国数据中搜索、浏览、筛选和排序 SA2 的 Explore 页面。
+可在全国数据中搜索、排序和切换地图图层的 Explore 页面。
 
 **主要内容**
 
-- 组合 Region 导航、搜索、地图、区域列表和详情入口。
-- 同步 URL、视口、选择、Dwelling Type、Bedroom Category、Maximum Weekly Rent、图层和排序。
-- 建立统一的分类选择规则，让地图、列表和详情读取同一住宅类型和卧室数的当前租金。
-- 支持最新租金、12 个月变化、Reported Bonds 和数据可用性图层/筛选。
-- 完成桌面与移动布局及 loading、empty、partial、error。
+- 建立 geography/search index，支持 SA2、Region 和 territorial authority 名称搜索；上级地理结果展开为多个独立 SA2。
+- 加入 Maximum Weekly Rent 筛选、区域排序，以及最新租金、12 个月变化和 Reported Bonds 地图图层。
+- URL 增加地图视野、图层和排序。
+- 完成手机端地图/列表切换。
 
 **知识点**
 
-URL state、地图与列表协调、派生数据、按需加载和响应式交互。
+搜索索引、URL state、地图与列表协调和响应式交互。
 
 **测试与验收**
 
@@ -366,32 +418,7 @@ URL state、地图与列表协调、派生数据、按需加载和响应式交�
 
 使用 `feat/explore`。
 
-## Step 12 · 完成区域详情与历史分析
-
-**产出**
-
-Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
-
-**主要内容**
-
-- 显示区域身份、最新观测、period、provisional 和覆盖信息。
-- 绘制 Geometric Mean Rent 与 Reported Bonds 历史。
-- 提供 12 个月变化、tooltip、文字摘要和数据表。
-- 处理旧观测、缺失季度、稀疏切片和加载失败。
-
-**知识点**
-
-时序数据、图表语义、旧值与当前值、缺失状态和数据解释。
-
-**测试与验收**
-
-图表、文字和数据表一致；12 个月变化公式经过单元测试；缺失季度不连线或错误表述。
-
-**Git 边界**
-
-使用 `feat/area-history`。
-
-## Step 13 · 完成区域比较
+## Step 14 · 完成区域比较
 
 **产出**
 
@@ -416,15 +443,36 @@ Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
 
 使用 `feat/area-compare`。
 
----
-
-## 阶段五：V1 稳定发布
-
-## Step 14 · 完成 V1 发布前质量加固
+## Step 15 · 建立数据质量报告与更新流程
 
 **产出**
 
-通过数据、性能、响应式、安全和可解释性门禁的 V1 release candidate。
+带质量报告和 pipeline version 的 release，以及可回滚的数据更新流程。
+
+**主要内容**
+
+- 生成 quality report：分类、拒绝、join 和缺失的计数。
+- 加入 pipeline version 和 immutable release bundle；回滚通过 revert 对应 data PR 完成。
+- 建立 source check、schema 验证和差异报告，按需生成数据更新 PR。
+- Methodology 显示质量报告摘要和 pipeline version。
+
+**知识点**
+
+确定性构建、数据血缘、质量阈值和可回滚数据发布。
+
+**测试与验收**
+
+质量门禁通过；schema drift 阻止数据发布；无来源变化时不产生更新 PR；回滚路径在 Preview 中验证。
+
+**Git 边界**
+
+使用 `feat/data-quality`；数据更新使用 `data/` 分支。
+
+## Step 16 · 完成 V1 发布前质量加固
+
+**产出**
+
+通过性能、响应式、安全和可解释性门禁的 V1 release candidate。
 
 **主要内容**
 
@@ -432,26 +480,24 @@ Area Detail 页面及完整的历史租金和 Reported Bonds 解释。
 - 根据真实 bundle、payload 和 Core Web Vitals 优化必要瓶颈。
 - 核查 URL、headers、MapTiler key、attribution 和依赖风险。
 - 校对产品措辞，确保页面准确表达 V1 的证据范围。
-- 建立定期 source check、schema 验证、差异报告和数据更新 PR。
-- 完成 production data bundle，并在 Preview 演练应用与数据回滚。
 
 **知识点**
 
-Release candidate、性能预算、数据维护、安全 headers 和运行准备。
+Release candidate、性能预算、安全 headers 和运行准备。
 
 **测试与验收**
 
-V1 技术规范门禁全部通过；无来源变化时不产生更新 PR，schema drift 阻止数据发布；阻断问题清零；已知限制可查；Preview 完成最终自审。
+V1 技术规范门禁全部通过；阻断问题清零；已知限制可查；Preview 完成最终自审。
 
 **Git 边界**
 
 使用 `release/v1-hardening`。
 
-## Step 15 · 稳定发布 V1
+## Step 17 · 稳定发布 V1
 
 **产出**
 
-通过正式域名访问、可监测、可回滚的 RoostMap V1。
+通过正式域名访问、可回滚的 RoostMap V1。
 
 **主要内容**
 
@@ -475,11 +521,11 @@ V1 公开发布门禁全部满足；正式域名核心流程可用；回滚路�
 
 ---
 
-## 阶段六：V2 云端关注
+## 阶段五：V2 云端关注
 
 V2 是一个完整产品版本，但仍按可审查的功能切片实施。只有 V1 稳定上线后才开始。
 
-## Step 16 · 建立云端关注纵向切片
+## Step 18 · 建立云端关注纵向切片
 
 **产出**
 
@@ -505,7 +551,7 @@ Authentication、authorisation、PostgreSQL migration、RLS、Data API 和 serve
 
 使用 `feat/cloud-watchlist`。
 
-## Step 17 · 完成 V2 保存与数据更新
+## Step 19 · 完成 V2 保存与数据更新
 
 **产出**
 
@@ -532,7 +578,7 @@ Saved CRUD、RLS、更新摘要和账户删除通过 migration、pgTAP、API、c
 
 按可审查纵向能力使用短分支；V2 milestone 只有所有切片共同通过后才完成。
 
-## Step 18 · 稳定发布 V2
+## Step 20 · 稳定发布 V2
 
 **产出**
 
