@@ -4,6 +4,7 @@ import { DataLoadError } from "@/components/DataLoadError";
 import { DataStatusBadge } from "@/components/DataStatusBadge";
 import type { DataManifest } from "@/data/contracts";
 import { useManifest } from "@/data/queries";
+import { formatCoverage } from "@/lib/format";
 
 export function MethodologyPage() {
   const manifestQuery = useManifest();
@@ -133,12 +134,6 @@ type ReleaseDetailsProps = {
 
 // 当前 release 和数据来源：版本、季度、状态、覆盖范围，以及每个源文件的许可证、下载日期和 SHA-256。
 function ReleaseDetails({ manifest }: ReleaseDetailsProps) {
-  const regionNames = manifest.partitions.map((partition) => partition.name).join(", ");
-  const areaCount = manifest.partitions.reduce(
-    (total, partition) => total + partition.areaCount,
-    0,
-  );
-
   return (
     <>
       <MethodologySection title="Current data release">
@@ -157,7 +152,7 @@ function ReleaseDetails({ manifest }: ReleaseDetailsProps) {
           <div>
             <dt className="text-sm">Coverage</dt>
             <dd className="font-medium text-foreground">
-              {regionNames} · {areaCount} areas
+              {formatCoverage(manifest.partitions)}
             </dd>
           </div>
           <div>

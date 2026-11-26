@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 import {
-  areaWithCurrentRentSchema,
+  areaWithCurrentRentsSchema,
   manifestSchema,
   regionGeometrySchema,
-  type AreaWithCurrentRent,
+  type AreaWithCurrentRents,
   type DataManifest,
   type ManifestPartition,
   type RegionGeometry,
@@ -35,10 +35,10 @@ export function fetchManifest(signal?: AbortSignal): Promise<DataManifest> {
 export function fetchRegionCurrentRents(
   partition: ManifestPartition,
   signal?: AbortSignal,
-): Promise<AreaWithCurrentRent[]> {
+): Promise<AreaWithCurrentRents[]> {
   return fetchJson(
     partition.currentRentsUrl,
-    z.array(areaWithCurrentRentSchema),
+    z.array(areaWithCurrentRentsSchema),
     signal,
   );
 }

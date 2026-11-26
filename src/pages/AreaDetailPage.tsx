@@ -8,6 +8,13 @@ import { buttonVariants } from "@/components/ui/button";
 import type { DataManifest, ManifestPartition } from "@/data/contracts";
 import { useManifest, useRegionCurrentRents } from "@/data/queries";
 import {
+  defaultBedrooms,
+  defaultDwellingType,
+  defaultRegionCode,
+  findCurrentRent,
+  findPartition,
+} from "@/data/selection";
+import {
   formatBonds,
   formatChange,
   formatRent,
@@ -42,12 +49,12 @@ export function AreaDetailPage() {
     );
   }
 
-  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  // Region 切换完成前，页面固定在 Waikato 中查找区域。
   return (
     <section className="space-y-6">
       <AreaDetails
         manifest={manifestQuery.data}
-        partition={manifestQuery.data.partitions[0]}
+        partition={findPartition(manifestQuery.data, defaultRegionCode)}
       />
     </section>
   );
@@ -103,13 +110,13 @@ function AreaDetails({ manifest, partition }: AreaDetailsProps) {
     );
   }
 
-  const {
-    datasetLatestPeriod,
-    observationPeriod,
-    medianRent,
-    reportedBonds,
-    yearOverYearChange,
-  } = area.currentRent;
+  // 这个分类没有记录时，各项都显示为缺失；数据集最新季度取自 manifest。
+  const currentRent = findCurrentRent(area, defaultDwellingType, defaultBedrooms);
+  const datasetLatestPeriod = manifest.latestPeriod;
+  const observationPeriod = currentRent?.observationPeriod ?? null;
+  const medianRent = currentRent?.medianRent ?? null;
+  const reportedBonds = currentRent?.reportedBonds ?? null;
+  const yearOverYearChange = currentRent?.yearOverYearChange ?? null;
 
   return (
     <>

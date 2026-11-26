@@ -6,7 +6,8 @@ import { setWorkerUrl } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { AreaWithCurrentRent, RegionGeometry } from "@/data/contracts";
+import type { AreaWithCurrentRents, RegionGeometry } from "@/data/contracts";
+import { defaultBedrooms, defaultDwellingType, findCurrentRent } from "@/data/selection";
 
 // 地图运行环境：在创建地图前指定 Worker 地址。
 setWorkerUrl(workerUrl);
@@ -86,7 +87,7 @@ function getMapBounds(features: RegionGeometry["features"]): MapBounds {
 
 type AreaMapProps = {
   geometry: RegionGeometry;
-  areas: AreaWithCurrentRent[];
+  areas: AreaWithCurrentRents[];
   selectedSa2Id: string | null;
   onSelect: (sa2Id: string) => void;
 };
@@ -96,7 +97,10 @@ export function AreaMap({ geometry, areas, selectedSa2Id, onSelect }: AreaMapPro
   // Source 收到新的 data 对象就会重新处理全部边界，因此只在数据变化时重新连接。
   const mapData = useMemo(() => {
     const medianRentBySa2Id = new Map(
-      areas.map((area) => [area.sa2Id, area.currentRent.medianRent]),
+      areas.map((area) => [
+        area.sa2Id,
+        findCurrentRent(area, defaultDwellingType, defaultBedrooms)?.medianRent ?? null,
+      ]),
     );
 
     return {

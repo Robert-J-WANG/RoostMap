@@ -18,12 +18,20 @@ export const areaSchema = z
   })
   .strict();
 
+export type Area = z.infer<typeof areaSchema>;
+
 // MBIE（租金） 季度使用季度首日表示，只接受 1、4、7、10 月。
 const periodSchema = z.string().regex(/^\d{4}-(01|04|07|10)-01$/);
 
-// 一个 SA2 在 ALL / ALL 分类下的当前租金和 12 个月变化。
+// 发布的住宅类型和卧室数，与流水线中的发布列表相同。
+const dwellingTypeSchema = z.enum(["ALL", "Apartment", "Boarding House", "Flat", "House", "Room"]);
+const bedroomsSchema = z.enum(["ALL", "1", "2", "3", "4", "5+"]);
+
+// 一个 SA2 在一种住宅类型和卧室数下的当前租金和 12 个月变化。
 export const currentRentSchema = z
   .object({
+    dwellingType: dwellingTypeSchema,
+    bedrooms: bedroomsSchema,
     datasetLatestPeriod: periodSchema,
     observationPeriod: periodSchema.nullable(),
     medianRent: z.number().nonnegative().nullable(),
@@ -32,14 +40,33 @@ export const currentRentSchema = z
   })
   .strict();
 
-// 区域列表中的一行：区域信息加上当前租金。
-export const areaWithCurrentRentSchema = areaSchema.extend({
-  currentRent: currentRentSchema,
+export type CurrentRent = z.infer<typeof currentRentSchema>;
+
+// 区域列表中的一行：区域信息加上它在各分类下的当前租金；至少有一个分类。
+export const areaWithCurrentRentsSchema = areaSchema.extend({
+  currentRents: z.array(currentRentSchema).min(1),
 });
 
-export type AreaWithCurrentRent = z.infer<typeof areaWithCurrentRentSchema>;
+export type AreaWithCurrentRents = z.infer<typeof areaWithCurrentRentsSchema>;
 
-// manifest 中的一个 Region：区域数量，以及当前租金和边界文件的地址。
+// 一个 SA2 在一个季度、一种住宅类型和卧室数下的租金记录。
+const quarterlyRentSchema = z
+  .object({
+    dwellingType: dwellingTypeSchema,
+    bedrooms: bedroomsSchema,
+    period: periodSchema,
+    reportedBonds: z.number().int().nonnegative().nullable(),
+    medianRent: z.number().nonnegative().nullable(),
+    geometricMeanRent: z.number().nonnegative().nullable(),
+  })
+  .strict();
+
+// 一个 Region 的租金历史：以 SA2 编号为键，值是这个 SA2 的季度租金记录。
+export const regionRentHistorySchema = z.record(sa2IdSchema, z.array(quarterlyRentSchema));
+
+export type RegionRentHistory = z.infer<typeof regionRentHistorySchema>;
+
+// manifest 中的一个 Region：区域数量，以及当前租金、边界和租金历史文件的地址。
 export const manifestPartitionSchema = z
   .object({
     id: nonEmptyStringSchema,
@@ -47,6 +74,7 @@ export const manifestPartitionSchema = z
     areaCount: z.number().int().positive(),
     currentRentsUrl: nonEmptyStringSchema,
     geometryUrl: nonEmptyStringSchema,
+    rentHistoryUrl: nonEmptyStringSchema,
   })
   .strict();
 

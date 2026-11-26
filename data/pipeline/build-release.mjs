@@ -1,5 +1,5 @@
 // 生成一个版本化 data release：
-// 先确认源文件与 data/source-lock.json 一致，再为指定 Region 写出当前租金、边界和 manifest。
+// 先确认源文件与 data/source-lock.json 一致，再为每个 Region 写出当前租金、边界、租金历史和 manifest。
 //
 // 用法：npm run data:release
 
@@ -9,13 +9,11 @@ import { DatabaseSync } from "node:sqlite";
 
 import { parse } from "csv-parse/sync";
 
-import { buildAreasWithCurrentRent } from "./current-rents.mjs";
+import { buildAreasWithCurrentRents, isPublishedCategory } from "./current-rents.mjs";
 import { convertToGeometryFeature } from "./geometry.mjs";
+import { buildRegionRentHistory } from "./rent-history.mjs";
 
 /* -------------- 配置 -------------- */
-
-// 本次 release 包含的 Region 编号。
-const regionCodes = ["03"];
 
 const repositoryRootUrl = new URL("../../", import.meta.url);
 const publicDataUrl = new URL("public/data/", repositoryRootUrl);
@@ -39,38 +37,51 @@ const mbieRecords = parse(mbieFile.content, {
 });
 const datasetLatestPeriod = getLatestPeriod(mbieRecords);
 
-// 3. 为每个 Region 写出当前租金和边界。
+// 3. 为每个 Region 写出当前租金、边界和租金历史。
+// Region 编号取自 GeoPackage；没有可发布区域的 Region 不生成文件。
 const releaseUrl = new URL(`releases/${version}/`, publicDataUrl);
 const partitions = [];
+const skippedRegions = [];
 
-for (const regionCode of regionCodes) {
+for (const regionCode of readRegionCodes(statsNzFile.url)) {
   const statsNzRecords = readRegionRecords(statsNzFile.url, regionCode);
-  const areasWithCurrentRent = buildAreasWithCurrentRent({
+  const regionName = statsNzRecords[0].REGC2019_V1_00_NAME;
+  const areasWithCurrentRents = buildAreasWithCurrentRents({
     statsNzRecords,
     mbieRecords,
     datasetLatestPeriod,
   });
 
-  // 边界只包含可发布区域，地图与列表使用同一组 SA2。
-  const publishedSa2Ids = new Set(areasWithCurrentRent.map((area) => area.sa2Id));
+  if (areasWithCurrentRents.length === 0) {
+    skippedRegions.push(`${regionCode} ${regionName}`);
+    continue;
+  }
+
+  // 边界和租金历史只包含可发布区域，地图、列表和历史使用同一组 SA2。
+  const publishedSa2Ids = areasWithCurrentRents.map((area) => area.sa2Id);
+  const publishedSa2IdSet = new Set(publishedSa2Ids);
   const geometry = {
     type: "FeatureCollection",
     features: statsNzRecords
-      .filter((record) => publishedSa2Ids.has(record.SA22019_V1_00))
+      .filter((record) => publishedSa2IdSet.has(record.SA22019_V1_00))
       .map((record) => convertToGeometryFeature(record)),
   };
+  const rentHistory = buildRegionRentHistory({ sa2Ids: publishedSa2Ids, mbieRecords });
 
   const currentRentsPath = `areas/current-rents/${regionCode}.json`;
   const geometryPath = `geometry/regions/${regionCode}.geo.json`;
-  await writeJson(new URL(currentRentsPath, releaseUrl), areasWithCurrentRent);
+  const rentHistoryPath = `areas/rent-history/${regionCode}.json`;
+  await writeJson(new URL(currentRentsPath, releaseUrl), areasWithCurrentRents);
   await writeJson(new URL(geometryPath, releaseUrl), geometry);
+  await writeJson(new URL(rentHistoryPath, releaseUrl), rentHistory);
 
   partitions.push({
     id: regionCode,
-    name: statsNzRecords[0].REGC2019_V1_00_NAME,
-    areaCount: areasWithCurrentRent.length,
+    name: regionName,
+    areaCount: areasWithCurrentRents.length,
     currentRentsUrl: `/data/releases/${version}/${currentRentsPath}`,
     geometryUrl: `/data/releases/${version}/${geometryPath}`,
+    rentHistoryUrl: `/data/releases/${version}/${rentHistoryPath}`,
   });
 }
 
@@ -97,7 +108,17 @@ const manifest = {
 await writeJson(new URL("manifest.json", releaseUrl), manifest);
 await writeJson(new URL("manifest.json", publicDataUrl), manifest);
 
-console.log(JSON.stringify({ version, latestPeriod: datasetLatestPeriod, partitions }, null, 2));
+// 5. 输出摘要：每个 Region 的区域数量、跳过的 Region 和不发布分类的记录数。
+const areaTotal = partitions.reduce((total, partition) => total + partition.areaCount, 0);
+const unpublishedCategoryRecords = mbieRecords.filter((record) => !isPublishedCategory(record));
+
+console.log(`version ${version} · latest period ${datasetLatestPeriod}`);
+for (const partition of partitions) {
+  console.log(`${partition.id} ${partition.name}: ${partition.areaCount} areas`);
+}
+console.log(`total: ${partitions.length} Regions, ${areaTotal} areas`);
+console.log(`skipped Regions without publishable areas: ${skippedRegions.join(", ") || "none"}`);
+console.log(`records in unpublished categories: ${unpublishedCategoryRecords.length}`);
 
 /* -------------- 辅助函数 -------------- */
 
@@ -140,6 +161,29 @@ function getLatestPeriod(records) {
   }
 
   return latestPeriod;
+}
+
+/**
+ * 从 GeoPackage 只读查询全部 Region 编号。
+ *
+ * @param {URL} geoPackageUrl GeoPackage 文件位置
+ * @returns {string[]} Region 编号，按编号排序，例如 ["01", "02", …, "99"]
+ */
+function readRegionCodes(geoPackageUrl) {
+  const database = new DatabaseSync(geoPackageUrl, { readOnly: true });
+
+  try {
+    return database
+      .prepare(
+        `SELECT DISTINCT REGC2019_V1_00 AS regionCode
+         FROM statistical_area_2_higher_geographies_2019_generalised
+         ORDER BY REGC2019_V1_00`,
+      )
+      .all()
+      .map((row) => row.regionCode);
+  } finally {
+    database.close();
+  }
 }
 
 /**

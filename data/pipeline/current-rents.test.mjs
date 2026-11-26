@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { parse } from "csv-parse/sync";
 import { describe, expect, it } from "vitest";
 
-import { areaWithCurrentRentSchema } from "@/data/contracts";
+import { areaWithCurrentRentsSchema } from "@/data/contracts";
 
 import {
-  buildAreasWithCurrentRent,
+  buildAreasWithCurrentRents,
   buildCurrentRent,
   convertToArea,
   convertToQuarterlyRent,
@@ -33,15 +33,15 @@ const statsNzRecords = JSON.parse(
 
 /* -------------- 辅助函数 -------------- */
 
-// 从 fixture 中取出一个 SA2 的 ALL / ALL 记录，以 2026-04-01 作为数据集最新季度计算当前租金。
+// 从 fixture 中取出一个 SA2 在一种分类下的记录，以 2026-04-01 作为数据集最新季度计算当前租金。
 // fixture 中每个 SA2 的记录已按季度从旧到新书写，所以不需要再排序。
-function calculateCurrentRentFromFixture(sa2Id) {
+function calculateCurrentRentFromFixture(sa2Id, dwellingType = "ALL", bedrooms = "ALL") {
   const quarterlyRents = mbieRecords
     .filter(
       (record) =>
         record["Location Id"] === sa2Id &&
-        record["Dwelling Type"] === "ALL" &&
-        record["Number Of Beds"] === "ALL",
+        record["Dwelling Type"] === dwellingType &&
+        record["Number Of Beds"] === bedrooms,
     )
     .map((record) => convertToQuarterlyRent(record));
 
@@ -49,7 +49,7 @@ function calculateCurrentRentFromFixture(sa2Id) {
 }
 
 // 以 2026-04-01 作为数据集最新季度，转换整个 fixture Region。
-const areasWithCurrentRent = buildAreasWithCurrentRent({
+const areasWithCurrentRents = buildAreasWithCurrentRents({
   statsNzRecords,
   mbieRecords,
   datasetLatestPeriod: "2026-04-01",
@@ -66,6 +66,8 @@ describe("rent conversion", () => {
     );
 
     expect(convertToQuarterlyRent(areaCRecord)).toEqual({
+      dwellingType: "ALL",
+      bedrooms: "ALL",
       period: "2026-04-01",
       reportedBonds: 6,
       medianRent: null,
@@ -114,43 +116,66 @@ describe("rent conversion", () => {
     expect(calculateCurrentRentFromFixture("900003").yearOverYearChange).toBeNull();
   });
 
-  // 900004 没有 MBIE（租金） 记录；-99 和 900099 不在这个 Region 中。
-  it("publishes only Region areas with a valid MBIE（租金） rent", () => {
-    expect(areasWithCurrentRent.map((area) => area.sa2Id)).toEqual([
+  // Area A 的 1 卧两个季度都有租金（370 / 290），但比较跨越了 2024-10-01 的分类变化。
+  it("does not calculate the 12-month change for one-bedroom rents", () => {
+    expect(calculateCurrentRentFromFixture("900001", "ALL", "1")).toMatchObject({
+      dwellingType: "ALL",
+      bedrooms: "1",
+      medianRent: 360,
+      yearOverYearChange: null,
+    });
+  });
+
+  // 900004 只有卧室数 NA 的记录，NA 不是发布的分类；-99 和 900099 不在这个 Region 中。
+  it("publishes only Region areas with a valid rent in a published category", () => {
+    expect(areasWithCurrentRents.map((area) => area.sa2Id)).toEqual([
       "900001",
       "900002",
       "900003",
     ]);
   });
 
-  // 整个 Region 一起转换时，Area B 的当前租金与 3.2 的手工答案一致。
-  it("attaches the current rent to each published area", () => {
-    const areaB = areasWithCurrentRent.find((area) => area.sa2Id === "900002");
+  // Area A 有 ALL / ALL、ALL / 1、House / 3 三个发布的分类，NA 不出现；分类按发布顺序排列。
+  it("attaches the current rent of each published category", () => {
+    const areaA = areasWithCurrentRents.find((area) => area.sa2Id === "900001");
 
-    expect(areaB.currentRent).toEqual({
-      datasetLatestPeriod: "2026-04-01",
-      observationPeriod: "2025-10-01",
-      medianRent: 470,
-      reportedBonds: 12,
-      yearOverYearChange: null,
-    });
+    expect(
+      areaA.currentRents.map(({ dwellingType, bedrooms }) => `${dwellingType} / ${bedrooms}`),
+    ).toEqual(["ALL / ALL", "ALL / 1", "House / 3"]);
+  });
+
+  // 整个 Region 一起转换时，Area B 的当前租金与 3.2 的手工答案一致。
+  it("keeps the hand-checked Area B result when the whole Region is converted", () => {
+    const areaB = areasWithCurrentRents.find((area) => area.sa2Id === "900002");
+
+    expect(areaB.currentRents).toEqual([
+      {
+        dwellingType: "ALL",
+        bedrooms: "ALL",
+        datasetLatestPeriod: "2026-04-01",
+        observationPeriod: "2025-10-01",
+        medianRent: 470,
+        reportedBonds: 12,
+        yearOverYearChange: null,
+      },
+    ]);
   });
 
   // 真实 CSV 按季度从新到旧排列：源记录顺序颠倒时，结果不变。
   it("does not depend on the order of the source records", () => {
-    const reversedResult = buildAreasWithCurrentRent({
+    const reversedResult = buildAreasWithCurrentRents({
       statsNzRecords: [...statsNzRecords].reverse(),
       mbieRecords: [...mbieRecords].reverse(),
       datasetLatestPeriod: "2026-04-01",
     });
 
-    expect(reversedResult).toEqual(areasWithCurrentRent);
+    expect(reversedResult).toEqual(areasWithCurrentRents);
   });
 
-  // 每个可发布区域都符合第 2 节定义的列表中的一行。
+  // 每个可发布区域都符合 contract 中区域列表的一行。
   it("produces rows that satisfy the contract", () => {
-    for (const row of areasWithCurrentRent) {
-      areaWithCurrentRentSchema.parse(row);
+    for (const row of areasWithCurrentRents) {
+      areaWithCurrentRentsSchema.parse(row);
     }
   });
 });
