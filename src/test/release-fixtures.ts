@@ -13,7 +13,14 @@ const manifest = {
   generatedAt: "2026-11-21T00:00:00.000Z",
   latestPeriod: "2026-04-01",
   partitions: [
-    { id: "03", name: "Waikato Region", areaCount: 3, currentRentsUrl, geometryUrl },
+    {
+      id: "03",
+      name: "Waikato Region",
+      areaCount: 3,
+      currentRentsUrl,
+      geometryUrl,
+      rentHistoryUrl: "/data/releases/2026-04-01.1/areas/rent-history/03.json",
+    },
   ],
   rentalDataStatus: "provisional",
   rentalDataNotice,
@@ -37,7 +44,7 @@ const manifest = {
   ],
 };
 
-// 生成当前租金文件中的一行；Region 信息和数据集最新季度对所有区域相同。
+// 生成当前租金文件中的一行，只有 ALL / ALL 一个分类；Region 信息和数据集最新季度对所有区域相同。
 function area(
   sa2Id: string,
   name: string,
@@ -56,7 +63,9 @@ function area(
     regionName: "Waikato Region",
     territorialAuthorityCode: "000",
     territorialAuthorityName,
-    currentRent: { datasetLatestPeriod: "2026-04-01", ...currentRent },
+    currentRents: [
+      { dwellingType: "ALL", bedrooms: "ALL", datasetLatestPeriod: "2026-04-01", ...currentRent },
+    ],
   };
 }
 

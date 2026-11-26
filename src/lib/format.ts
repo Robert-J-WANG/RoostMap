@@ -22,6 +22,15 @@ export function formatChange(yearOverYearChange: number | null): string {
     : changeFormatter.format(yearOverYearChange);
 }
 
+// release 的覆盖范围：只有一个 Region 时显示它的名称，否则显示 Region 数量，再加上区域总数。
+// 例如 "Waikato Region · 222 areas" 或 "16 Regions · 2,009 areas"。
+export function formatCoverage(partitions: { name: string; areaCount: number }[]): string {
+  const areaCount = partitions.reduce((total, partition) => total + partition.areaCount, 0);
+  const regions = partitions.length === 1 ? partitions[0].name : `${partitions.length} Regions`;
+
+  return `${regions} · ${areaCount.toLocaleString("en-NZ")} areas`;
+}
+
 // 租金所在季度早于数据集最新季度时返回 true；这时的租金不能称为当前价格。
 export function isOlderObservation(
   observationPeriod: string | null,

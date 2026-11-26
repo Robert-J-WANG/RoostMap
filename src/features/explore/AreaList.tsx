@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import type { AreaWithCurrentRent } from "@/data/contracts";
+import type { AreaWithCurrentRents } from "@/data/contracts";
+import { defaultBedrooms, defaultDwellingType, findCurrentRent } from "@/data/selection";
 import {
   formatBonds,
   formatChange,
@@ -10,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type AreaListProps = {
-  areas: AreaWithCurrentRent[];
+  areas: AreaWithCurrentRents[];
   selectedSa2Id: string | null;
   onSelect: (sa2Id: string) => void;
 };
@@ -46,13 +47,8 @@ export function AreaList({ areas, selectedSa2Id, onSelect }: AreaListProps) {
       ref={listRef}
     >
       {areas.map((area) => {
-        const {
-          datasetLatestPeriod,
-          observationPeriod,
-          medianRent,
-          reportedBonds,
-          yearOverYearChange,
-        } = area.currentRent;
+        // 这个分类没有记录时 currentRent 为 null，各项都显示为缺失。
+        const currentRent = findCurrentRent(area, defaultDwellingType, defaultBedrooms);
 
         return (
           <li key={area.sa2Id}>
@@ -67,23 +63,24 @@ export function AreaList({ areas, selectedSa2Id, onSelect }: AreaListProps) {
               <span className="flex items-baseline justify-between gap-4">
                 <span className="font-medium">{area.name}</span>
                 <span className="shrink-0 font-semibold">
-                  {formatRent(medianRent)}
+                  {formatRent(currentRent?.medianRent ?? null)}
                 </span>
               </span>
               <span className="flex justify-between gap-4 text-sm text-muted-foreground">
                 <span>{area.territorialAuthorityName}</span>
                 <span className="shrink-0">
-                  {formatBonds(reportedBonds)}
+                  {formatBonds(currentRent?.reportedBonds ?? null)}
                   {" · 12-month change "}
-                  {formatChange(yearOverYearChange)}
+                  {formatChange(currentRent?.yearOverYearChange ?? null)}
                 </span>
               </span>
               {/* 旧季度的租金标出季度，不称为当前价格。 */}
-              {isOlderObservation(observationPeriod, datasetLatestPeriod) && (
-                <span className="block text-xs text-muted-foreground">
-                  Last observed {observationPeriod}
-                </span>
-              )}
+              {currentRent &&
+                isOlderObservation(currentRent.observationPeriod, currentRent.datasetLatestPeriod) && (
+                  <span className="block text-xs text-muted-foreground">
+                    Last observed {currentRent.observationPeriod}
+                  </span>
+                )}
             </button>
           </li>
         );

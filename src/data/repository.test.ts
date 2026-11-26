@@ -13,6 +13,7 @@ const manifest = {
       areaCount: 1,
       currentRentsUrl: "/data/releases/2026-04-01.1/areas/current-rents/03.json",
       geometryUrl: "/data/releases/2026-04-01.1/geometry/regions/03.geo.json",
+      rentHistoryUrl: "/data/releases/2026-04-01.1/areas/rent-history/03.json",
     },
   ],
   rentalDataStatus: "provisional",
@@ -69,13 +70,17 @@ describe("data repository", () => {
         regionName: "Waikato Region",
         territorialAuthorityCode: "016",
         territorialAuthorityName: "Hamilton City",
-        currentRent: {
-          datasetLatestPeriod: "2026-04-01",
-          observationPeriod: "2026-04-01",
-          medianRent: "350",
-          reportedBonds: 171,
-          yearOverYearChange: 0.0128,
-        },
+        currentRents: [
+          {
+            dwellingType: "ALL",
+            bedrooms: "ALL",
+            datasetLatestPeriod: "2026-04-01",
+            observationPeriod: "2026-04-01",
+            medianRent: "350",
+            reportedBonds: 171,
+            yearOverYearChange: 0.0128,
+          },
+        ],
       },
     ]);
 

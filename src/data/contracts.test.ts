@@ -1,8 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { areaWithCurrentRentSchema, manifestSchema } from "@/data/contracts";
+import {
+  areaWithCurrentRentsSchema,
+  manifestSchema,
+  regionRentHistorySchema,
+} from "@/data/contracts";
 
-// 一行符合 contract 的区域列表数据，各测试在它的基础上修改单个字段。
+// 一个符合 contract 的当前租金，各测试在它的基础上修改单个字段。
+const validCurrentRent = {
+  dwellingType: "ALL",
+  bedrooms: "ALL",
+  datasetLatestPeriod: "2026-04-01",
+  observationPeriod: "2026-04-01",
+  medianRent: 350,
+  reportedBonds: 171,
+  yearOverYearChange: 0.0128,
+};
+
+// 一行符合 contract 的区域列表数据。
 const validRow = {
   sa2Id: "179900",
   name: "Greensboro",
@@ -10,67 +25,72 @@ const validRow = {
   regionName: "Waikato Region",
   territorialAuthorityCode: "016",
   territorialAuthorityName: "Hamilton City",
-  currentRent: {
-    datasetLatestPeriod: "2026-04-01",
-    observationPeriod: "2026-04-01",
-    medianRent: 350,
-    reportedBonds: 171,
-    yearOverYearChange: 0.0128,
-  },
+  currentRents: [validCurrentRent],
 };
 
+// 用一个修改过的当前租金替换 validRow 中的当前租金，返回 safeParse 是否成功。
+function acceptsCurrentRent(currentRent: Record<string, unknown>) {
+  return areaWithCurrentRentsSchema.safeParse({ ...validRow, currentRents: [currentRent] })
+    .success;
+}
+
 describe("data contracts", () => {
-  it("accepts an area with its current rent", () => {
-    expect(areaWithCurrentRentSchema.parse(validRow)).toEqual(validRow);
+  it("accepts an area with its current rents", () => {
+    expect(areaWithCurrentRentsSchema.parse(validRow)).toEqual(validRow);
   });
 
-  it("rejects unsupported id and period formats", () => {
+  it("rejects unsupported id, period and category values", () => {
     // 不是六位数字的 SA2 编号。
     expect(
-      areaWithCurrentRentSchema.safeParse({ ...validRow, sa2Id: "unknown" })
-        .success,
+      areaWithCurrentRentsSchema.safeParse({ ...validRow, sa2Id: "unknown" }).success,
     ).toBe(false);
     // 2 月不是季度首月。
-    expect(
-      areaWithCurrentRentSchema.safeParse({
-        ...validRow,
-        currentRent: { ...validRow.currentRent, datasetLatestPeriod: "2026-02-01" },
-      }).success,
-    ).toBe(false);
+    expect(acceptsCurrentRent({ ...validCurrentRent, datasetLatestPeriod: "2026-02-01" })).toBe(false);
+    // 卧室数 NA 不是发布的分类。
+    expect(acceptsCurrentRent({ ...validCurrentRent, bedrooms: "NA" })).toBe(false);
   });
 
   it("keeps missing rent values as null", () => {
-    const row = areaWithCurrentRentSchema.parse({
-      ...validRow,
-      currentRent: {
-        datasetLatestPeriod: "2026-04-01",
+    expect(
+      acceptsCurrentRent({
+        ...validCurrentRent,
         observationPeriod: null,
         medianRent: null,
         reportedBonds: null,
         yearOverYearChange: null,
-      },
-    });
-
-    expect(row.currentRent.medianRent).toBeNull();
-    expect(row.currentRent.observationPeriod).toBeNull();
+      }),
+    ).toBe(true);
   });
 
   it("rejects a rent stored as a string", () => {
-    const result = areaWithCurrentRentSchema.safeParse({
-      ...validRow,
-      currentRent: { ...validRow.currentRent, medianRent: "350" },
-    });
-
-    expect(result.success).toBe(false);
+    expect(acceptsCurrentRent({ ...validCurrentRent, medianRent: "350" })).toBe(false);
   });
 
-  it("rejects fields outside the contract", () => {
-    const result = areaWithCurrentRentSchema.safeParse({
-      ...validRow,
-      areaName: "Greensboro",
-    });
+  it("rejects fields outside the contract and an area without current rents", () => {
+    expect(
+      areaWithCurrentRentsSchema.safeParse({ ...validRow, areaName: "Greensboro" }).success,
+    ).toBe(false);
+    expect(
+      areaWithCurrentRentsSchema.safeParse({ ...validRow, currentRents: [] }).success,
+    ).toBe(false);
+  });
 
-    expect(result.success).toBe(false);
+  it("accepts a rent history keyed by SA2 code", () => {
+    const rentHistory = {
+      "179900": [
+        {
+          dwellingType: "ALL",
+          bedrooms: "ALL",
+          period: "2026-04-01",
+          reportedBonds: 171,
+          medianRent: 350,
+          geometricMeanRent: 395,
+        },
+      ],
+    };
+
+    expect(regionRentHistorySchema.parse(rentHistory)).toEqual(rentHistory);
+    expect(regionRentHistorySchema.safeParse({ unknown: [] }).success).toBe(false);
   });
 });
 
@@ -86,6 +106,7 @@ const validManifest = {
       areaCount: 222,
       currentRentsUrl: "/data/releases/2026-04-01.1/areas/current-rents/03.json",
       geometryUrl: "/data/releases/2026-04-01.1/geometry/regions/03.geo.json",
+      rentHistoryUrl: "/data/releases/2026-04-01.1/areas/rent-history/03.json",
     },
   ],
   rentalDataStatus: "provisional",

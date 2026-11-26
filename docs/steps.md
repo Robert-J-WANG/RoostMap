@@ -13705,3 +13705,583 @@ squash merge 在 main 上生成的是一个新提交，Git 不会把分支上的
 ✅ Production 部署和 Production smoke test 全部通过
 ✅ main 上已打 tag step-08-complete，已完成的分支已删除
 ```
+
+---
+
+## Step 09 · 生成全国数据 release
+
+### 这一步做什么
+
+Step 08 建立了从源文件到页面的第一条正式数据链路，但这份 release 只有 Waikato 一个 Region，每个区域也只有 MBIE（租金） `ALL / ALL` 一种分类的当前租金。全国其他 Region 的区域、按住宅类型和卧室数区分的租金，以及过去各季度的租金，都还没有生成。
+
+本步把流水线扩展到全国：为每个 Region 生成全部发布分类的当前租金、边界和租金历史，作为新的版本化 release 发布。页面读取新的数据结构，但显示的内容保持不变，仍然是 Waikato 的 `ALL / ALL`，这样本步的改动集中在数据本身，页面上的变化可以用已有的测试确认。
+
+```text
+用全国源数据确定发布范围
+→ 当前租金覆盖全部发布分类
+→ 生成每个 Region 的租金历史
+→ 生成全国 release 并核对代表区域
+→ 现有页面读取新的数据结构
+→ 本地完整检查
+```
+
+本步完成后，release 应包含 16 个 Region 的当前租金、边界和租金历史，代表区域的数值可以追溯到源记录，相同的输入可以重复生成相同的文件。
+
+### 1. 建立全国数据分支
+
+本步生成全国数据，分支使用 `feat` 类别，`national-data` 说明交付内容：
+
+```bash
+git switch -c feat/national-data
+```
+
+```text
+Switched to a new branch 'feat/national-data'
+```
+
+### 2. 用全国源数据确定发布范围
+
+Step 08 只处理了 Waikato 和 `ALL / ALL`。扩展到全国和全部分类之前，要先确定三件事：哪些 Region 需要生成文件、哪些分类可以发布、源文件中的哪些记录不属于任何区域。
+
+**Region。** Stats NZ（区域） GeoPackage 中除 16 个普通 Region 外，还有 `99 Area Outside Region`，包括 Chatham Islands 等地区。这些 SA2 没有任何 MBIE（租金） 观测，按现有的发布规则不会产生可发布区域。因此生成脚本从 GeoPackage 读取全部 Region 编号，没有可发布区域的 Region 不生成文件，也不为它建立单独的分片。
+
+**分类。** Step 06 的 profiling 显示，源文件有 6 种住宅类型和 14 种卧室取值。住宅类型 `ALL`、`Apartment`、`Boarding House`、`Flat`、`House`、`Room` 全部发布；卧室数只发布 `ALL`、`1`、`2`、`3`、`4`、`5+`，其余 8 种（`0`、`5`、`6`、`7`、`8`、`9`、`15`、`NA`）是零星或含义不明的值，不发布。产品设计和技术规范列出的不发布值中漏掉了 `8`。如果按"排除哪些值"来写规则，这类没有列出的值就会被当作发布分类。因此规则写成白名单：只发布明确列出的分类，其他值一律不发布。
+
+**不属于任何区域的记录。** MBIE（租金） 中的 `Location Id` 有 `NULL` 和 `-99` 两种汇总值，它们没有对应的 SA2。Step 08 的转换只保留属于当前 Region 的编号，这两种值会自然被排除，不需要额外处理。
+
+#### 2.1 发布分类的白名单
+
+在 `data/pipeline/current-rents.mjs` 中，两个分类列表取代原来的 `ALL / ALL` 常量。列表的顺序也是写出文件时分类的排列顺序：
+
+```js
+// 发布的住宅类型和卧室数，顺序也是写出文件时的排列顺序。
+// 其他源值（例如卧室数 0、6、8、15 和 NA）不发布。
+export const publishedDwellingTypes = ["ALL", "Apartment", "Boarding House", "Flat", "House", "Room"];
+export const publishedBedrooms = ["ALL", "1", "2", "3", "4", "5+"];
+
+export function isPublishedCategory(record) {
+  return (
+    publishedDwellingTypes.includes(record["Dwelling Type"]) &&
+    publishedBedrooms.includes(record["Number Of Beds"])
+  );
+}
+```
+
+contract 中的两个分类字段使用同样的值，写成枚举：
+
+```ts
+const dwellingTypeSchema = z.enum(["ALL", "Apartment", "Boarding House", "Flat", "House", "Room"]);
+const bedroomsSchema = z.enum(["ALL", "1", "2", "3", "4", "5+"]);
+```
+
+流水线只写出白名单中的分类，contract 只接受枚举中的值，两边任何一边出错，contract 检查都会失败。
+
+### 3. 当前租金覆盖全部发布分类
+
+Step 08 的当前租金是每个区域一个对象 `currentRent`。现在一个区域有多个分类，每个分类各有一份当前租金，所以改为数组 `currentRents`，与技术规范中的 `AreaWithCurrentRents` 一致：
+
+```ts
+export const currentRentSchema = z
+  .object({
+    dwellingType: dwellingTypeSchema,
+    bedrooms: bedroomsSchema,
+    datasetLatestPeriod: periodSchema,
+    observationPeriod: periodSchema.nullable(),
+    medianRent: z.number().nonnegative().nullable(),
+    reportedBonds: z.number().int().nonnegative().nullable(),
+    yearOverYearChange: z.number().nullable(),
+  })
+  .strict();
+
+export const areaWithCurrentRentsSchema = areaSchema.extend({
+  currentRents: z.array(currentRentSchema).min(1),
+});
+```
+
+`currentRents` 至少有一项：可发布区域一定在某个发布分类中有有效租金。
+
+#### 3.1 按分类计算当前租金
+
+季度租金记录增加两个分类字段，计算时才知道每条记录属于哪个分类：
+
+```js
+export function convertToQuarterlyRent(record) {
+  return {
+    dwellingType: record["Dwelling Type"],
+    bedrooms: record["Number Of Beds"],
+    period: record.TimeFrame,
+    reportedBonds: parseNullableNumber(record["Total Bonds"]),
+    medianRent: parseNullableNumber(record["Median Rent"]),
+    geometricMeanRent: parseNullableNumber(record["Geometric Mean Rent"]),
+  };
+}
+```
+
+`buildAreasWithCurrentRent` 改名为 `buildAreasWithCurrentRents`。第 2 步收集记录时不再只保留 `ALL / ALL`，而是保留全部发布分类；可发布区域的判断也改为只看发布分类中的有效租金：
+
+```js
+for (const record of mbieRecords) {
+  const sa2Id = record["Location Id"];
+
+  // 不属于这个 Region 的编号（包括 -99 和 NULL）和不发布的分类都跳过。
+  if (!regionSa2Ids.has(sa2Id) || !isPublishedCategory(record)) {
+    continue;
+  }
+
+  // 发布的分类中有一条 Median Rent 不为 null 的记录，这个 SA2 就可以发布。
+  const quarterlyRent = convertToQuarterlyRent(record);
+  if (quarterlyRent.medianRent !== null) {
+    publishableSa2Ids.add(sa2Id);
+  }
+
+  // ……按 SA2 收集 quarterlyRent
+}
+```
+
+第 4 步计算每个区域时，先把记录排序，再按分类分组，每组计算一份当前租金：
+
+```js
+return publishedAreas.map((area) => {
+  const rentsByCategory = new Map();
+
+  for (const quarterlyRent of sortQuarterlyRents(quarterlyRentsBySa2Id.get(area.sa2Id))) {
+    const category = `${quarterlyRent.dwellingType}|${quarterlyRent.bedrooms}`;
+
+    if (!rentsByCategory.has(category)) {
+      rentsByCategory.set(category, []);
+    }
+    rentsByCategory.get(category).push(quarterlyRent);
+  }
+
+  const currentRents = [...rentsByCategory.values()].map((categoryRents) =>
+    buildCurrentRent(categoryRents, datasetLatestPeriod),
+  );
+
+  return { ...area, currentRents };
+});
+```
+
+- `sortQuarterlyRents` 先按分类在白名单中的位置、再按季度排序。真实 CSV 中记录的顺序与此不同，排序后输出不依赖源文件的顺序。
+- `Map` 按插入顺序保存键，记录已经排好序，所以分组的顺序也是白名单的顺序。
+- 只为有记录的分类计算当前租金。某个分类没有任何记录时，它不出现在 `currentRents` 中，页面显示为缺失，不回退到其他分类。
+
+`buildCurrentRent` 的计算规则不变，只是从这一组记录中取出分类，写进结果。
+
+#### 3.2 1 卧的 12 个月变化
+
+产品设计规定：从 `2024-10-01` 起，MBIE（租金） 的 1 卧记录出现与全部类别不一致的跳升，判断为源分类变化；12 个月变化的任一目标季度不早于这个季度时，1 卧的变化保持为空。
+
+数据集最新季度是 `2026-04-01`，一年前是 `2025-04-01`，两个都晚于分界季度。上一年同季度总是早于最新季度，所以只要最新季度不早于分界季度，比较就跨越了分界：
+
+```js
+const oneBedroomComparabilityBreak = "2024-10-01";
+
+// 1 卧：数据集最新季度不早于分界季度时，跨越分界的比较没有意义，变化为 null。
+const crossesOneBedroomBreak =
+  bedrooms === "1" && datasetLatestPeriod >= oneBedroomComparabilityBreak;
+```
+
+```js
+yearOverYearChange:
+  !crossesOneBedroomBreak &&
+  currentGeometricMeanRent !== null &&
+  lastYearGeometricMeanRent !== null
+    ? roundChange(currentGeometricMeanRent / lastYearGeometricMeanRent - 1)
+    : null,
+```
+
+#### 3.3 用 fixture 检查新的规则
+
+fixture `data/fixtures/first-slice/mbie-records.csv` 增加 4 条记录：
+
+```text
+2025-04-01,900001,ALL,1,6,300,290
+2026-04-01,900001,ALL,1,9,360,370
+2026-04-01,900001,ALL,NA,7,500,495
+2026-04-01,900004,ALL,NA,8,430,420
+```
+
+- Area A 的 1 卧两个季度都有 Geometric Mean Rent，按普通规则可以算出变化，用来检查 1 卧规则。
+- Area A 的 `NA` 记录用来检查不发布的分类不会出现在结果中。
+- Area D 原来没有任何记录，现在只有一条 `NA` 记录。它有有效租金，但不在发布分类中，所以仍然不应该发布。
+
+`current-rents.test.mjs` 中原有的测试按新的结构调整，并增加两个测试：
+
+```js
+// Area A 的 1 卧两个季度都有租金（370 / 290），但比较跨越了 2024-10-01 的分类变化。
+it("does not calculate the 12-month change for one-bedroom rents", () => {
+  expect(calculateCurrentRentFromFixture("900001", "ALL", "1")).toMatchObject({
+    dwellingType: "ALL",
+    bedrooms: "1",
+    medianRent: 360,
+    yearOverYearChange: null,
+  });
+});
+
+// Area A 有 ALL / ALL、ALL / 1、House / 3 三个发布的分类，NA 不出现；分类按发布顺序排列。
+it("attaches the current rent of each published category", () => {
+  const areaA = areasWithCurrentRents.find((area) => area.sa2Id === "900001");
+
+  expect(
+    areaA.currentRents.map(({ dwellingType, bedrooms }) => `${dwellingType} / ${bedrooms}`),
+  ).toEqual(["ALL / ALL", "ALL / 1", "House / 3"]);
+});
+```
+
+"只发布有有效租金的区域"这个测试的期望值不变，仍然是 Area A、B、C：Area D 的 `NA` 记录没有让它成为可发布区域。
+
+### 4. 生成每个 Region 的租金历史
+
+当前租金只有最后一个有租金的季度。要显示一个区域的租金如何变化，需要它在每个季度的记录。技术规范规定每个 Region 一个租金历史文件，以 SA2 编号为键，值是这个 SA2 的季度租金记录。
+
+contract 中，季度租金记录就是 `convertToQuarterlyRent` 的结果，SA2 编号放在键上，不在每条记录中重复：
+
+```ts
+const quarterlyRentSchema = z
+  .object({
+    dwellingType: dwellingTypeSchema,
+    bedrooms: bedroomsSchema,
+    period: periodSchema,
+    reportedBonds: z.number().int().nonnegative().nullable(),
+    medianRent: z.number().nonnegative().nullable(),
+    geometricMeanRent: z.number().nonnegative().nullable(),
+  })
+  .strict();
+
+export const regionRentHistorySchema = z.record(sa2IdSchema, z.array(quarterlyRentSchema));
+```
+
+`z.record(键的 schema, 值的 schema)` 描述一个对象：每个键都要通过 `sa2IdSchema`，每个值都要通过后面的数组 schema。
+
+生成函数放在新文件 `data/pipeline/rent-history.mjs` 中。它使用当前租金同样的分类白名单和排序，并只为当前租金中的可发布 SA2 生成历史，所以历史与当前租金使用同一组区域、同一套分类：
+
+```js
+export function buildRegionRentHistory({ sa2Ids, mbieRecords }) {
+  // 先为每个可发布 SA2 准备空列表，只读一遍 MBIE（租金） 记录。
+  const quarterlyRentsBySa2Id = new Map(sa2Ids.map((sa2Id) => [sa2Id, []]));
+
+  for (const record of mbieRecords) {
+    const quarterlyRents = quarterlyRentsBySa2Id.get(record["Location Id"]);
+
+    // 不是这个 Region 的可发布 SA2，或者不是发布的分类，都跳过。
+    if (!quarterlyRents || !isPublishedCategory(record)) {
+      continue;
+    }
+
+    quarterlyRents.push(convertToQuarterlyRent(record));
+  }
+
+  const regionRentHistory = {};
+  for (const [sa2Id, quarterlyRents] of quarterlyRentsBySa2Id) {
+    regionRentHistory[sa2Id] = sortQuarterlyRents(quarterlyRents);
+  }
+
+  return regionRentHistory;
+}
+```
+
+没有租金的季度仍然保留，值为 `null`。历史中缺失的季度要能显示为缺失，不能被删除后让相邻的季度连在一起。
+
+`rent-history.test.mjs` 使用同一份 fixture，检查 5 件事：每个可发布区域都有一项；Area A 的 `NA` 记录不出现，记录按分类和季度排列；Area C 没有租金的季度保留为 `null`；源记录顺序颠倒时结果不变；结果通过 contract。
+
+### 5. 生成全国 release
+
+#### 5.1 新的版本号
+
+Step 08 的 release `2026-04-01.1` 已经合并到 main 并部署到 Production。按照"版本发布后内容不再修改"的规则，这次的文件结构和内容都变了，就要使用新的版本号。数据最新季度没有变，所以只把序号加 1。在 `data/source-lock.json` 中：
+
+```json
+"release": {
+  "version": "2026-04-01.2",
+  "generatedAt": "2026-11-26T00:00:00.000Z"
+}
+```
+
+技术规范规定工作树只保留当前版本，上一个版本保存在 Git 历史中。因此删除旧版本的目录：
+
+```bash
+git rm -r -q public/data/releases/2026-04-01.1
+```
+
+#### 5.2 为每个 Region 生成三个文件
+
+`build-release.mjs` 中固定的 `regionCodes = ["03"]` 改为从 GeoPackage 读取全部 Region 编号：
+
+```js
+function readRegionCodes(geoPackageUrl) {
+  const database = new DatabaseSync(geoPackageUrl, { readOnly: true });
+
+  try {
+    return database
+      .prepare(
+        `SELECT DISTINCT REGC2019_V1_00 AS regionCode
+         FROM statistical_area_2_higher_geographies_2019_generalised
+         ORDER BY REGC2019_V1_00`,
+      )
+      .all()
+      .map((row) => row.regionCode);
+  } finally {
+    database.close();
+  }
+}
+```
+
+每个 Region 依次计算当前租金；没有可发布区域时记下这个 Region 并跳过，否则写出当前租金、边界和租金历史：
+
+```js
+for (const regionCode of readRegionCodes(statsNzFile.url)) {
+  const statsNzRecords = readRegionRecords(statsNzFile.url, regionCode);
+  const regionName = statsNzRecords[0].REGC2019_V1_00_NAME;
+  const areasWithCurrentRents = buildAreasWithCurrentRents({
+    statsNzRecords,
+    mbieRecords,
+    datasetLatestPeriod,
+  });
+
+  if (areasWithCurrentRents.length === 0) {
+    skippedRegions.push(`${regionCode} ${regionName}`);
+    continue;
+  }
+
+  // 边界和租金历史只包含可发布区域，地图、列表和历史使用同一组 SA2。
+  const publishedSa2Ids = areasWithCurrentRents.map((area) => area.sa2Id);
+  // ……边界与 Step 08 相同
+  const rentHistory = buildRegionRentHistory({ sa2Ids: publishedSa2Ids, mbieRecords });
+
+  // ……写出三个文件，并把三个地址记入 manifest 的这个 Region
+}
+```
+
+manifest 中的每个 Region 增加 `rentHistoryUrl`，contract 的 `manifestPartitionSchema` 同样增加这个字段。
+
+全国有 16 个 Region，逐个打印完整的 manifest 不便阅读，所以脚本最后只打印摘要：每个 Region 的区域数量、跳过的 Region，以及不发布分类的记录数。
+
+#### 5.3 生成并检查结果
+
+```bash
+npm run data:release
+```
+
+```text
+version 2026-04-01.2 · latest period 2026-04-01
+01 Northland Region: 87 areas
+02 Auckland Region: 542 areas
+03 Waikato Region: 222 areas
+04 Bay of Plenty Region: 126 areas
+05 Gisborne Region: 24 areas
+06 Hawke's Bay Region: 82 areas
+07 Taranaki Region: 56 areas
+08 Manawatu-Wanganui Region: 126 areas
+09 Wellington Region: 204 areas
+12 West Coast Region: 20 areas
+13 Canterbury Region: 273 areas
+14 Otago Region: 124 areas
+15 Southland Region: 49 areas
+16 Tasman Region: 28 areas
+17 Nelson Region: 23 areas
+18 Marlborough Region: 23 areas
+total: 16 Regions, 2009 areas
+skipped Regions without publishable areas: 99 Area Outside Region
+records in unpublished categories: 12343
+```
+
+- 全国 2,009 个可发布区域，与 Step 06 中 2,009 个六位 `Location Id` 全部关联到 SA2 的结果一致。可发布的判断改为只看发布分类后，数量没有变化。
+- Waikato 仍是 222 个区域，与 Step 08 相同。
+- `99 Area Outside Region` 没有可发布区域，被跳过。
+- 12,343 条记录属于不发布的分类，没有进入任何文件。
+
+```bash
+git status --short public/data
+```
+
+```text
+ M public/data/manifest.json
+D  public/data/releases/2026-04-01.1/areas/current-rents/03.json
+D  public/data/releases/2026-04-01.1/geometry/regions/03.geo.json
+D  public/data/releases/2026-04-01.1/manifest.json
+?? public/data/releases/
+```
+
+旧版本的 3 个文件已删除并暂存。`releases/` 下已经没有 Git 跟踪的文件，所以新版本显示为整个 `releases/` 目录未跟踪；它没有被 `.gitignore` 忽略，可以提交。
+
+#### 5.4 测量数据体积
+
+全国数据比 Waikato 大很多，需要确认没有超过两个限制：GitHub 拒绝超过 100 MB 的单个文件；Azure Static Web Apps 免费计划中，单个环境的应用不超过 250 MB，Production 和 Preview 合计不超过 500 MB。
+
+```bash
+du -sh public/data/releases/2026-04-01.2 public/data/releases/2026-04-01.2/*/*
+```
+
+```text
+ 85M    public/data/releases/2026-04-01.2
+3.6M    public/data/releases/2026-04-01.2/areas/current-rents
+ 26M    public/data/releases/2026-04-01.2/areas/rent-history
+ 55M    public/data/releases/2026-04-01.2/geometry/regions
+```
+
+`du` 统计的是文件在磁盘上占用的空间，按存储块计算。用 `stat` 读取每个文件的实际字节数再相加，49 个文件（16 个 Region 各 3 个文件，加上 manifest）共 79.1 MB，最大的单个文件不到 10 MB。两个限制都没有超过，所以不需要压缩或拆分数据。
+
+#### 5.5 确认结果可以重复生成
+
+在另一个工作目录中，用同样的代码和源文件再生成一次 release，比较两次结果中 49 个文件的 SHA-256，全部相同。全国 release 和 Step 08 一样，相同的输入生成逐字节相同的文件。
+
+#### 5.6 核对代表区域
+
+全国数据不能逐个区域核对，所以选出几个能代表不同情况的区域，从原始 CSV 中取出它们的记录手工计算，再与生成的结果比较：
+
+| 区域 | 代表的情况 |
+|---|---|
+| Greensboro（`179900`） | Step 08 已经核对过的基准 |
+| Hobsonville Point（`120200`） | Auckland 中 Bonds 最多的区域 |
+| Hokitika（`311500`） | West Coast 的较小中心 |
+| Cooks Beach-Ferry Landing（`167300`） | 最后一个有租金的季度是 2021-04-01 |
+
+取出两个新区域在 `2026-04-01` 和 `2025-04-01` 的 `ALL / ALL` 和 `ALL / 1` 记录：
+
+```bash
+grep -E '^(2026-04-01|2025-04-01),(120200|311500),ALL,(ALL|1),' data/raw/mbie/Detailed-Quarterly-Tenancy-Q1-2020-Q3-2026.csv
+```
+
+```text
+2026-04-01,120200,ALL,1,102,285,15,670,702,798,620,0.2091
+2026-04-01,311500,ALL,1,12,42,3,475,476,519,470,0.1557
+2026-04-01,120200,ALL,ALL,156,1041,93,700,710,820,630,0.2213
+2026-04-01,311500,ALL,ALL,21,222,12,480,480,525,465,0.1586
+2025-04-01,120200,ALL,1,15,54,6,540,547,580,530,0.0718
+2025-04-01,120200,ALL,ALL,141,633,36,700,699,821,620,0.2224
+2025-04-01,311500,ALL,ALL,27,207,15,450,383,480,360,0.3775
+```
+
+各列依次是季度、SA2、住宅类型、卧室数、Total Bonds、Active Bonds、Closed Bonds、Median Rent、Geometric Mean Rent 等。手工计算：
+
+| 区域和分类 | Median Rent | Reported Bonds | 12 个月变化 |
+|---|---|---|---|
+| Hobsonville Point `ALL / ALL` | 700 | 156 | 710 / 699 − 1 = 0.0157 |
+| Hokitika `ALL / ALL` | 480 | 21 | 480 / 383 − 1 = 0.2533 |
+| Hobsonville Point `ALL / 1` | 670 | 102 | 1 卧规则：null |
+
+Hobsonville Point 的 1 卧记录正好说明了 1 卧规则的意义：一年内 Bonds 从 15 跳到 102，Geometric Mean Rent 从 547 跳到 702。如果计算变化会得到 +28.3%，而这是源分类的变化，不是市场变化。
+
+`release.test.mjs` 改为读取 manifest 中的全部 Region。原来的测试扩展到每个 Region 的三个文件：所有地址指向同一个版本、所有文件通过 contract、每个 Region 的当前租金、边界和租金历史使用同一组区域。Greensboro 的测试扩展为 4 个代表区域，另外增加两个测试：每个 SA2 只出现在一个 Region 中；Hobsonville Point 的 1 卧变化为空。
+
+代表区域的测试用一个辅助函数在全国数据中查找：
+
+```js
+function findCurrentRent(sa2Id, dwellingType, bedrooms) {
+  const area = regions
+    .flatMap((region) => region.currentRents)
+    .find((item) => item.sa2Id === sa2Id);
+
+  return area.currentRents.find(
+    (currentRent) =>
+      currentRent.dwellingType === dwellingType && currentRent.bedrooms === bedrooms,
+  );
+}
+```
+
+```js
+expect(findCurrentRent("120200", "ALL", "ALL")).toMatchObject({
+  observationPeriod: "2026-04-01",
+  medianRent: 700,
+  reportedBonds: 156,
+  yearOverYearChange: 0.0157,
+});
+// ……Greensboro、Hokitika 和 Cooks Beach-Ferry Landing 同样检查
+```
+
+### 6. 让现有页面读取新的数据结构
+
+页面原来读取 `area.currentRent`，现在每个区域是 `currentRents` 数组，而且 manifest 中的第一个 Region 已经变成 Northland。页面要做两处调整，显示的内容保持不变。
+
+页面现在显示哪个 Region、哪个分类，以及从数据中取出它们的方法，集中放在 `src/data/selection.ts` 中：
+
+```ts
+// Region 切换和分类筛选完成前，页面显示 Waikato 的全部住宅类型、全部卧室数。
+export const defaultRegionCode = "03";
+export const defaultDwellingType: CurrentRent["dwellingType"] = "ALL";
+export const defaultBedrooms: CurrentRent["bedrooms"] = "ALL";
+
+export function findPartition(manifest: DataManifest, regionCode: string): ManifestPartition {
+  return (
+    manifest.partitions.find((partition) => partition.id === regionCode) ??
+    manifest.partitions[0]
+  );
+}
+
+export function findCurrentRent(
+  area: AreaWithCurrentRents,
+  dwellingType: CurrentRent["dwellingType"],
+  bedrooms: CurrentRent["bedrooms"],
+): CurrentRent | null {
+  return (
+    area.currentRents.find(
+      (currentRent) =>
+        currentRent.dwellingType === dwellingType && currentRent.bedrooms === bedrooms,
+    ) ?? null
+  );
+}
+```
+
+`CurrentRent["dwellingType"]` 取出 contract 推导出的类型中这个字段的类型，也就是六个住宅类型组成的联合类型，写错分类值时类型检查会报错。
+
+Explore 和详情页改为用 `findPartition(manifest, defaultRegionCode)` 取得 Waikato。列表、地图和详情页改为用 `findCurrentRent` 取得 `ALL / ALL` 的当前租金。这个分类没有记录时返回 `null`，页面把各项显示为缺失：
+
+```tsx
+// 这个分类没有记录时 currentRent 为 null，各项都显示为缺失。
+const currentRent = findCurrentRent(area, defaultDwellingType, defaultBedrooms);
+```
+
+```tsx
+{formatRent(currentRent?.medianRent ?? null)}
+```
+
+地图组件把租金放进边界属性时也使用同样的查找，`useMemo` 的依赖仍然是查询返回的 `areas`，选择区域时不会重新连接边界。
+
+Home 和 Methodology 原来把每个 Region 的名称连在一起显示覆盖范围。全国有 16 个 Region，这样写太长，所以改为共用的 `formatCoverage`：只有一个 Region 时显示名称，否则显示数量：
+
+```ts
+export function formatCoverage(partitions: { name: string; areaCount: number }[]): string {
+  const areaCount = partitions.reduce((total, partition) => total + partition.areaCount, 0);
+  const regions = partitions.length === 1 ? partitions[0].name : `${partitions.length} Regions`;
+
+  return `${regions} · ${areaCount.toLocaleString("en-NZ")} areas`;
+}
+```
+
+页面测试使用的 manifest、当前租金和 contract 测试数据都改为新的结构：每个区域的 `currentRents` 中有一个 `ALL / ALL` 分类，manifest 的 Region 增加 `rentHistoryUrl`。contract 测试中，已有的两个测试分别加入一项检查：卧室数 `NA` 被拒绝，空的 `currentRents` 被拒绝；另外新增一个测试：租金历史接受以 SA2 编号为键的记录，拒绝其他键。
+
+### 7. 验证并完成 Git 操作
+
+#### 7.1 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 没有报错。测试结果中与本步有关的部分为：
+
+```text
+✓ data/pipeline/current-rents.test.mjs (10 tests) 18ms
+✓ data/pipeline/rent-history.test.mjs (5 tests) 19ms
+✓ src/data/contracts.test.ts (8 tests) 116ms
+✓ data/pipeline/release.test.mjs (7 tests) 2479ms
+  ✓ data release (7)
+    ✓ publishes a manifest and Region files that satisfy the contract 2441ms
+
+Test Files  12 passed (12)
+     Tests  56 passed (56)
+```
+
+release 测试用 contract 检查了全国 79.1 MB 的数据，包括每个边界坐标，用时 2.4 秒。
+
+`npm run build` 通过。Playwright 运行 7 个测试，6 个通过，404 测试按预期在本地跳过。两个读取真实 release 的测试仍然通过：Explore 和详情页中 Greensboro 的值与 Step 08 相同。这说明页面从新的 `currentRents` 中取出的 `ALL / ALL` 与原来的 `currentRent` 一致。
+
+页面测试使用的 manifest 只有一个 Region，测不到全国 release 的覆盖范围，所以再在 `npm run dev` 中检查：
+
+| 页面 | 结果 |
+|---|---|
+| Home | Coverage 显示 `16 Regions · 2,009 areas` |
+| Methodology | Release version `2026-04-01.2`，Coverage `16 Regions · 2,009 areas` |
+| Explore `?sa2=179900` | 显示 Waikato 的 222 个区域，选中 Greensboro，列表和地图正常 |
+
+Explore 只请求了 manifest，以及 `2026-04-01.2` 中 Waikato 的当前租金和边界，没有请求租金历史文件，其他 Region 的文件也没有下载。

@@ -8,6 +8,7 @@ import { DataStatusBadge } from "@/components/DataStatusBadge";
 import { buttonVariants } from "@/components/ui/button";
 import type { DataManifest } from "@/data/contracts";
 import { useManifest } from "@/data/queries";
+import { formatCoverage } from "@/lib/format";
 
 export function HomePage() {
   const manifestQuery = useManifest();
@@ -91,19 +92,11 @@ type ReleaseSummaryProps = {
 
 // 当前 release 覆盖的 Region、区域数量、数据季度和分类，如实说明现在能查看什么。
 function ReleaseSummary({ manifest }: ReleaseSummaryProps) {
-  const regionNames = manifest.partitions.map((partition) => partition.name).join(", ");
-  const areaCount = manifest.partitions.reduce(
-    (total, partition) => total + partition.areaCount,
-    0,
-  );
-
   return (
     <dl className="space-y-3 text-sm">
       <div>
         <dt className="text-muted-foreground">Coverage</dt>
-        <dd className="font-medium">
-          {regionNames} · {areaCount} areas
-        </dd>
+        <dd className="font-medium">{formatCoverage(manifest.partitions)}</dd>
       </div>
       <div>
         <dt className="text-muted-foreground">Data to</dt>

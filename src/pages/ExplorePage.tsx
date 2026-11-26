@@ -11,6 +11,7 @@ import {
   useRegionCurrentRents,
   useRegionGeometry,
 } from "@/data/queries";
+import { defaultRegionCode, findPartition } from "@/data/selection";
 import { AreaList } from "@/features/explore/AreaList";
 import { AreaMap } from "@/features/explore/AreaMap";
 
@@ -41,13 +42,13 @@ export function ExplorePage() {
     );
   }
 
-  // 当前 release 只有一个 Region，直接使用 manifest 中的第一个。
+  // Region 切换完成前，页面固定显示 Waikato。
   return (
     <section className="space-y-6">
       {pageTitle}
       <RegionExplorer
         manifest={manifestQuery.data}
-        partition={manifestQuery.data.partitions[0]}
+        partition={findPartition(manifestQuery.data, defaultRegionCode)}
       />
     </section>
   );
