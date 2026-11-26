@@ -1,22 +1,25 @@
 import { ArrowLeftIcon } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 
 import { DataLoadError } from "@/components/DataLoadError";
 import { DataReleaseNotice } from "@/components/DataReleaseNotice";
 import { DataStatusBadge } from "@/components/DataStatusBadge";
+import { OneBedroomNotice } from "@/components/OneBedroomNotice";
 import { buttonVariants } from "@/components/ui/button";
 import type { DataManifest, ManifestPartition } from "@/data/contracts";
 import { useManifest, useRegionCurrentRents } from "@/data/queries";
 import {
-  defaultBedrooms,
-  defaultDwellingType,
-  defaultRegionCode,
   findCurrentRent,
   findPartition,
+  readSelection,
+  toSearch,
+  type Selection,
 } from "@/data/selection";
 import {
+  formatBedrooms,
   formatBonds,
   formatChange,
+  formatDwellingType,
   formatRent,
   isOlderObservation,
 } from "@/lib/format";
@@ -24,9 +27,11 @@ import {
 // 还没有找到区域时（加载中或读取失败）使用的页面标题。
 const defaultTitle = <title>Area details | RoostMap</title>;
 
-// 页面入口：先读取 manifest，再从其中 Region 的当前租金中找到地址里的 SA2。
+// 页面入口：先读取 manifest，再从 URL 中 Region 的当前租金里找到地址中的 SA2。
+// 地址例如 /areas/251400?region=09&bedrooms=3，Region 和分类与 Explore 使用同一组参数。
 export function AreaDetailPage() {
   const manifestQuery = useManifest();
+  const [searchParams] = useSearchParams();
 
   if (manifestQuery.isError) {
     return (
@@ -49,13 +54,14 @@ export function AreaDetailPage() {
     );
   }
 
-  // Region 切换完成前，页面固定在 Waikato 中查找区域。
+  const manifest = manifestQuery.data;
+  const urlSelection = readSelection(searchParams);
+  const partition = findPartition(manifest, urlSelection.regionCode);
+  const selection = { ...urlSelection, regionCode: partition.id };
+
   return (
     <section className="space-y-6">
-      <AreaDetails
-        manifest={manifestQuery.data}
-        partition={findPartition(manifestQuery.data, defaultRegionCode)}
-      />
+      <AreaDetails manifest={manifest} partition={partition} selection={selection} />
     </section>
   );
 }
@@ -63,11 +69,12 @@ export function AreaDetailPage() {
 type AreaDetailsProps = {
   manifest: DataManifest;
   partition: ManifestPartition;
+  selection: Selection;
 };
 
-// 一个区域的详情：与 Explore 的列表和地图读取同一份当前租金。
+// 一个区域在所选分类下的详情：与 Explore 的列表和地图读取同一份当前租金。
 // 查询键相同，从 Explore 进入时直接使用已经下载的数据，不再请求。
-function AreaDetails({ manifest, partition }: AreaDetailsProps) {
+function AreaDetails({ manifest, partition, selection }: AreaDetailsProps) {
   const { sa2Id } = useParams();
   const currentRentsQuery = useRegionCurrentRents(partition);
 
@@ -94,24 +101,28 @@ function AreaDetails({ manifest, partition }: AreaDetailsProps) {
 
   const area = currentRentsQuery.data.find((item) => item.sa2Id === sa2Id);
 
-  // 编号格式不对，或者这份 release 中没有这个区域。
+  // 编号格式不对，或者这份 release 的这个 Region 中没有这个区域。
   if (!area) {
     return (
       <>
         <title>Area not found | RoostMap</title>
         <h1 className="text-3xl font-semibold">Area not found</h1>
         <p className="text-muted-foreground">
-          The current data release has no rental area with SA2 code {sa2Id}.
+          {partition.name} has no rental area with SA2 code {sa2Id} in the
+          current data release.
         </p>
-        <Link className={buttonVariants({ variant: "outline" })} to="/explore">
+        <Link
+          className={buttonVariants({ variant: "outline" })}
+          to={`/explore${toSearch({ ...selection, sa2Id: null })}`}
+        >
           Back to Explore
         </Link>
       </>
     );
   }
 
-  // 这个分类没有记录时，各项都显示为缺失；数据集最新季度取自 manifest。
-  const currentRent = findCurrentRent(area, defaultDwellingType, defaultBedrooms);
+  // 所选分类没有记录时，各项都显示为缺失；数据集最新季度取自 manifest。
+  const currentRent = findCurrentRent(area, selection.dwellingType, selection.bedrooms);
   const datasetLatestPeriod = manifest.latestPeriod;
   const observationPeriod = currentRent?.observationPeriod ?? null;
   const medianRent = currentRent?.medianRent ?? null;
@@ -122,10 +133,10 @@ function AreaDetails({ manifest, partition }: AreaDetailsProps) {
     <>
       <title>{`${area.name} | RoostMap`}</title>
 
-      {/* 返回 Explore 时保留这个区域的选择。 */}
+      {/* 返回 Explore 时保留 Region、分类和这个区域的选择。 */}
       <Link
         className={buttonVariants({ size: "sm", variant: "ghost" })}
-        to={`/explore?sa2=${area.sa2Id}`}
+        to={`/explore${toSearch({ ...selection, sa2Id: area.sa2Id })}`}
       >
         <ArrowLeftIcon aria-hidden="true" data-icon="inline-start" />
         Back to Explore
@@ -138,9 +149,12 @@ function AreaDetails({ manifest, partition }: AreaDetailsProps) {
           {area.territorialAuthorityName} · {area.regionName}
         </p>
         <p className="text-muted-foreground">
-          All dwelling types · All bedroom categories
+          {formatDwellingType(selection.dwellingType)} ·{" "}
+          {formatBedrooms(selection.bedrooms)}
         </p>
       </div>
+
+      {selection.bedrooms === "1" && <OneBedroomNotice />}
 
       {/* 当前租金：每一项都有标签；缺失值显示为缺失，旧季度的租金不称为当前价格。 */}
       <dl className="grid gap-6 rounded-xl border bg-card p-6 sm:grid-cols-2">

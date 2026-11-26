@@ -7,9 +7,10 @@ import {
   fetchRegionGeometry,
 } from "@/data/repository";
 
-// 三个查询都设置 staleTime: Infinity，读取成功后在页面打开期间不再重新请求：
+// 三个查询都设置 staleTime: Infinity，读取成功后数据不会过期，缓存中有数据时不再重新请求：
 // - 版本目录中的文件发布后不会再修改，重新请求只会得到相同内容；
 // - manifest 在页面打开期间保持同一个版本，列表和地图因此不会读到不同版本的文件。
+// 没有组件使用的查询（例如切换后离开的 Region）按默认的 gcTime 在 5 分钟后清除，之后需要时重新请求。
 
 /**
  * 读取当前 manifest。

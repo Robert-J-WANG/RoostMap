@@ -6,8 +6,13 @@ import { setWorkerUrl } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { AreaWithCurrentRents, RegionGeometry } from "@/data/contracts";
-import { defaultBedrooms, defaultDwellingType, findCurrentRent } from "@/data/selection";
+import type {
+  AreaWithCurrentRents,
+  Bedrooms,
+  DwellingType,
+  RegionGeometry,
+} from "@/data/contracts";
+import { findCurrentRent } from "@/data/selection";
 
 // 地图运行环境：在创建地图前指定 Worker 地址。
 setWorkerUrl(workerUrl);
@@ -88,18 +93,27 @@ function getMapBounds(features: RegionGeometry["features"]): MapBounds {
 type AreaMapProps = {
   geometry: RegionGeometry;
   areas: AreaWithCurrentRents[];
+  dwellingType: DwellingType;
+  bedrooms: Bedrooms;
   selectedSa2Id: string | null;
   onSelect: (sa2Id: string) => void;
 };
 
-export function AreaMap({ geometry, areas, selectedSa2Id, onSelect }: AreaMapProps) {
-  // 边界文件只有 SA2 编号；按编号把列表使用的同一份租金放进 feature 属性。
-  // Source 收到新的 data 对象就会重新处理全部边界，因此只在数据变化时重新连接。
+export function AreaMap({
+  geometry,
+  areas,
+  dwellingType,
+  bedrooms,
+  selectedSa2Id,
+  onSelect,
+}: AreaMapProps) {
+  // 边界文件只有 SA2 编号；按编号把列表所用分类的同一份租金放进 feature 属性。
+  // Source 收到新的 data 对象就会重新处理全部边界，因此只在数据或分类变化时重新连接。
   const mapData = useMemo(() => {
     const medianRentBySa2Id = new Map(
       areas.map((area) => [
         area.sa2Id,
-        findCurrentRent(area, defaultDwellingType, defaultBedrooms)?.medianRent ?? null,
+        findCurrentRent(area, dwellingType, bedrooms)?.medianRent ?? null,
       ]),
     );
 
@@ -113,11 +127,12 @@ export function AreaMap({ geometry, areas, selectedSa2Id, onSelect }: AreaMapPro
         },
       })),
     };
-  }, [geometry, areas]);
+  }, [geometry, areas, dwellingType, bedrooms]);
 
   const mapRef = useRef<MapRef>(null);
 
   // 地图创建时的范围：URL 中已有选择时显示这个区域，否则显示整个 Region。
+  // 切换 Region 时，页面用 key 重新创建地图，这里会按新 Region 重新计算。
   const [initialViewState] = useState(() => {
     const selectedFeature = geometry.features.find(
       (feature) => feature.id === selectedSa2Id,

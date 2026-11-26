@@ -13,10 +13,11 @@ import {
 } from "@/test/release-fixtures";
 
 // 每个测试使用独立的路由和 QueryClient；关闭重试，让失败状态立即显示。
-function renderAreaDetail(sa2Id: string) {
+// path 是 SA2 编号，可以带上 Region 和分类参数，例如 "179900?bedrooms=1"。
+function renderAreaDetail(path: string) {
   const router = createMemoryRouter(
     [{ path: "/areas/:sa2Id", Component: AreaDetailPage }],
-    { initialEntries: [`/areas/${sa2Id}`] },
+    { initialEntries: [`/areas/${path}`] },
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -87,6 +88,29 @@ describe("Area Detail page", () => {
     expect(getValue("Reported Bonds")).toHaveTextContent("No data");
     expect(getValue("12-month change")).toHaveTextContent("N/A");
     expect(screen.queryByText(/NZ\$0/)).not.toBeInTheDocument();
+  });
+
+  it("shows the rent for the category in the URL", async () => {
+    serveRelease();
+    renderAreaDetail("179900?bedrooms=1");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
+    expect(screen.getByText("All dwelling types · 1 bedroom")).toBeInTheDocument();
+    expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$330/week");
+    expect(getValue("12-month change")).toHaveTextContent("N/A");
+    expect(screen.getByText(/MBIE's 1-bedroom figures/)).toBeInTheDocument();
+  });
+
+  it("finds the area in the Region named in the URL", async () => {
+    serveRelease();
+    renderAreaDetail("250100?region=09");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Wellington Test Area" })).toBeInTheDocument();
+    expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$600/week");
+    expect(screen.getByRole("link", { name: "Back to Explore" })).toHaveAttribute(
+      "href",
+      "/explore?region=09&sa2=250100",
+    );
   });
 
   it("shows a not-found message for an SA2 outside the release", async () => {

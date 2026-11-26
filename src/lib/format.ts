@@ -1,3 +1,5 @@
+import type { Bedrooms, DwellingType } from "@/data/contracts";
+
 // 当前租金的显示规则，Explore 列表和 Area Detail 共用。
 // 缺失值显示为缺失，不当作 0。
 
@@ -37,4 +39,17 @@ export function isOlderObservation(
   datasetLatestPeriod: string,
 ): boolean {
   return observationPeriod !== null && observationPeriod !== datasetLatestPeriod;
+}
+
+// 分类在页面上的名称：ALL 显示为 "All …"，卧室数加上单位，例如 "1 bedroom"、"5+ bedrooms"。
+export function formatDwellingType(dwellingType: DwellingType): string {
+  return dwellingType === "ALL" ? "All dwelling types" : dwellingType;
+}
+
+export function formatBedrooms(bedrooms: Bedrooms): string {
+  if (bedrooms === "ALL") {
+    return "All bedroom categories";
+  }
+
+  return bedrooms === "1" ? "1 bedroom" : `${bedrooms} bedrooms`;
 }

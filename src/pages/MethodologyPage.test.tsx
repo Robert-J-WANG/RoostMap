@@ -20,7 +20,7 @@ describe("Methodology page", () => {
     );
 
     expect(await screen.findByText("2026-04-01.1")).toBeInTheDocument();
-    expect(screen.getByText("Waikato Region · 3 areas")).toBeInTheDocument();
+    expect(screen.getByText("2 Regions · 4 areas")).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "MBIE Rental Bond Data" })).toHaveAttribute("href", mbieSourceUrl);
     expect(screen.getByText("Licence: Creative Commons Attribution 3.0 New Zealand")).toBeInTheDocument();
