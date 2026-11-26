@@ -14,11 +14,11 @@ export function RouteErrorPage() {
       <title>Something went wrong | RoostMap</title>
 
       <section className="mx-auto max-w-xl text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-destructive">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-destructive">
           Error
         </p>
 
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+        <h1 className="mt-4 text-3xl font-semibold">
           Something went wrong
         </h1>
 

@@ -30,7 +30,9 @@ test("opens an area page directly from its address", async ({ page }) => {
 test("shows the Greensboro House 3-bedroom rent after filtering", async ({ page }) => {
   await page.goto("/explore");
 
+  // 每次选择后检查 URL，确认两次选择都保存下来。
   await page.getByLabel("Dwelling type").selectOption("House");
+  await expect(page).toHaveURL(/\/explore\?dwelling=House$/);
   await page.getByLabel("Bedrooms").selectOption("3");
   await expect(page).toHaveURL(/\/explore\?dwelling=House&bedrooms=3$/);
 
@@ -73,8 +75,11 @@ test("follows the core journey from Home to an area's rent history", async ({ pa
   await page.goto("/");
   await page.getByRole("link", { name: "Explore rental areas" }).click();
 
+  // 每次选择后检查 URL，确认 Region 和两个分类依次保存下来。
   await page.getByLabel("Region").selectOption("09");
+  await expect(page).toHaveURL(/\?region=09$/);
   await page.getByLabel("Dwelling type").selectOption("House");
+  await expect(page).toHaveURL(/\?region=09&dwelling=House$/);
   await page.getByLabel("Bedrooms").selectOption("3");
 
   const thorndon = page.getByRole("button", { name: /^Thorndon/ });

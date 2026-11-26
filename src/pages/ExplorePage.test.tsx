@@ -10,8 +10,6 @@ import { ExplorePage } from "@/pages/ExplorePage";
 import {
   currentRentsUrl,
   geometryUrl,
-  mbieSourceUrl,
-  rentalDataNotice,
   rentHistoryUrl,
   serveRelease,
 } from "@/test/release-fixtures";
@@ -85,16 +83,13 @@ describe("Explore page", () => {
     expect(withoutRent).not.toHaveTextContent("NZ$0");
   });
 
-  it("shows the rental data status and sources from the manifest", async () => {
+  it("shows the provisional status next to the data period", async () => {
     serveRelease();
     renderExplore();
 
-    // 状态标记在标题行，读取 manifest 后显示；数据说明在页面底部，当前租金读取后显示。
+    // 状态标记在标题行，读取 manifest 后显示；来源和许可证在全站页脚，完整说明在 Methodology。
     expect(await screen.findByText("Provisional")).toBeInTheDocument();
-    expect(await screen.findByText(rentalDataNotice)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "MBIE Rental Bond Data" })).toHaveAttribute("href", mbieSourceUrl);
-    expect(screen.getByText(/Creative Commons Attribution 3\.0 New Zealand/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
+    expect(screen.getByText(/Data to 2026-04-01/)).toContainElement(screen.getByText("Provisional"));
   });
 
   it("keeps the map and list selection in the URL", async () => {

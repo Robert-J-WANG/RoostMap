@@ -45,7 +45,8 @@ describe("application routes", () => {
 
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("main")).toBeInTheDocument();
-    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    // 数据来源和许可证统一显示在页脚。
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("MBIE Rental Bond Data (CC BY 3.0 NZ)");
   });
 
   /* --------- 测试 2：方法说明页面路由匹配 -------- */

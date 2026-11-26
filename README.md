@@ -19,7 +19,7 @@ Live site: <https://victorious-island-0bcdf8f10.3.azurestaticapps.net>
 - [MBIE Rental Bond Data](https://www.tenancy.govt.nz/about-tenancy-services/data-and-statistics/rental-bond-data/), licensed under Creative Commons Attribution 3.0 New Zealand
 - [Stats NZ Statistical Area 2 Higher Geographies 2019 (generalised)](https://datafinder.stats.govt.nz/layer/98779-statistical-area-2-higher-geographies-2019-generalised/), licensed under Creative Commons Attribution 4.0 International
 
-An area is published when its MBIE records include a rent and its SA2 code matches a Stats NZ SA2 2019 boundary. The basemap is provided by MapTiler and OpenStreetMap contributors.
+An area is published when its MBIE records include a rent and its SA2 code matches a Stats NZ SA2 2019 boundary. The basemap is provided by MapTiler and OpenStreetMap contributors. The Home page background photo of Wellington Harbour is by [Sebastian Schuster on Unsplash](https://unsplash.com/photos/wellington-city-and-harbor-under-a-cloudy-sky-HokQ32FTrZA), used under the Unsplash License.
 
 ## Project documentation
 

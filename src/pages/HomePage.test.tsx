@@ -31,7 +31,7 @@ describe("Home page", () => {
     expect(await screen.findByText("2 Regions · 4 areas")).toBeInTheDocument();
     expect(screen.getByText("Data to").nextElementSibling).toHaveTextContent("2026-04-01 Provisional");
     expect(screen.getByRole("link", { name: "Explore rental areas" })).toHaveAttribute("href", "/explore");
-    expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
+    expect(screen.getByRole("link", { name: "How the data is processed" })).toHaveAttribute("href", "/methodology");
   });
 
   it("keeps the introduction when the manifest fails to load", async () => {

@@ -1,17 +1,24 @@
+import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AreaDetailPage } from "@/pages/AreaDetailPage";
 import {
   currentRentsUrl,
-  mbieSourceUrl,
-  rentalDataNotice,
   rentHistoryUrl,
   serveRelease,
 } from "@/test/release-fixtures";
+
+// jsdom 无法运行 MapLibre；详情页的边界小地图换成只渲染子元素的组件。
+vi.mock("react-map-gl/maplibre", () => ({
+  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Source: ({ children }: { children: ReactNode }) => children,
+  Layer: () => null,
+}));
+vi.mock("maplibre-gl", () => ({ setWorkerUrl: vi.fn() }));
 
 // 每个测试使用独立的路由和 QueryClient；关闭重试，让失败状态立即显示。
 // path 是 SA2 编号，可以带上 Region 和分类参数，例如 "179900?bedrooms=1"。
@@ -34,7 +41,9 @@ function getValue(label: string) {
   return screen.getByText(label).nextElementSibling;
 }
 
+beforeEach(() => vi.stubEnv("VITE_MAPTILER_KEY", "test-key"));
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -55,15 +64,12 @@ describe("Area Detail page", () => {
     expect(screen.queryByText(/earlier quarter/)).not.toBeInTheDocument();
   });
 
-  it("shows the rental data status and sources from the manifest", async () => {
+  it("shows the provisional status next to the dataset latest period", async () => {
     serveRelease();
     renderAreaDetail("179900");
 
     await screen.findByRole("heading", { level: 1, name: "Greensboro" });
-    expect(screen.getByText("Provisional")).toBeInTheDocument();
-    expect(screen.getByText(rentalDataNotice)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "MBIE Rental Bond Data" })).toHaveAttribute("href", mbieSourceUrl);
-    expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
+    expect(getValue("Dataset latest period")).toHaveTextContent("2026-04-01 Provisional");
   });
 
   it("marks a rent from an earlier quarter", async () => {
