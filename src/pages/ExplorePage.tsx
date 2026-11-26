@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router";
 import { DataLoadError } from "@/components/DataLoadError";
 import { DataReleaseNotice } from "@/components/DataReleaseNotice";
 import { DataStatusBadge } from "@/components/DataStatusBadge";
+import { OneBedroomNotice } from "@/components/OneBedroomNotice";
 import { buttonVariants } from "@/components/ui/button";
 import type { DataManifest, ManifestPartition } from "@/data/contracts";
 import {
@@ -11,15 +12,31 @@ import {
   useRegionCurrentRents,
   useRegionGeometry,
 } from "@/data/queries";
-import { defaultRegionCode, findPartition } from "@/data/selection";
+import {
+  findPartition,
+  readSelection,
+  toSearch,
+  type Selection,
+} from "@/data/selection";
 import { AreaList } from "@/features/explore/AreaList";
 import { AreaMap } from "@/features/explore/AreaMap";
+import { ExploreFilters } from "@/features/explore/ExploreFilters";
+import { formatBedrooms, formatDwellingType } from "@/lib/format";
 
 const pageTitle = <title>Explore | RoostMap</title>;
 
-// 页面入口：先读取 manifest，成功后显示其中 Region 的列表和地图。
+// 页面入口：先读取 manifest，再按 URL 中的选择显示一个 Region 的列表和地图。
 export function ExplorePage() {
   const manifestQuery = useManifest();
+
+  // Region、分类和选中的 SA2 都保存在 URL 中，刷新或分享链接后可以恢复。
+  // 改变选择时替换当前历史记录，后退按钮不会逐个回到之前的每一次选择。
+  // 改变选择仍停留在这个页面，preventScrollReset 保持当前滚动位置，不回到页面顶部。
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  function changeSelection(selection: Selection) {
+    setSearchParams(toSearch(selection), { replace: true, preventScrollReset: true });
+  }
 
   if (manifestQuery.isError) {
     return (
@@ -42,13 +59,20 @@ export function ExplorePage() {
     );
   }
 
-  // Region 切换完成前，页面固定显示 Waikato。
+  // URL 中的 Region 不在 manifest 中时使用默认 Region；之后写入 URL 的是实际显示的 Region。
+  const manifest = manifestQuery.data;
+  const urlSelection = readSelection(searchParams);
+  const partition = findPartition(manifest, urlSelection.regionCode);
+  const selection = { ...urlSelection, regionCode: partition.id };
+
   return (
     <section className="space-y-6">
       {pageTitle}
       <RegionExplorer
-        manifest={manifestQuery.data}
-        partition={findPartition(manifestQuery.data, defaultRegionCode)}
+        manifest={manifest}
+        onSelectionChange={changeSelection}
+        partition={partition}
+        selection={selection}
       />
     </section>
   );
@@ -57,32 +81,46 @@ export function ExplorePage() {
 type RegionExplorerProps = {
   manifest: DataManifest;
   partition: ManifestPartition;
+  selection: Selection;
+  onSelectionChange: (selection: Selection) => void;
 };
 
-// 一个 Region 的列表和地图：两者使用同一份当前租金和 URL 中的同一个选择。
-function RegionExplorer({ manifest, partition }: RegionExplorerProps) {
+// 一个 Region 的列表和地图：两者使用同一份当前租金、同一个分类和同一个选中的 SA2。
+// 切换 Region 时，查询使用新 Region 的文件地址；已经读取过的 Region 直接使用缓存。
+function RegionExplorer({
+  manifest,
+  partition,
+  selection,
+  onSelectionChange,
+}: RegionExplorerProps) {
   const currentRentsQuery = useRegionCurrentRents(partition);
   const geometryQuery = useRegionGeometry(partition);
-
-  // 选中的 SA2 保存在 URL（?sa2=179900），刷新或分享链接后可以恢复。
-  // 选择区域时替换当前历史记录，后退按钮不会逐个回到之前选过的区域。
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedSa2Id = searchParams.get("sa2");
+  const { dwellingType, bedrooms, sa2Id: selectedSa2Id } = selection;
 
   function selectArea(sa2Id: string) {
-    setSearchParams({ sa2: sa2Id }, { replace: true });
+    onSelectionChange({ ...selection, sa2Id });
   }
 
-  // 标题区在加载、失败和完成三种状态下都显示；数据状态紧挨着数据季度。
+  // 标题区和筛选在加载、失败和完成三种状态下都显示；数据状态紧挨着数据季度。
   const header = (
-    <div className="space-y-2">
-      <h1 className="text-3xl font-semibold">{partition.name} rental areas</h1>
-      <p className="text-muted-foreground">
-        {partition.areaCount} areas · All dwelling types · All bedroom
-        categories · Data to {manifest.latestPeriod}{" "}
-        <DataStatusBadge status={manifest.rentalDataStatus} />
-      </p>
-    </div>
+    <>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold">{partition.name} rental areas</h1>
+        <p className="text-muted-foreground">
+          {partition.areaCount} areas · {formatDwellingType(dwellingType)} ·{" "}
+          {formatBedrooms(bedrooms)} · Data to {manifest.latestPeriod}{" "}
+          <DataStatusBadge status={manifest.rentalDataStatus} />
+        </p>
+      </div>
+
+      <ExploreFilters
+        onChange={onSelectionChange}
+        partitions={manifest.partitions}
+        selection={selection}
+      />
+
+      {bedrooms === "1" && <OneBedroomNotice />}
+    </>
   );
 
   if (currentRentsQuery.isError) {
@@ -123,10 +161,14 @@ function RegionExplorer({ manifest, partition }: RegionExplorerProps) {
   } else if (geometryQuery.isPending) {
     mapPanel = <p>Loading {partition.name} boundaries…</p>;
   } else {
+    // key 使地图在切换 Region 时重新创建，按新 Region 的边界计算初始范围。
     mapPanel = (
       <AreaMap
         areas={areas}
+        bedrooms={bedrooms}
+        dwellingType={dwellingType}
         geometry={geometryQuery.data}
+        key={partition.id}
         onSelect={selectArea}
         selectedSa2Id={selectedSa2Id}
       />
@@ -156,7 +198,7 @@ function RegionExplorer({ manifest, partition }: RegionExplorerProps) {
                     size: "sm",
                     variant: "outline",
                   })}
-                  to={`/areas/${selectedArea.sa2Id}`}
+                  to={`/areas/${selectedArea.sa2Id}${toSearch({ ...selection, sa2Id: null })}`}
                 >
                   View details
                 </Link>
@@ -173,6 +215,8 @@ function RegionExplorer({ manifest, partition }: RegionExplorerProps) {
 
           <AreaList
             areas={areas}
+            bedrooms={bedrooms}
+            dwellingType={dwellingType}
             onSelect={selectArea}
             selectedSa2Id={selectedSa2Id}
           />

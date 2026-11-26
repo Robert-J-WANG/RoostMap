@@ -107,7 +107,7 @@ function ReleaseSummary({ manifest }: ReleaseSummaryProps) {
       </div>
       <div>
         <dt className="text-muted-foreground">Classification</dt>
-        <dd className="font-medium">All dwelling types · All bedroom categories</dd>
+        <dd className="font-medium">By dwelling type and bedroom category</dd>
       </div>
     </dl>
   );

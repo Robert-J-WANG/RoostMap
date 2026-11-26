@@ -112,22 +112,69 @@ describe("Explore page", () => {
     expect(router.state.location.search).toBe("?sa2=100100");
   });
 
-  it("opens the area details without downloading the current rents again", async () => {
+  it("shows the selected category in the list and keeps the selected area", async () => {
     serveRelease();
     const router = renderExplore("/explore?sa2=179900");
 
+    fireEvent.change(await screen.findByLabelText("Dwelling type"), { target: { value: "House" } });
+    fireEvent.change(screen.getByLabelText("Bedrooms"), { target: { value: "3" } });
+
+    expect(screen.getByText(/House · 3 bedrooms · Data to/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Greensboro/ })).toHaveTextContent("NZ$590/week");
+    // 没有 House / 3 记录的区域显示为缺失，不使用 ALL / ALL 的租金。
+    expect(screen.getByRole("button", { name: /^Cooks Beach-Ferry Landing/ })).toHaveTextContent("No data");
+    expect(screen.getByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
+    expect(router.state.location.search).toBe("?dwelling=House&bedrooms=3&sa2=179900");
+  });
+
+  it("shows the comparability notice for 1-bedroom rents", async () => {
+    serveRelease();
+    renderExplore("/explore?bedrooms=1");
+
+    const greensboro = await screen.findByRole("button", { name: /^Greensboro/ });
+    expect(greensboro).toHaveTextContent("NZ$330/week");
+    expect(greensboro).toHaveTextContent("12-month change N/A");
+    expect(screen.getByText(/MBIE's 1-bedroom figures/)).toBeInTheDocument();
+  });
+
+  it("switches Region and clears the selected area", async () => {
+    serveRelease();
+    const router = renderExplore("/explore?bedrooms=3&sa2=179900");
+
+    fireEvent.change(await screen.findByLabelText("Region"), { target: { value: "09" } });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Wellington Region rental areas" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Wellington Test Area/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "No area selected" })).toBeInTheDocument();
+    expect(router.state.location.search).toBe("?region=09&bedrooms=3");
+  });
+
+  it("uses the default Region when the URL names an unknown Region", async () => {
+    serveRelease();
+    renderExplore("/explore?region=99");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Waikato Region rental areas" })).toBeInTheDocument();
+  });
+
+  it("opens the area details without downloading the current rents again", async () => {
+    serveRelease();
+    const router = renderExplore("/explore?dwelling=House&bedrooms=3&sa2=179900");
+
+    // 详情页使用同一个 Region 和分类。
     fireEvent.click(await screen.findByRole("link", { name: "View details" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/areas/179900");
+    expect(router.state.location.search).toBe("?dwelling=House&bedrooms=3");
+    expect(screen.getByText("House · 3 bedrooms")).toBeInTheDocument();
 
     // 详情页使用 Explore 已经下载的当前租金。
     const currentRentRequests = vi.mocked(fetch).mock.calls.filter(([url]) => url === currentRentsUrl);
     expect(currentRentRequests).toHaveLength(1);
 
-    // 返回 Explore 时保留原来的选择。
+    // 返回 Explore 时保留分类和原来的选择。
     fireEvent.click(screen.getByRole("link", { name: "Back to Explore" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Greensboro" })).toBeInTheDocument();
-    expect(router.state.location.search).toBe("?sa2=179900");
+    expect(router.state.location.search).toBe("?dwelling=House&bedrooms=3&sa2=179900");
   });
 
   it("recovers from a failed current-rents request using the retry button", async () => {

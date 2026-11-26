@@ -28,7 +28,7 @@ describe("Home page", () => {
     serveRelease();
     renderHome();
 
-    expect(await screen.findByText("Waikato Region · 3 areas")).toBeInTheDocument();
+    expect(await screen.findByText("2 Regions · 4 areas")).toBeInTheDocument();
     expect(screen.getByText("Data to").nextElementSibling).toHaveTextContent("2026-04-01 Provisional");
     expect(screen.getByRole("link", { name: "Explore rental areas" })).toHaveAttribute("href", "/explore");
     expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");

@@ -14361,3 +14361,565 @@ git push origin step-09-complete
 ✅ Production 部署和 Production smoke test 全部通过
 ✅ main 上已打 tag step-09-complete，已完成的分支已删除
 ```
+
+---
+
+## Step 10 · 完成全国 Explore 与分类筛选
+
+### 这一步做什么
+
+Step 09 生成了全国 release：16 个 Region 各有当前租金、边界和租金历史文件，每个区域的 `currentRents` 包含全部发布分类。页面已经读取新的数据结构，但 `src/data/selection.ts` 中的三个常量把页面固定在 Waikato 的 `ALL / ALL`。其他 15 个 Region 和其余分类都在 release 中，用户却看不到。
+
+本步把这三个常量换成用户的选择：用户可以切换 Region，按住宅类型和卧室数查看列表、地图和详情。选择保存在 URL 中，刷新或复制链接后可以恢复；三处显示使用同一个分类，某个区域没有所选分类的记录时显示为缺失，不使用其他分类的值。
+
+```text
+把选择保存在 URL 中
+→ 按 URL 中的 Region 读取数据并切换 Region
+→ 按所选分类显示列表、地图和标题
+→ 详情页使用同一组选择
+→ 测试、浏览器检查和 Git 操作
+```
+
+本步完成后，Explore 应能浏览全部 16 个 Region 和全部发布分类，从 Explore 进入详情、再返回 Explore 时，Region、分类和选中的区域都保持不变。
+
+### 1. 建立 Explore 分支
+
+本步把 Explore 扩展到全国并加入分类筛选，分支使用 `feat` 类别：
+
+```bash
+git switch -c feat/national-explore
+```
+
+```text
+Switched to a new branch 'feat/national-explore'
+```
+
+### 2. 把选择保存在 URL 中
+
+Explore 原来只把选中的 SA2 放在 URL 中（`?sa2=179900`）。现在页面还需要知道 Region、住宅类型和卧室数。这四个值都是公开的浏览状态：用户刷新页面、复制链接给别人，都应该看到同样的内容，所以它们都放在 URL 中，不另外保存在组件 state 里。
+
+URL 中的值都是用户可以随意修改的文本。读取时需要处理两种情况：参数不存在，以及参数不是发布的分类（例如 `?bedrooms=9`）。两种情况都使用默认值，页面不会因为一个无效参数而出错。写入时，等于默认值的参数不写入，默认选择的地址仍然是 `/explore`，和之前一样。
+
+#### 2.1 用 contract 中的分类作为选项
+
+发布的住宅类型和卧室数已经在 `src/data/contracts.ts` 中由 Zod 的 `z.enum` 定义。`z.enum` 的 `options` 属性就是这组值的数组，筛选选项和 URL 校验直接使用它，不再另写一份列表：
+
+```ts
+// 筛选控件的选项直接使用同一组发布分类。
+export const dwellingTypes = dwellingTypeSchema.options;
+export const bedroomCategories = bedroomsSchema.options;
+
+export type DwellingType = z.infer<typeof dwellingTypeSchema>;
+export type Bedrooms = z.infer<typeof bedroomsSchema>;
+```
+
+#### 2.2 读取和写入选择
+
+`src/data/selection.ts` 中，原来的三个常量保留为默认值，新增 `Selection` 类型和两个函数：
+
+```ts
+// 页面的公开选择：Region、住宅类型、卧室数和选中的 SA2，全部保存在 URL 中。
+export type Selection = {
+  regionCode: string;
+  dwellingType: DwellingType;
+  bedrooms: Bedrooms;
+  sa2Id: string | null;
+};
+
+export function readSelection(searchParams: URLSearchParams): Selection {
+  const dwellingType = searchParams.get("dwelling");
+  const bedrooms = searchParams.get("bedrooms");
+
+  return {
+    regionCode: searchParams.get("region") ?? defaultRegionCode,
+    dwellingType: dwellingTypes.find((item) => item === dwellingType) ?? defaultDwellingType,
+    bedrooms: bedroomCategories.find((item) => item === bedrooms) ?? defaultBedrooms,
+    sa2Id: searchParams.get("sa2"),
+  };
+}
+
+export function toSearch(selection: Selection): string {
+  const params = new URLSearchParams();
+
+  if (selection.regionCode !== defaultRegionCode) {
+    params.set("region", selection.regionCode);
+  }
+  if (selection.dwellingType !== defaultDwellingType) {
+    params.set("dwelling", selection.dwellingType);
+  }
+  if (selection.bedrooms !== defaultBedrooms) {
+    params.set("bedrooms", selection.bedrooms);
+  }
+  if (selection.sa2Id) {
+    params.set("sa2", selection.sa2Id);
+  }
+
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+```
+
+`dwellingTypes.find((item) => item === dwellingType)` 在发布分类中查找 URL 中的值。找到时返回的是数组中的元素，类型是 `DwellingType`；找不到时返回 `undefined`，再由 `??` 换成默认值。这样不需要类型断言，就把任意文本变成了合法的分类。
+
+`toSearch` 返回带 `?` 的查询字符串，默认选择返回空字符串。这个字符串既可以拼在链接地址后面，也可以直接交给 `setSearchParams`。
+
+Region 编号是否存在，要看 manifest 中有哪些 Region，`readSelection` 无法判断，所以它只读出文本。判断交给 `findPartition`：找不到 URL 中的 Region 时，先使用默认的 Waikato，manifest 中也没有 Waikato 时才使用第一个 Region：
+
+```ts
+export function findPartition(manifest: DataManifest, regionCode: string): ManifestPartition {
+  return (
+    manifest.partitions.find((partition) => partition.id === regionCode) ??
+    manifest.partitions.find((partition) => partition.id === defaultRegionCode) ??
+    manifest.partitions[0]
+  );
+}
+```
+
+#### 2.3 用单元测试确定 URL 规则
+
+这两个函数决定了 URL 的格式，新增 `src/data/selection.test.ts`，用三个测试固定规则：完整的参数被正确读出，包括需要编码的 `Boarding House` 和 `5+`；不是发布分类的值使用默认值；只有不同于默认值的参数才写入 URL。
+
+```ts
+it("writes only the values that differ from the defaults", () => {
+  expect(
+    toSearch({ regionCode: "03", dwellingType: "ALL", bedrooms: "ALL", sa2Id: null }),
+  ).toBe("");
+  expect(
+    toSearch({ regionCode: "03", dwellingType: "House", bedrooms: "3", sa2Id: "179900" }),
+  ).toBe("?dwelling=House&bedrooms=3&sa2=179900");
+});
+```
+
+### 3. 按 URL 中的 Region 读取数据
+
+URL 规则确定后，Explore 页面改为从 URL 得到 Region。
+
+#### 3.1 页面入口读取选择
+
+原来的 `RegionExplorer` 自己读取 `?sa2=`，Region 由页面入口固定传入。现在 Region 也来自 URL，所以 URL 的读取和写入都移到页面入口 `ExplorePage`，`RegionExplorer` 只接收选择和一个修改选择的函数：
+
+```tsx
+export function ExplorePage() {
+  const manifestQuery = useManifest();
+
+  // Region、分类和选中的 SA2 都保存在 URL 中，刷新或分享链接后可以恢复。
+  // 改变选择时替换当前历史记录，后退按钮不会逐个回到之前的每一次选择。
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  function changeSelection(selection: Selection) {
+    setSearchParams(toSearch(selection), { replace: true });
+  }
+
+  // ……manifest 的失败和加载状态不变……
+
+  // URL 中的 Region 不在 manifest 中时使用默认 Region；之后写入 URL 的是实际显示的 Region。
+  const manifest = manifestQuery.data;
+  const urlSelection = readSelection(searchParams);
+  const partition = findPartition(manifest, urlSelection.regionCode);
+  const selection = { ...urlSelection, regionCode: partition.id };
+
+  return (
+    <section className="space-y-6">
+      {pageTitle}
+      <RegionExplorer
+        manifest={manifest}
+        onSelectionChange={changeSelection}
+        partition={partition}
+        selection={selection}
+      />
+    </section>
+  );
+}
+```
+
+`selection` 中的 `regionCode` 改为 `partition.id`。地址是 `?region=99` 时，页面显示 Waikato，用户之后改变任何选择时，写入 URL 的也是 Waikato，无效的编号不会一直留在地址中。
+
+`useSearchParams` 放在函数开头、所有提前 `return` 之前。React 要求 Hook 在每次渲染时以相同的顺序调用，不能写在条件分支之后。
+
+#### 3.2 Region 选择框
+
+新增 `src/features/explore/ExploreFilters.tsx`，用原生 `<select>` 显示 manifest 中的全部 Region。用 `<label>` 包住文字和选择框，两者因此关联在一起：点击文字会聚焦选择框，测试中也可以用 `getByLabelText("Region")` 找到它：
+
+```tsx
+<label className="flex flex-col gap-1 text-sm">
+  <span className="text-muted-foreground">Region</span>
+  {/* 换 Region 后原来选中的 SA2 不在新列表中，因此清除选择。 */}
+  <select
+    className={selectClassName}
+    onChange={(event) =>
+      onChange({ ...selection, regionCode: event.target.value, sa2Id: null })
+    }
+    value={selection.regionCode}
+  >
+    {partitions.map((partition) => (
+      <option key={partition.id} value={partition.id}>
+        {partition.name}
+      </option>
+    ))}
+  </select>
+</label>
+```
+
+每个 SA2 只属于一个 Region，换 Region 后原来的 SA2 不会出现在新的列表中，所以切换 Region 时把 `sa2Id` 设为 `null`。住宅类型和卧室数保留，用户在另一个 Region 中继续看同一个分类。
+
+#### 3.3 切换 Region 时重新创建地图
+
+`RegionExplorer` 中的查询使用 `partition` 中的文件地址作为查询键。Region 变化时，查询键随之变化，TanStack Query 读取新 Region 的文件。离开的 Region 的查询仍然留在缓存中，`staleTime: Infinity` 使缓存的数据不会过期，切回这个 Region 时直接使用，不再请求。
+
+没有组件使用的查询不会永久保留：TanStack Query 默认在 5 分钟后（`gcTime`）把它从缓存中清除，之后再切回这个 Region 会重新下载。全国 release 有 79.1 MB，保留这个默认值，浏览过的 Region 不会一直占用内存。
+
+地图有一个问题。`AreaMap` 用 `useState(() => …)` 计算地图创建时的范围，这个函数只在组件第一次渲染时运行。切换到一个还没有读取过的 Region 时，数据加载期间页面显示加载信息，原来的地图被移除，数据到达后创建新的地图，范围是正确的。切换到缓存中已有的 Region 时，数据立即可用，页面没有经过加载状态，`AreaMap` 仍然是同一个组件实例，地图会停在原来 Region 的位置。
+
+React 用 `key` 区分组件实例：同一位置的组件 `key` 变化时，React 销毁旧组件，重新创建一个新的。给地图加上 Region 编号作为 `key`，切换 Region 时地图重新创建，按新 Region 的边界计算初始范围：
+
+```tsx
+// key 使地图在切换 Region 时重新创建，按新 Region 的边界计算初始范围。
+mapPanel = (
+  <AreaMap
+    areas={areas}
+    bedrooms={bedrooms}
+    dwellingType={dwellingType}
+    geometry={geometryQuery.data}
+    key={partition.id}
+    onSelect={selectArea}
+    selectedSa2Id={selectedSa2Id}
+  />
+);
+```
+
+同一个 Region 中改变分类或选择区域时，`key` 不变，地图不会重新创建。
+
+### 4. 按所选分类显示列表、地图和标题
+
+Region 可以切换后，再处理分类。
+
+#### 4.1 两个分类选择框
+
+`ExploreFilters` 中再加两个选择框，选项来自 `dwellingTypes` 和 `bedroomCategories`。页面上显示的名称由 `src/lib/format.ts` 中的两个函数生成，`ALL` 显示为 "All …"，卧室数加上单位：
+
+```ts
+export function formatDwellingType(dwellingType: DwellingType): string {
+  return dwellingType === "ALL" ? "All dwelling types" : dwellingType;
+}
+
+export function formatBedrooms(bedrooms: Bedrooms): string {
+  if (bedrooms === "ALL") {
+    return "All bedroom categories";
+  }
+
+  return bedrooms === "1" ? "1 bedroom" : `${bedrooms} bedrooms`;
+}
+```
+
+切换分类时保留选中的 SA2，用户可以直接看到同一个区域在新分类下的租金：
+
+```tsx
+{/* 换分类时保留选中的 SA2，同一个区域在新分类下的租金直接显示。
+    选项的 value 都来自发布分类列表，因此可以把 event.target.value 当作分类类型。 */}
+<select
+  className={selectClassName}
+  onChange={(event) =>
+    onChange({ ...selection, dwellingType: event.target.value as DwellingType })
+  }
+  value={selection.dwellingType}
+>
+```
+
+`event.target.value` 的类型是 `string`。这里的选项全部由 `dwellingTypes` 生成，用户只能选到其中的值，所以用 `as DwellingType` 告诉 TypeScript 它的实际类型。URL 中的值则可能是任意文本，因此 `readSelection` 用 `find` 检查，而不是断言。
+
+#### 4.2 列表、地图和标题使用同一个分类
+
+`AreaList` 和 `AreaMap` 原来用默认分类调用 `findCurrentRent`，现在改为接收 `dwellingType` 和 `bedrooms` 两个属性：
+
+```tsx
+// 所选分类没有记录时 currentRent 为 null，各项都显示为缺失，不使用其他分类的值。
+const currentRent = findCurrentRent(area, dwellingType, bedrooms);
+```
+
+地图把租金放进边界属性的 `useMemo` 依赖中加入这两个值。分类变化时重新连接，地图颜色随之变化；只选择区域时，依赖不变，不会重新处理边界：
+
+```ts
+}, [geometry, areas, dwellingType, bedrooms]);
+```
+
+两个组件都从同一个 `selection` 取得分类，列表中的租金和地图颜色不会出现两个不同的分类。`findCurrentRent` 在区域没有这个分类时返回 `null`，Step 08 建立的缺失显示规则仍然适用，不需要新的分支。
+
+标题中的分类原来写死为 "All dwelling types · All bedroom categories"，现在显示所选分类。标题和筛选放在同一个 `header` 中，加载和读取失败时也会显示，用户在任何状态下都能改变选择：
+
+```tsx
+<p className="text-muted-foreground">
+  {partition.areaCount} areas · {formatDwellingType(dwellingType)} ·{" "}
+  {formatBedrooms(bedrooms)} · Data to {manifest.latestPeriod}{" "}
+  <DataStatusBadge status={manifest.rentalDataStatus} />
+</p>
+```
+
+#### 4.3 1 卧分类的可比性说明
+
+Step 09 中，流水线不计算跨过 `2024-10-01` 的 1 卧 12 个月变化，因为从这个季度起 MBIE（租金） 的 1 卧记录出现了与其他分类不一致的跳升。现在用户可以选择 1 卧，看到的 12 个月变化都是 N/A，页面需要说明原因。
+
+新增 `src/components/OneBedroomNotice.tsx`，Explore 和详情页都会用到，所以放在共用的 `components` 中：
+
+```tsx
+export function OneBedroomNotice() {
+  return (
+    <p className="rounded-lg border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+      MBIE's 1-bedroom figures from 2024-10-01 follow a changed source
+      classification, so their 12-month change is shown as N/A.
+    </p>
+  );
+}
+```
+
+Explore 在卧室数为 `1` 时，把它显示在筛选下方：
+
+```tsx
+{bedrooms === "1" && <OneBedroomNotice />}
+```
+
+说明的第一版写了完整的判断依据。在手机宽度下检查时，它占了六行，把地图推到了第一屏以外。说明只需要让用户知道 N/A 的原因，所以缩短为两句，完整的依据写在 Methodology 中。
+
+#### 4.4 更新 Home 和 Methodology 的说明
+
+Home 的 "Classification" 和 Methodology 的 "Current rent" 原来都写着每个区域只使用全部住宅类型、全部卧室数的记录，这已经不是事实。Home 改为 "By dwelling type and bedroom category"。Methodology 改为说明每个区域都有各发布分类的当前租金、页面显示 Explore 中选择的分类，并加入 1 卧可比性的完整依据：
+
+```tsx
+<p>
+  From 2024-10-01, MBIE's 1-bedroom records show a jump in
+  Reported Bonds and rents that the other categories do not, which
+  points to a change in the source classification rather than in the
+  market. 1-bedroom rents are still shown, but their 12-month change
+  is N/A when either compared quarter is 2024-10-01 or later.
+</p>
+```
+
+### 5. 详情页使用同一组选择
+
+详情页原来固定在 Waikato 中查找区域，并显示 `ALL / ALL`。现在用户在 Explore 中选的可能是 Wellington 的 House / 3 卧，详情页必须显示同一个 Region、同一个分类的数据。
+
+#### 5.1 链接带上 Region 和分类
+
+详情页的路径只有 SA2 编号，Region 和分类用与 Explore 相同的查询参数传递。Explore 中的 View details 链接用 `toSearch` 生成参数，选中的 SA2 已经在路径中，所以把 `sa2Id` 设为 `null`：
+
+```tsx
+to={`/areas/${selectedArea.sa2Id}${toSearch({ ...selection, sa2Id: null })}`}
+```
+
+详情页入口用与 Explore 相同的方式读取选择，在 URL 中的 Region 里查找区域，再按所选分类取得当前租金：
+
+```tsx
+// 地址例如 /areas/251400?region=09&bedrooms=3，Region 和分类与 Explore 使用同一组参数。
+export function AreaDetailPage() {
+  const manifestQuery = useManifest();
+  const [searchParams] = useSearchParams();
+
+  // ……
+
+  const manifest = manifestQuery.data;
+  const urlSelection = readSelection(searchParams);
+  const partition = findPartition(manifest, urlSelection.regionCode);
+  const selection = { ...urlSelection, regionCode: partition.id };
+```
+
+```tsx
+// 所选分类没有记录时，各项都显示为缺失；数据集最新季度取自 manifest。
+const currentRent = findCurrentRent(area, selection.dwellingType, selection.bedrooms);
+```
+
+详情页的分类只显示，不提供选择框，选择分类的地方只有 Explore 一处。标题下显示当前分类，选择 1 卧时同样显示可比性说明：
+
+```tsx
+<p className="text-muted-foreground">
+  {formatDwellingType(selection.dwellingType)} ·{" "}
+  {formatBedrooms(selection.bedrooms)}
+</p>
+```
+
+Back to Explore 原来只带回 `?sa2=`，现在带回全部选择：
+
+```tsx
+to={`/explore${toSearch({ ...selection, sa2Id: area.sa2Id })}`}
+```
+
+现在区域是在 URL 中的 Region 里查找的，找不到时，原因可能是 Region 参数不对。"Area not found" 的说明改为写出查找的 Region：
+
+```tsx
+{partition.name} has no rental area with SA2 code {sa2Id} in the
+current data release.
+```
+
+#### 5.2 打开新页面时回到顶部
+
+在手机宽度下检查这条链路时，出现了一个问题：手机上地图和列表上下排列，View details 在页面较下方；点击后，详情页显示的是页面底部，用户要向上滚动才能看到区域名称和租金。
+
+浏览器加载一个新页面时会从顶部开始显示。React Router 在页面内切换路由，不重新加载页面，窗口的滚动位置因此保持不变。React Router 提供 `ScrollRestoration` 组件处理这件事：打开新的地址时滚动到顶部；用浏览器后退或前进时，恢复离开那个地址时的位置。它放在根布局中，对所有页面生效：
+
+```tsx
+import { Outlet, ScrollRestoration } from "react-router";
+
+// ScrollRestoration：打开新页面时回到顶部；浏览器后退或前进时恢复离开时的滚动位置。
+export function RootLayout() {
+  return (
+    <AppShell>
+      <Outlet />
+      <ScrollRestoration />
+    </AppShell>
+  );
+}
+```
+
+Explore 中改变选择也是一次导航：`setSearchParams` 生成一个新的地址。没有额外设置时，`ScrollRestoration` 会把这次导航也当作打开新页面，在手机上点击列表中的一个区域，页面就会跳回顶部。`preventScrollReset: true` 告诉 React Router 这次导航不要重置滚动位置：
+
+```tsx
+// 改变选择仍停留在这个页面，preventScrollReset 保持当前滚动位置，不回到页面顶部。
+setSearchParams(toSearch(selection), { replace: true, preventScrollReset: true });
+```
+
+在手机宽度下，把 Explore 滚动到 1100px 后检查：
+
+| 操作 | 滚动位置 |
+|---|---|
+| 点击列表中的一个区域 | 1100，URL 加上 `sa2` |
+| 点击 View details | 0，详情页从顶部显示 |
+| 浏览器后退 | 1100，回到原来的位置 |
+
+### 6. 验证并完成 Git 操作
+
+#### 6.1 用测试覆盖新的选择
+
+页面测试使用的 release 只有 Waikato，每个区域只有 `ALL / ALL`，测不到 Region 切换和分类。`src/test/release-fixtures.ts` 做了三处调整：
+
+- manifest 加入 Wellington Region，它有一个测试用的虚构区域；
+- 当前租金改为由 `rent()` 生成，每个区域可以有多个分类；
+- Greensboro 增加 House / 3 卧和 `ALL / 1` 两个分类，其他 Waikato 区域没有这两个分类，用来检查缺失分类显示为 No data。
+
+Home 和 Methodology 的测试因此显示两个 Region，覆盖范围的预期改为 `2 Regions · 4 areas`。
+
+Explore 新增四个测试：
+
+- 选择 House / 3 卧后，标题显示分类，Greensboro 显示 NZ$590/week，Cooks Beach-Ferry Landing 显示 No data，选中的区域保留，URL 为 `?dwelling=House&bedrooms=3&sa2=179900`；
+- 打开 `?bedrooms=1` 时，Greensboro 的 12 个月变化为 N/A，页面显示可比性说明；
+- 切换到 Wellington 后，标题和列表改为 Wellington，选择被清除，URL 为 `?region=09&bedrooms=3`；
+- URL 中的 Region 不存在时显示 Waikato。
+
+原来"打开详情时不重复下载当前租金"的测试改为从 House / 3 卧开始，同时检查详情页的 URL 和分类，以及返回 Explore 后 URL 恢复为原来的选择。
+
+详情页新增两个测试：`179900?bedrooms=1` 显示 1 卧的租金和可比性说明；`250100?region=09` 在 Wellington 中找到区域，Back to Explore 的地址为 `/explore?region=09&sa2=250100`。
+
+浏览器测试新增两个读取真实 release 的测试。第一个在 Explore 中选择 House / 3 卧，检查 Greensboro 的值和详情页的 URL。这组值先对照源文件核对：
+
+```text
+TimeFrame,Location Id,Dwelling Type,Number Of Beds,Total Bonds,…,Median Rent,Geometric Mean Rent,…
+2026-04-01,179900,House,3,12,…,590,610,…
+2025-04-01,179900,House,3,27,…,580,534,…
+```
+
+租金 590，Bonds 12，12 个月变化为 610 ÷ 534 − 1 ≈ +14.2%。第二个测试切换到 Wellington，检查 Thorndon（250900）的 `ALL / ALL` 租金为 NZ$590/week，与源记录 `2026-04-01,250900,ALL,ALL,87,…,590,…` 一致。
+
+#### 6.2 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 和构建通过，65 个测试全部通过；Playwright 的 9 个测试中 8 个通过，404 测试按预期在本地跳过。测试输出中出现了一条新的信息：
+
+```text
+Not implemented: Window's scrollTo() method
+```
+
+jsdom 只模拟 DOM，不排版页面，没有实现 `window.scrollTo`。`ScrollRestoration` 在每次换页时调用它，jsdom 就输出这条信息。它不影响测试结果，但会混在每次的测试输出中，掩盖真正需要注意的信息。
+
+所有测试共用的 `src/test/setup.ts` 在每个测试文件运行前执行，在这里把 `scrollTo` 换成一个空函数。第一次写成 `window.scrollTo = () => {};`，三个数据流水线测试文件全部失败：
+
+```text
+FAIL  data/pipeline/current-rents.test.mjs
+ReferenceError: window is not defined
+ ❯ src/test/setup.ts:7:1
+```
+
+流水线测试运行在 Node 环境中，没有 `window`，但同样会执行 setup 文件。`globalThis` 在浏览器中就是 `window`，在 Node 中是全局对象，两种环境都存在，改为通过它设置：
+
+```ts
+// jsdom 不排版页面，也没有实现 window.scrollTo；ScrollRestoration 换页时会调用它。
+// 测试中换成空函数，避免每次换页都输出 "Not implemented" 警告。
+// 数据流水线测试运行在没有 window 的 Node 环境中，因此通过 globalThis 设置。
+globalThis.scrollTo = () => {};
+```
+
+再次运行完整检查，测试结果为：
+
+```text
+✓ src/data/selection.test.ts (3 tests)
+✓ src/pages/AreaDetailPage.test.tsx (8 tests)
+✓ src/pages/ExplorePage.test.tsx (10 tests)
+
+Test Files  13 passed (13)
+     Tests  65 passed (65)
+```
+
+输出中不再出现 `Not implemented`。Playwright 运行 9 个测试，8 个通过，404 测试按预期在本地跳过：
+
+```text
+✓ … › shows the Greensboro House 3-bedroom rent after filtering
+✓ … › switches to Wellington Region
+```
+
+#### 6.3 在浏览器中检查
+
+在 `npm run dev` 中打开 `/explore?dwelling=House&bedrooms=3&sa2=179900`。标题显示 `222 areas · House · 3 bedrooms · Data to 2026-04-01`，地图颜色和列表租金都是 House / 3 卧，Greensboro 显示选中边框。
+
+把 Region 改为 Wellington Region 后，URL 变为 `?region=09&dwelling=House&bedrooms=3`，标题显示 204 个区域，地图移动到 Wellington，选中区域卡片显示 "No area selected"。
+
+从 Waikato 开始，依次切换到 Wellington、Waikato、Wellington，浏览器只请求了两个数据文件：
+
+```text
+/data/releases/2026-04-01.2/areas/current-rents/09.json
+/data/releases/2026-04-01.2/geometry/regions/09.geo.json
+```
+
+第二次进入 Wellington 和回到 Waikato 都使用了缓存；整个过程只有几秒，没有超过 5 分钟的清除时间。租金历史文件没有被请求。
+
+在 375px 的手机宽度下，三个选择框上下排列，页面宽度为 375px，没有横向滚动。打开 `?region=09&bedrooms=1&sa2=250900`，View details 的地址为 `/areas/250900?region=09&bedrooms=1`；详情页显示 Thorndon、"All dwelling types · 1 bedroom" 和可比性说明，Back to Explore 的地址为 `/explore?region=09&bedrooms=1&sa2=250900`。
+
+#### 6.4 提交并推送
+
+```bash
+git add docs/steps.md src/components/OneBedroomNotice.tsx src/components/layout/RootLayout.tsx src/data/contracts.ts src/data/selection.test.ts src/data/selection.ts src/features/explore/AreaList.tsx src/features/explore/AreaMap.tsx src/features/explore/ExploreFilters.tsx src/lib/format.ts src/pages/AreaDetailPage.test.tsx src/pages/AreaDetailPage.tsx src/pages/ExplorePage.test.tsx src/pages/ExplorePage.tsx src/pages/HomePage.test.tsx src/pages/HomePage.tsx src/pages/MethodologyPage.test.tsx src/pages/MethodologyPage.tsx src/data/queries.ts src/test/release-fixtures.ts src/test/setup.ts tests/e2e/data-slice.spec.ts
+git commit -m "feat: add national Explore with category filters"
+git push -u origin feat/national-explore
+```
+
+#### 6.5 Pull Request 和 Preview
+
+在 GitHub 上从 `feat/national-explore` 向 `main` 创建 Pull Request，标题为 `feat: add national Explore with category filters`。Quality 在 runner 上运行 `npm run check`；Deploy 把 `dist` 部署为 Azure Preview；Deployed smoke test 用 Preview 地址运行 Playwright，包括本步新增的筛选和 Region 切换测试。三个 job 全部通过。
+
+#### 6.6 合并并完成收尾
+
+用 squash merge 合并 Pull Request。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+
+在本地切换到更新后的 main，删除已经合并的分支：
+
+```bash
+git switch main
+git pull --ff-only
+git branch -D feat/national-explore
+git push origin --delete feat/national-explore
+```
+
+### Step 10 完成状态
+
+```text
+✅ Region、住宅类型、卧室数和选中的 SA2 保存在 URL 中，刷新和复制链接后可以恢复
+✅ URL 中缺少或无效的值使用默认选择，默认值不写入 URL
+✅ Region 选择框列出全部 16 个 Region，切换后地图重新定位，近期读取过的 Region 使用缓存
+✅ 列表、地图颜色、标题和详情使用同一个分类，缺失分类显示为 No data
+✅ 选择 1 卧时显示可比性说明，Methodology 记录完整依据
+✅ 详情页使用 Explore 的 Region 和分类，返回 Explore 时保留全部选择
+✅ 打开新页面时回到顶部，浏览器后退时恢复原来的滚动位置
+✅ 桌面和手机宽度下的 Explore 与详情页已在浏览器中检查
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+✅ 全国 Explore 与分类筛选已通过 squash merge 合并到 main
+✅ Production 部署和 Production smoke test 全部通过，已完成的分支已删除
+```

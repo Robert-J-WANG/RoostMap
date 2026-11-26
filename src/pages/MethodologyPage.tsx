@@ -59,8 +59,10 @@ export function MethodologyPage() {
 
         <MethodologySection title="Current rent">
           <p>
-            Each area uses the MBIE records for all dwelling types and all
-            bedroom categories.
+            Each area has a current rent for every dwelling type and bedroom
+            category that MBIE publishes for it, including all dwelling types
+            and all bedroom categories combined. Pages show the category
+            selected in Explore.
           </p>
           <ul className="list-disc space-y-2 pl-6">
             <li>
@@ -85,6 +87,13 @@ export function MethodologyPage() {
               is shown as N/A.
             </li>
           </ul>
+          <p>
+            From 2024-10-01, MBIE's 1-bedroom records show a jump in
+            Reported Bonds and rents that the other categories do not, which
+            points to a change in the source classification rather than in the
+            market. 1-bedroom rents are still shown, but their 12-month change
+            is N/A when either compared quarter is 2024-10-01 or later.
+          </p>
         </MethodologySection>
 
         <MethodologySection title="Missing data">

@@ -27,6 +27,13 @@ const periodSchema = z.string().regex(/^\d{4}-(01|04|07|10)-01$/);
 const dwellingTypeSchema = z.enum(["ALL", "Apartment", "Boarding House", "Flat", "House", "Room"]);
 const bedroomsSchema = z.enum(["ALL", "1", "2", "3", "4", "5+"]);
 
+// 筛选控件的选项直接使用同一组发布分类。
+export const dwellingTypes = dwellingTypeSchema.options;
+export const bedroomCategories = bedroomsSchema.options;
+
+export type DwellingType = z.infer<typeof dwellingTypeSchema>;
+export type Bedrooms = z.infer<typeof bedroomsSchema>;
+
 // 一个 SA2 在一种住宅类型和卧室数下的当前租金和 12 个月变化。
 export const currentRentSchema = z
   .object({

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import type { AreaWithCurrentRents } from "@/data/contracts";
-import { defaultBedrooms, defaultDwellingType, findCurrentRent } from "@/data/selection";
+import type { AreaWithCurrentRents, Bedrooms, DwellingType } from "@/data/contracts";
+import { findCurrentRent } from "@/data/selection";
 import {
   formatBonds,
   formatChange,
@@ -12,11 +12,19 @@ import { cn } from "@/lib/utils";
 
 type AreaListProps = {
   areas: AreaWithCurrentRents[];
+  dwellingType: DwellingType;
+  bedrooms: Bedrooms;
   selectedSa2Id: string | null;
   onSelect: (sa2Id: string) => void;
 };
 
-export function AreaList({ areas, selectedSa2Id, onSelect }: AreaListProps) {
+export function AreaList({
+  areas,
+  dwellingType,
+  bedrooms,
+  selectedSa2Id,
+  onSelect,
+}: AreaListProps) {
   const listRef = useRef<HTMLUListElement>(null);
 
   // 选中的行不在列表可见范围内时，把它滚到列表中间。
@@ -47,8 +55,8 @@ export function AreaList({ areas, selectedSa2Id, onSelect }: AreaListProps) {
       ref={listRef}
     >
       {areas.map((area) => {
-        // 这个分类没有记录时 currentRent 为 null，各项都显示为缺失。
-        const currentRent = findCurrentRent(area, defaultDwellingType, defaultBedrooms);
+        // 所选分类没有记录时 currentRent 为 null，各项都显示为缺失，不使用其他分类的值。
+        const currentRent = findCurrentRent(area, dwellingType, bedrooms);
 
         return (
           <li key={area.sa2Id}>

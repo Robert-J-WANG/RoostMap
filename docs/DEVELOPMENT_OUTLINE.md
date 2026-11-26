@@ -385,7 +385,7 @@ Area Detail 显示所选分类的租金历史。
 
 **Git 边界**
 
-使用 `release/mvp`。
+使用 `release/mvp`；合并并通过 Production smoke test 后打 tag `v0.1.0`。
 
 ---
 
@@ -517,7 +517,7 @@ V1 公开发布门禁全部满足；正式域名核心流程可用；回滚路�
 
 **Git 边界**
 
-使用通过审核的 V1 release PR；后续修复继续使用短分支。
+使用通过审核的 V1 release PR，发布后打 tag `v1.0.0`；后续修复继续使用短分支。
 
 ---
 
@@ -602,4 +602,4 @@ V2 技术规范门禁全部满足；未登录 V1 与登录 V2 均可用；跨用
 
 **Git 边界**
 
-使用 V2 release PR 和正式 release 记录。
+使用 V2 release PR 和正式 release 记录，发布后打 tag `v2.0.0`。

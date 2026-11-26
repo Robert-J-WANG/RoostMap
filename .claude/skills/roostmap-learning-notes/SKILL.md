@@ -57,7 +57,7 @@ These five rules are the baseline. Every section must satisfy them.
 2. **Reason before action.** Explain why a command or code is needed before showing it. A section is never only a list of commands or steps. Lead into code with the reasoning, such as "因此……", not with bare placement instructions such as "在 X 之后加入：".
 3. **Real results with scope.** Record only output that was really produced. Each conclusion states what it proves and what it does not.
 4. **Consistent names and terms.** Use one term for one thing across the note, the code and the baseline documents. Function names start with a verb; variables, constants and parameters are nouns. Use concrete domain words instead of abstract labels.
-5. **No discussion traces and no unhappened results.** Never mention the assistant, the conversation, reviews or rejected options. Never describe future work as done. A real mistake and its fix are kept when they explain something. The one exception: the Step's final section and status block record the Pull Request checks, the squash merge to `main`, the Production smoke test and the `step-NN-complete` tag as expected results, written before the first push (see `AGENTS.md` Section 7). Local checks are still recorded from real output. If a real result differs, it is corrected before merging or through a `fix/` branch.
+5. **No discussion traces and no unhappened results.** Never mention the assistant, the conversation, reviews or rejected options. Never describe future work as done. A real mistake and its fix are kept when they explain something. The one exception: the Step's final section and status block record the Pull Request checks, the squash merge to `main`, the Production smoke test and, at a release milestone, its version tag as expected results, written before the first push (see `AGENTS.md` Section 7). Local checks are still recorded from real output. If a real result differs, it is corrected before merging or through a `fix/` branch.
 
 ## 5. What the record may simplify
 
@@ -72,5 +72,5 @@ These five rules are the baseline. Every section must satisfy them.
 2. Reasons come before commands and code, and the section does not read as a list of operations.
 3. Every result was really produced, and its scope is stated.
 4. Names and terms are consistent with the code and the baseline documents.
-5. No discussion traces, and no unhappened results other than the expected Pull Request checks, merge, Production smoke test and tag at the end of the Step.
+5. No discussion traces, and no unhappened results other than the expected Pull Request checks, merge, Production smoke test and milestone version tag at the end of the Step.
 6. Someone reading the note in order can understand what was done and why.
