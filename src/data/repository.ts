@@ -4,10 +4,12 @@ import {
   areaWithCurrentRentsSchema,
   manifestSchema,
   regionGeometrySchema,
+  regionRentHistorySchema,
   type AreaWithCurrentRents,
   type DataManifest,
   type ManifestPartition,
   type RegionGeometry,
+  type RegionRentHistory,
 } from "@/data/contracts";
 
 // 页面读取数据的固定入口，其余文件的地址都从 manifest 中取得。
@@ -56,6 +58,21 @@ export function fetchRegionGeometry(
   signal?: AbortSignal,
 ): Promise<RegionGeometry> {
   return fetchJson(partition.geometryUrl, regionGeometrySchema, signal);
+}
+
+/**
+ * 读取一个 Region 的租金历史，地址取自 manifest。
+ *
+ * @param partition manifest 中的一个 Region
+ * @param signal 用于取消不再需要的请求
+ * @returns 以 SA2 编号为键的季度租金记录，通过 contract 检查
+ * @throws 请求失败或内容不符合 contract 时，抛出带文件地址的错误
+ */
+export function fetchRegionRentHistory(
+  partition: ManifestPartition,
+  signal?: AbortSignal,
+): Promise<RegionRentHistory> {
+  return fetchJson(partition.rentHistoryUrl, regionRentHistorySchema, signal);
 }
 
 /**
