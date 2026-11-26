@@ -347,9 +347,10 @@ Rules:
 - record useful mistakes and fixes instead of hiding the learning path.
 
 The final section and status block of each Step record the Pull Request checks
-(Quality, Deploy and Deployed smoke test), the squash merge to `main`, the
-Production smoke test and the `step-NN-complete` tag as the expected results.
-They are written after the local checks pass and before the first push, so the
+(Quality, Deploy and Deployed smoke test), the squash merge to `main` and the
+Production smoke test as the expected results. Ordinary Steps get no Git tag;
+a release milestone also records its version tag (`v0.1.0` for the MVP,
+`v1.0.0` for V1 and `v2.0.0` for V2) in the same way. They are written after the local checks pass and before the first push, so the
 whole note is part of the Step's own Pull Request. Local checks are still
 recorded only from real output. If a real result differs, correct the code or
 the record before merging, or through a `fix/` branch after merging. The next
@@ -537,8 +538,8 @@ improbable failures unless the owner explicitly requests them.
 Never describe an unexecuted test, build, workflow, Preview or deployment as
 passing. If a check cannot run, state the exact blocker and whether it is caused
 by the change or the environment. The only exception is the expected Pull Request
-checks, merge, Production smoke test and tag recorded at the end of each Step,
-as defined in Section 7.
+checks, merge, Production smoke test and milestone version tag recorded at the
+end of a Step, as defined in Section 7.
 
 The CI baseline is created after the project quality scripts and application
 shell are stable, then extended in the same Step that introduces each new
