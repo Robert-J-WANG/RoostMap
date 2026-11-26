@@ -55,7 +55,17 @@ test("switches to Wellington Region", async ({ page }) => {
   await expect(page.getByRole("button", { name: /^Thorndon/ })).toContainText("NZ$590/week");
 });
 
-/* --------- 测试 5：部署环境中不存在的数据文件返回 404 -------- */
+/* --------- 测试 5：区域详情显示真实的租金历史 -------- */
+// Greensboro ALL / ALL 在 2020-01-01 到 2026-04-01 的 26 个季度都有租金，图表画出一条完整的折线。
+test("shows the Greensboro rent history on its area page", async ({ page }) => {
+  await page.goto("/areas/179900");
+
+  await expect(page.getByRole("heading", { level: 2, name: "Rent history" })).toBeVisible();
+  await expect(page.locator(".recharts-line-dot")).toHaveCount(26);
+  await expect(page.locator(".recharts-line-curve")).toBeVisible();
+});
+
+/* --------- 测试 6：部署环境中不存在的数据文件返回 404 -------- */
 // 这条规则由 staticwebapp.config.json 在 Azure 上生效；本地 Vite 会对不存在的文件返回 index.html，
 // 因此只在测试部署地址（设置了 PLAYWRIGHT_BASE_URL）时运行。
 test("returns 404 for a data file that does not exist", async ({ request }) => {

@@ -5,9 +5,10 @@ import {
   fetchManifest,
   fetchRegionCurrentRents,
   fetchRegionGeometry,
+  fetchRegionRentHistory,
 } from "@/data/repository";
 
-// 三个查询都设置 staleTime: Infinity，读取成功后数据不会过期，缓存中有数据时不再重新请求：
+// 每个查询都设置 staleTime: Infinity，读取成功后数据不会过期，缓存中有数据时不再重新请求：
 // - 版本目录中的文件发布后不会再修改，重新请求只会得到相同内容；
 // - manifest 在页面打开期间保持同一个版本，列表和地图因此不会读到不同版本的文件。
 // 没有组件使用的查询（例如切换后离开的 Region）按默认的 gcTime 在 5 分钟后清除，之后需要时重新请求。
@@ -50,6 +51,20 @@ export function useRegionGeometry(partition: ManifestPartition) {
   return useQuery({
     queryKey: ["region-geometry", partition.geometryUrl],
     queryFn: ({ signal }) => fetchRegionGeometry(partition, signal),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * 读取一个 Region 的租金历史。只有区域详情使用，Explore 不下载这个文件。
+ *
+ * @param partition manifest 中的一个 Region
+ * @returns 租金历史的查询状态
+ */
+export function useRegionRentHistory(partition: ManifestPartition) {
+  return useQuery({
+    queryKey: ["region-rent-history", partition.rentHistoryUrl],
+    queryFn: ({ signal }) => fetchRegionRentHistory(partition, signal),
     staleTime: Infinity,
   });
 }

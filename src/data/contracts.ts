@@ -68,6 +68,8 @@ const quarterlyRentSchema = z
   })
   .strict();
 
+export type QuarterlyRent = z.infer<typeof quarterlyRentSchema>;
+
 // 一个 Region 的租金历史：以 SA2 编号为键，值是这个 SA2 的季度租金记录。
 export const regionRentHistorySchema = z.record(sa2IdSchema, z.array(quarterlyRentSchema));
 

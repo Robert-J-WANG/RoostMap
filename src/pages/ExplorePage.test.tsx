@@ -12,6 +12,7 @@ import {
   geometryUrl,
   mbieSourceUrl,
   rentalDataNotice,
+  rentHistoryUrl,
   serveRelease,
 } from "@/test/release-fixtures";
 
@@ -160,12 +161,18 @@ describe("Explore page", () => {
     serveRelease();
     const router = renderExplore("/explore?dwelling=House&bedrooms=3&sa2=179900");
 
+    // Explore 不读取租金历史；打开详情后才请求。
+    const rentHistoryRequests = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === rentHistoryUrl);
+    const viewDetails = await screen.findByRole("link", { name: "View details" });
+    expect(rentHistoryRequests()).toHaveLength(0);
+
     // 详情页使用同一个 Region 和分类。
-    fireEvent.click(await screen.findByRole("link", { name: "View details" }));
+    fireEvent.click(viewDetails);
     expect(await screen.findByRole("heading", { level: 1, name: "Greensboro" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/areas/179900");
     expect(router.state.location.search).toBe("?dwelling=House&bedrooms=3");
     expect(screen.getByText("House · 3 bedrooms")).toBeInTheDocument();
+    expect(rentHistoryRequests()).toHaveLength(1);
 
     // 详情页使用 Explore 已经下载的当前租金。
     const currentRentRequests = vi.mocked(fetch).mock.calls.filter(([url]) => url === currentRentsUrl);

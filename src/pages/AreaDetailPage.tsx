@@ -1,4 +1,5 @@
 import { ArrowLeftIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 
 import { DataLoadError } from "@/components/DataLoadError";
@@ -7,7 +8,11 @@ import { DataStatusBadge } from "@/components/DataStatusBadge";
 import { OneBedroomNotice } from "@/components/OneBedroomNotice";
 import { buttonVariants } from "@/components/ui/button";
 import type { DataManifest, ManifestPartition } from "@/data/contracts";
-import { useManifest, useRegionCurrentRents } from "@/data/queries";
+import {
+  useManifest,
+  useRegionCurrentRents,
+  useRegionRentHistory,
+} from "@/data/queries";
 import {
   findCurrentRent,
   findPartition,
@@ -15,6 +20,8 @@ import {
   toSearch,
   type Selection,
 } from "@/data/selection";
+import { RentHistoryChart } from "@/features/areas/RentHistoryChart";
+import { buildRentHistorySeries } from "@/features/areas/rentHistory";
 import {
   formatBedrooms,
   formatBonds,
@@ -78,6 +85,9 @@ function AreaDetails({ manifest, partition, selection }: AreaDetailsProps) {
   const { sa2Id } = useParams();
   const currentRentsQuery = useRegionCurrentRents(partition);
 
+  // 租金历史只在详情页读取，与当前租金同时开始请求；它的加载和失败只影响历史部分。
+  const rentHistoryQuery = useRegionRentHistory(partition);
+
   if (currentRentsQuery.isError) {
     return (
       <>
@@ -128,6 +138,28 @@ function AreaDetails({ manifest, partition, selection }: AreaDetailsProps) {
   const medianRent = currentRent?.medianRent ?? null;
   const reportedBonds = currentRent?.reportedBonds ?? null;
   const yearOverYearChange = currentRent?.yearOverYearChange ?? null;
+
+  let historyPanel: ReactNode;
+
+  if (rentHistoryQuery.isError) {
+    historyPanel = (
+      <DataLoadError
+        error={rentHistoryQuery.error}
+        onRetry={() => rentHistoryQuery.refetch()}
+      />
+    );
+  } else if (rentHistoryQuery.isPending) {
+    historyPanel = <p className="text-muted-foreground">Loading rent history…</p>;
+  } else {
+    // 历史和上面的当前租金使用同一个分类；这个分类没有记录时得到空序列。
+    const series = buildRentHistorySeries(
+      rentHistoryQuery.data[area.sa2Id] ?? [],
+      selection.dwellingType,
+      selection.bedrooms,
+      manifest.latestPeriod,
+    );
+    historyPanel = <RentHistoryChart series={series} />;
+  }
 
   return (
     <>
@@ -192,6 +224,18 @@ function AreaDetails({ manifest, partition, selection }: AreaDetailsProps) {
           </dd>
         </div>
       </dl>
+
+      {/* 租金历史：使用 Geometric Mean，与上面的 Median 口径不同，标题下说明这一点。 */}
+      <section className="space-y-4 rounded-xl border bg-card p-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">Rent history</h2>
+          <p className="text-sm text-muted-foreground">
+            Geometric mean weekly rent by quarter. Gaps are quarters without a
+            rent. The rent above is a median, so the two can differ.
+          </p>
+        </div>
+        {historyPanel}
+      </section>
 
       <DataReleaseNotice manifest={manifest} />
     </>

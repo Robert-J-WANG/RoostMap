@@ -14923,3 +14923,533 @@ git push origin --delete feat/national-explore
 ✅ 全国 Explore 与分类筛选已通过 squash merge 合并到 main
 ✅ Production 部署和 Production smoke test 全部通过，已完成的分支已删除
 ```
+
+---
+
+## Step 11 · 在区域详情中显示租金历史
+
+### 这一步做什么
+
+Step 10 完成后，详情页按 URL 中的 Region 和分类显示一个区域的当前租金：最新观测的中位租金、观测季度、Reported Bonds 和 12 个月变化。Step 09 已经为每个 Region 生成了租金历史文件，记录 2020-01-01 到 2026-04-01 之间各季度、各发布分类的租金，但页面从来没有读取它。
+
+只看一个季度，用户无法判断这个区域的租金是在上升、持平还是波动；12 个月变化也只比较两个季度，看不到中间的走势。本步在详情页加入所选分类的租金历史：用折线显示 Geometric Mean Rent，缺失的季度断开，只有少数季度时不画出看起来像趋势的线。
+
+```text
+按需读取 Region 的租金历史
+→ 把一个分类的记录整理成连续的季度序列
+→ 按有租金的季度数量选择显示方式
+→ 测试、浏览器检查和 Git 操作
+```
+
+本步完成后，详情页的历史与当前租金使用同一个分类；历史读取失败时可以重试，当前租金不受影响；Explore 仍然不下载历史文件。
+
+### 1. 建立租金历史分支
+
+本步为区域详情加入租金历史，分支使用 `feat` 类别：
+
+```bash
+git switch -c feat/area-history
+```
+
+```text
+Switched to a new branch 'feat/area-history'
+```
+
+### 2. 按需读取 Region 的租金历史
+
+manifest 中每个 Region 都有 `rentHistoryUrl`，`contracts.ts` 中也已经有 `regionRentHistorySchema`，但读取数据的代码只覆盖了当前租金和边界。
+
+#### 2.1 读取函数和查询
+
+`src/data/repository.ts` 按已有的方式增加一个读取函数，用 schema 检查文件内容：
+
+```ts
+export function fetchRegionRentHistory(
+  partition: ManifestPartition,
+  signal?: AbortSignal,
+): Promise<RegionRentHistory> {
+  return fetchJson(partition.rentHistoryUrl, regionRentHistorySchema, signal);
+}
+```
+
+`src/data/queries.ts` 增加对应的查询，查询键是文件地址：
+
+```ts
+/**
+ * 读取一个 Region 的租金历史。只有区域详情使用，Explore 不下载这个文件。
+ */
+export function useRegionRentHistory(partition: ManifestPartition) {
+  return useQuery({
+    queryKey: ["region-rent-history", partition.rentHistoryUrl],
+    queryFn: ({ signal }) => fetchRegionRentHistory(partition, signal),
+    staleTime: Infinity,
+  });
+}
+```
+
+历史文件比当前租金大得多：Waikato 的历史文件为 2.42 MB，Auckland 为 9.38 MB。Explore 的列表和地图只需要当前租金，所以只有详情页调用这个查询。
+
+#### 2.2 与当前租金同时请求
+
+详情页的 `AreaDetails` 在开头调用 `useRegionRentHistory`，和当前租金的查询并列：
+
+```tsx
+const currentRentsQuery = useRegionCurrentRents(partition);
+
+// 租金历史只在详情页读取，与当前租金同时开始请求；它的加载和失败只影响历史部分。
+const rentHistoryQuery = useRegionRentHistory(partition);
+```
+
+两个查询在组件第一次渲染时同时发出。如果把历史的查询放在一个只有当前租金读取完成后才渲染的子组件里，历史文件要等当前租金下载完才开始请求，两次下载会排成先后两段。
+
+`AreaDetails` 的提前 `return` 只处理当前租金的加载和失败。历史的三种状态和 Explore 的地图一样，算出一个 `historyPanel`，放在页面的历史区域中：
+
+```tsx
+let historyPanel: ReactNode;
+
+if (rentHistoryQuery.isError) {
+  historyPanel = (
+    <DataLoadError
+      error={rentHistoryQuery.error}
+      onRetry={() => rentHistoryQuery.refetch()}
+    />
+  );
+} else if (rentHistoryQuery.isPending) {
+  historyPanel = <p className="text-muted-foreground">Loading rent history…</p>;
+} else {
+  // 历史和上面的当前租金使用同一个分类；这个分类没有记录时得到空序列。
+  const series = buildRentHistorySeries(
+    rentHistoryQuery.data[area.sa2Id] ?? [],
+    selection.dwellingType,
+    selection.bedrooms,
+    manifest.latestPeriod,
+  );
+  historyPanel = <RentHistoryChart series={series} />;
+}
+```
+
+历史读取失败时，只有历史区域显示错误和 Retry，上面的当前租金照常显示。
+
+### 3. 把一个分类的记录整理成连续的季度序列
+
+`rentHistoryQuery.data[area.sa2Id]` 是这个 SA2 在全部发布分类下的记录。画图之前要解决两件事：只保留所选分类，以及缺失季度的表示方式。
+
+#### 3.1 缺失季度没有记录
+
+Step 07 的技术样例已经确认，Recharts 的 `connectNulls={false}` 会在值为 `null` 的位置断开折线。但这要求缺失的季度在数组中占有一个位置。检查 Greensboro 的真实历史：`Apartment / 4` 卧只有 11 条记录，分散在 2020-01-01 到 2026-04-01 的 26 个季度中，其余季度没有任何记录。MBIE（租金） 不发布 bonds 少于 5 的组合，这些季度在源文件中就不存在。
+
+如果直接把 11 条记录交给图表，相邻的两条记录会连成一条线，中间缺失的季度被跨过，看起来像连续的变化。因此需要先为每个季度生成一个位置，没有记录的季度填 `null`。
+
+#### 3.2 生成序列的函数
+
+这部分逻辑只服务于区域详情，按技术规范的功能边界放在 `src/features/areas/rentHistory.ts`。图表的一个季度只需要三个值：
+
+```ts
+// 图表中的一个季度：这个季度没有记录或没有租金时，geometricMeanRent 为 null，折线在这里断开。
+export type RentHistoryPoint = {
+  period: string;
+  geometricMeanRent: number | null;
+  reportedBonds: number | null;
+};
+```
+
+季度使用季度首日表示，下一个季度是三个月之后：
+
+```ts
+function nextQuarter(period: string): string {
+  const year = Number(period.slice(0, 4));
+  const month = Number(period.slice(5, 7));
+
+  if (month === 10) {
+    return `${year + 1}-01-01`;
+  }
+
+  return `${year}-${String(month + 3).padStart(2, "0")}-01`;
+}
+```
+
+序列从这个分类第一条记录的季度开始，一直到 manifest 的 `latestPeriod`：
+
+```ts
+export function buildRentHistorySeries(
+  records: QuarterlyRent[],
+  dwellingType: DwellingType,
+  bedrooms: Bedrooms,
+  latestPeriod: string,
+): RentHistoryPoint[] {
+  const categoryRecords = records.filter(
+    (record) => record.dwellingType === dwellingType && record.bedrooms === bedrooms,
+  );
+
+  if (categoryRecords.length === 0) {
+    return [];
+  }
+
+  // 按季度查找记录；季度文本是 YYYY-MM-DD，按文本排序就是按时间排序。
+  const recordByPeriod = new Map(categoryRecords.map((record) => [record.period, record]));
+  const firstPeriod = categoryRecords.map((record) => record.period).sort()[0];
+
+  const series: RentHistoryPoint[] = [];
+
+  for (let period = firstPeriod; period <= latestPeriod; period = nextQuarter(period)) {
+    const record = recordByPeriod.get(period);
+
+    series.push({
+      period,
+      geometricMeanRent: record?.geometricMeanRent ?? null,
+      reportedBonds: record?.reportedBonds ?? null,
+    });
+  }
+
+  return series;
+}
+```
+
+序列延伸到 `latestPeriod`，而不是停在最后一条记录。最近几个季度没有记录时，横轴仍然显示到数据集的最新季度，用户可以看出这个分类最近没有观测，而不是以为数据只到那里。
+
+`QuarterlyRent` 是 `quarterlyRentSchema` 推导出的类型，原来没有导出，在 `contracts.ts` 中补上 `export type QuarterlyRent = z.infer<typeof quarterlyRentSchema>;`。
+
+同一个文件还有两个小函数：`countObservedQuarters` 统计有租金的季度数量，`formatQuarter` 把 `2020-01-01` 显示为 `2020 Q1`。
+
+#### 3.3 用单元测试固定序列规则
+
+`src/features/areas/rentHistory.test.ts` 用五个测试覆盖：中间和末尾的缺失季度都占一个位置；只使用所选分类；分类没有记录时返回空数组；有记录但租金为 `null` 的季度同样是缺口；季度标签的格式。
+
+```ts
+// 2025-10-01 没有记录，2026-04-01 也没有记录，但都在序列中占一个位置。
+expect(series.map((point) => [point.period, point.geometricMeanRent])).toEqual([
+  ["2025-07-01", 400],
+  ["2025-10-01", null],
+  ["2026-01-01", 420],
+  ["2026-04-01", null],
+]);
+```
+
+### 4. 按有租金的季度数量显示历史
+
+序列准备好后，剩下的问题是如何显示。
+
+#### 4.1 少数季度不画趋势线
+
+全国 release 中，每个 SA2 的每个分类是一条历史序列。统计全部序列中有租金的季度数量：
+
+```text
+序列总数              19,854
+没有租金              2
+1 个季度              3,245
+2–3 个季度            3,773
+4 个及以上季度        12,834
+```
+
+超过三分之一的序列只有 1 到 3 个季度。产品设计的缺失与稀疏数据规则规定：1 个历史点显示快照，2–3 个点显示独立数据点，4 个以上才显示趋势线。两三个零散的季度连成线，会让用户把它读成趋势。
+
+新增 `src/features/areas/RentHistoryChart.tsx`，按有租金的季度数量选择显示方式：
+
+```tsx
+export function RentHistoryChart({ series }: RentHistoryChartProps) {
+  const observedPoints = series.filter((point) => point.geometricMeanRent !== null);
+
+  if (observedPoints.length === 0) {
+    return (
+      <p className="text-muted-foreground">
+        No rent history is available for this category.
+      </p>
+    );
+  }
+
+  if (observedPoints.length === 1) {
+    const point = observedPoints[0];
+
+    return (
+      <p>
+        Only {formatQuarter(point.period)} has a rent for this category:{" "}
+        {formatRent(point.geometricMeanRent)} from{" "}
+        {formatBonds(point.reportedBonds)}.
+      </p>
+    );
+  }
+
+  // 少于 4 个季度时不连线，避免把几个零散的季度读成趋势；点仍然显示每个季度的租金。
+  const showLine = observedPoints.length >= 4;
+```
+
+只有 1 个季度时，一个点放在图表中间没有比较对象，一句文字更清楚。2–3 个季度仍然使用图表，但折线的 `stroke` 设为 `none`，只留下各季度的点。
+
+#### 4.2 折线图
+
+Recharts 在 Step 07 已经安装（3.10.1），移除技术样例后没有页面导入它，现在重新用于正式页面：
+
+```tsx
+return (
+  <div className="h-72 w-full min-w-0">
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={series} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+        <XAxis
+          dataKey="period"
+          interval="preserveStartEnd"
+          minTickGap={28}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+          tickFormatter={formatQuarter}
+        />
+        <YAxis
+          domain={["auto", "auto"]}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+          tickFormatter={(value) => `$${value}`}
+          width={56}
+        />
+        <Tooltip content={HistoryTooltip} />
+        <Line
+          connectNulls={false}
+          dataKey="geometricMeanRent"
+          dot={{ r: 3, fill: "var(--chart-1)", stroke: "var(--chart-1)" }}
+          isAnimationActive={false}
+          stroke={showLine ? "var(--chart-1)" : "none"}
+          strokeWidth={2}
+          type="linear"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+);
+```
+
+图表收到完整的季度序列：值为 `null` 的季度不画点，`connectNulls={false}` 让折线在这里断开。颜色使用主题中的 CSS 变量，深色模式下自动切换。纵轴使用 `"auto"`，不从 0 开始，否则每周几十元的变化会被压成一条平线。
+
+Tooltip 需要显示同一季度的 Reported Bonds，而默认的 tooltip 只显示折线的值，所以用 `content` 传入自己的组件。Recharts 把指向的数据点放在 `payload[0].payload` 中：
+
+```tsx
+// 鼠标指向一个季度时显示的内容：季度、几何平均租金和同一季度的 Reported Bonds。
+function HistoryTooltip({ active, payload }: TooltipContentProps) {
+  if (!active || payload.length === 0) {
+    return null;
+  }
+
+  const point = payload[0].payload as RentHistoryPoint;
+
+  return (
+    <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-sm">
+      <p className="font-medium">{formatQuarter(point.period)}</p>
+      <p>Geometric mean rent: {formatRent(point.geometricMeanRent)}</p>
+      <p>Reported Bonds: {formatBonds(point.reportedBonds)}</p>
+    </div>
+  );
+}
+```
+
+第一次把参数类型写成 `TooltipContentProps<number, string>`，类型检查报错：
+
+```text
+error TS2322: Type '({ active, payload }: TooltipContentProps<number, string>) => Element | null'
+is not assignable to type 'ContentType<ValueType, NameType> | undefined'.
+```
+
+`<Tooltip>` 传给 `content` 组件的值是 `ValueType`，可能是数字、字符串或它们的数组；名称是 `NameType`，可能是数字或字符串。`<number, string>` 只接受其中一部分，两者不兼容。去掉泛型参数，使用 Recharts 的默认类型后通过。数据点的具体类型由 `as RentHistoryPoint` 说明，因为传给图表的数组就是 `RentHistoryPoint[]`。
+
+#### 4.3 在详情页显示历史
+
+历史放在当前租金之后。页面上方的当前租金是中位数，历史使用几何平均数，两者在同一季度的值可能不同，所以标题下直接说明：
+
+```tsx
+<section className="space-y-4 rounded-xl border bg-card p-6">
+  <div className="space-y-1">
+    <h2 className="text-lg font-semibold">Rent history</h2>
+    <p className="text-sm text-muted-foreground">
+      Geometric mean weekly rent by quarter. Gaps are quarters without a
+      rent. The rent above is a median, so the two can differ.
+    </p>
+  </div>
+  {historyPanel}
+</section>
+```
+
+Methodology 在 "Current rent" 之后加入 "Rent history"，说明历史使用的指标、时间范围、缺失季度断开，以及少于四个季度时的显示方式：
+
+```tsx
+<MethodologySection title="Rent history">
+  <p>
+    Area pages show the Geometric Mean Rent for each quarter in the
+    selected category, from its first MBIE record to the latest
+    quarter in the data. MBIE publishes both a median and a
+    geometric mean for each quarter; RoostMap uses the geometric mean
+    for history and the 12-month change, and the median for the
+    current rent.
+  </p>
+  <p>
+    Quarters without a rent are left as gaps; the line is not drawn
+    across them. With fewer than four quarters, the quarters are shown
+    as separate points without a line, and a single quarter is
+    described in text.
+  </p>
+</MethodologySection>
+```
+
+#### 4.4 纵轴不放大很小的差别
+
+在浏览器中打开 Greensboro 的 `Flat / 3` 卧，它只有 2022 Q1 和 2025 Q4 两个季度，几何平均租金分别为 $473 和 $485。`"auto"` 让纵轴紧贴这两个值，范围是 $472 到 $488，两个点分别在图表的底部和顶部，12 元的差别看起来像大幅上涨。
+
+纵轴不从 0 开始，但也不能紧贴数据。Recharts 的 `domain` 可以接收函数，参数是数据的最小值或最大值。上下各留出约 10%，再取整到 10 元，让刻度是整齐的数字：
+
+```tsx
+{/* 纵轴不从 0 开始，否则几十元的变化会被压成一条平线；
+    上下各留出约 10%，避免只有几个接近的值时把很小的差别放大成陡峭的变化。
+    两端取整到 10 元，刻度是整齐的数字。 */}
+<YAxis
+  domain={[
+    (dataMin: number) => Math.floor((dataMin * 0.9) / 10) * 10,
+    (dataMax: number) => Math.ceil((dataMax * 1.1) / 10) * 10,
+  ]}
+```
+
+修改后 `Flat / 3` 卧的纵轴为 $420 到 $540，两个点的差别按实际比例显示；Greensboro `ALL / ALL` 的 26 个季度在 $270 到 $470 之间，走势仍然清楚。
+
+### 5. 验证并完成 Git 操作
+
+#### 5.1 用测试覆盖历史
+
+jsdom 不排版页面，`ResponsiveContainer` 测得的宽高为 0，图表不会绘制。Step 07 在测试文件中把它换成固定尺寸。现在图表组件、详情页和 Explore（会进入详情页）的测试都会渲染图表，这个 mock 移到所有测试共用的 `src/test/setup.ts` 中：
+
+```ts
+// jsdom 不排版页面，ResponsiveContainer 测得的宽高为 0，图表不会绘制。
+// 所有测试中为图表提供固定尺寸，折线和点仍由 Recharts 真实绘制。
+vi.mock("recharts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("recharts")>()),
+  ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
+    cloneElement(children, { width: 640, height: 320 }),
+}));
+```
+
+setup 文件中的 `vi.mock` 对每个测试文件都生效。
+
+`src/features/areas/RentHistoryChart.test.tsx` 的四个测试对应四种显示方式。折线是否断开，通过折线路径中 `M`（开始新的一段）的数量判断：
+
+```ts
+it("draws a line that breaks at a missing quarter", () => {
+  render(<RentHistoryChart series={series([390, 392, null, 398, 395])} />);
+
+  expect(document.querySelectorAll(".recharts-line-dot")).toHaveLength(4);
+  expect(lineSegmentCount()).toBe(2);
+});
+```
+
+另外三个测试检查：2–3 个季度时有点、折线的 `stroke` 为 `none`；1 个季度时显示文字、没有图表；空序列时显示没有历史。
+
+测试用的 release 加入 Waikato 的租金历史：Greensboro `ALL / ALL` 有四个季度、缺少 2025-10-01；`House / 3` 卧有两个季度；`ALL / 1` 卧只有一个季度。详情页新增两个测试：默认分类显示 4 个点、分成两段的折线；历史请求第一次失败时显示错误，当前租金仍然是 NZ$350/week，Retry 后显示图表。已有的 1 卧测试加入一项检查：历史部分显示 "Only 2026 Q2 has a rent for this category: NZ$330/week from 132 bonds."。
+
+Explore 的"打开详情"测试加入请求次数的检查：在 Explore 中没有请求历史文件，进入详情页后请求一次。
+
+浏览器测试新增一个读取真实 release 的测试：Greensboro `ALL / ALL` 在 26 个季度都有租金，详情页应显示 26 个点和一条折线。
+
+#### 5.2 本地完整检查
+
+```bash
+npm run check
+```
+
+lint 和构建通过。测试结果中与本步有关的部分为：
+
+```text
+✓ src/features/areas/RentHistoryChart.test.tsx (4 tests)
+✓ src/features/areas/rentHistory.test.ts (5 tests)
+✓ src/pages/ExplorePage.test.tsx (10 tests)
+✓ src/pages/AreaDetailPage.test.tsx (10 tests)
+
+Test Files  15 passed (15)
+     Tests  76 passed (76)
+```
+
+Playwright 运行 10 个测试，9 个通过，404 测试按预期在本地跳过：
+
+```text
+✓ … › shows the Greensboro rent history on its area page
+```
+
+构建结果：
+
+```text
+✓ 2649 modules transformed.
+dist/assets/index-DRGqfV9L.js    2,000.33 kB │ gzip: 569.63 kB
+```
+
+Step 10 的构建为 2275 个模块、1,629.49 kB（gzip 462.45 kB）。图表重新导入 Recharts 后，JavaScript 增加 370.84 kB（gzip 增加 107.18 kB），与移除技术样例时减少的体积相当。
+
+#### 5.3 在浏览器中检查
+
+在 `npm run dev` 中用 Greensboro 的不同分类检查四种显示方式：
+
+| 分类 | 有租金的季度 | 显示 |
+|---|---:|---|
+| `ALL / ALL` | 26 | 完整的折线，纵轴 $270–$470 |
+| `Apartment / 4` | 11 | 几段折线和几个孤立的点，缺失季度断开 |
+| `Flat / 3` | 2 | 两个点，没有连线 |
+| `Flat / 4` | 1 | "Only 2020 Q1 has a rent for this category: NZ$534/week from 6 bonds." |
+
+在 `Apartment / 4` 卧的图表中指向 2025 Q2，tooltip 显示 Geometric mean rent NZ$1040/week、Reported Bonds 6 bonds。对照源记录：
+
+```text
+2025-04-01,179900,Apartment,4,6,36,0,1040,1040,1040,1040,0
+```
+
+Total Bonds 为 6，Geometric Mean Rent 为 1040，与 tooltip 一致。指向缺失的季度时不显示 tooltip。
+
+在 375px 的手机宽度下，图表随页面变窄，页面宽度为 375px，没有横向滚动。
+
+Auckland 的历史文件最大，打开 Ponsonby West（`/areas/130400?region=02`），从页面开始加载计时，两个数据文件的请求为：
+
+```text
+current-rents/02.json   开始 458 ms   完成 469 ms   1,200 kB
+rent-history/02.json    开始 459 ms   完成 561 ms   9,162 kB
+```
+
+两个文件几乎同时开始请求，历史文件没有等待当前租金。
+
+再单独测量 contract 检查的耗时。在这个页面中直接调用 `fetchRegionRentHistory`，与只下载并解析 JSON 对比，各运行三次：
+
+```text
+下载并解析 JSON                  157 ms   106 ms   111 ms
+下载、解析 JSON 并做 contract 检查  209 ms   185 ms   157 ms
+```
+
+对这个 9.4 MB 的文件，contract 检查大约增加 50–80 ms。这次测量来自本地开发服务器，没有真实的网络延迟，只说明下载之后的处理时间。这个文件 gzip 压缩后为 0.64 MB，部署环境通过压缩传输。
+
+#### 5.4 提交并推送
+
+```bash
+git add docs/steps.md src tests/e2e
+git commit -m "feat: show rent history on area details"
+git push -u origin feat/area-history
+```
+
+#### 5.5 Pull Request 和 Preview
+
+在 GitHub 上从 `feat/area-history` 向 `main` 创建 Pull Request，标题为 `feat: show rent history on area details`。Quality 在 runner 上运行 `npm run check`；Deploy 把 `dist` 部署为 Azure Preview；Deployed smoke test 用 Preview 地址运行 Playwright，包括本步新增的租金历史测试。三个 job 全部通过。
+
+#### 5.6 合并并完成收尾
+
+用 squash merge 合并 Pull Request。合并触发 Production Delivery，部署 main 并用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+
+在本地切换到更新后的 main，删除已经合并的分支：
+
+```bash
+git switch main
+git pull --ff-only
+git branch -D feat/area-history
+git push origin --delete feat/area-history
+```
+
+### Step 11 完成状态
+
+```text
+✅ 详情页按需读取所选 Region 的租金历史，Explore 不下载历史文件
+✅ 历史与当前租金同时请求，历史读取失败时可以重试，当前租金不受影响
+✅ 历史使用与当前租金相同的分类，缺失季度在序列中保留为缺口
+✅ 4 个及以上季度显示折线并在缺失季度断开，2–3 个季度只显示点，1 个季度用文字说明
+✅ Tooltip 显示季度、Geometric Mean Rent 和 Reported Bonds，数值与源记录一致
+✅ 纵轴留出边距，少数接近的值不被放大成陡峭的变化
+✅ Methodology 说明历史使用的指标和缺失季度的显示规则
+✅ 桌面和手机宽度下的详情页已在浏览器中检查
+✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
+✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+✅ 区域租金历史已通过 squash merge 合并到 main
+✅ Production 部署和 Production smoke test 全部通过，已完成的分支已删除
+```

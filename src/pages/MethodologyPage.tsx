@@ -96,6 +96,23 @@ export function MethodologyPage() {
           </p>
         </MethodologySection>
 
+        <MethodologySection title="Rent history">
+          <p>
+            Area pages show the Geometric Mean Rent for each quarter in the
+            selected category, from its first MBIE record to the latest
+            quarter in the data. MBIE publishes both a median and a
+            geometric mean for each quarter; RoostMap uses the geometric mean
+            for history and the 12-month change, and the median for the
+            current rent.
+          </p>
+          <p>
+            Quarters without a rent are left as gaps; the line is not drawn
+            across them. With fewer than four quarters, the quarters are shown
+            as separate points without a line, and a single quarter is
+            described in text.
+          </p>
+        </MethodologySection>
+
         <MethodologySection title="Missing data">
           <p>
             MBIE does not publish combinations with fewer than five bonds, and

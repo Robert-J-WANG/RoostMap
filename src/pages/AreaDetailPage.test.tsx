@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -9,6 +9,7 @@ import {
   currentRentsUrl,
   mbieSourceUrl,
   rentalDataNotice,
+  rentHistoryUrl,
   serveRelease,
 } from "@/test/release-fixtures";
 
@@ -99,6 +100,32 @@ describe("Area Detail page", () => {
     expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$330/week");
     expect(getValue("12-month change")).toHaveTextContent("N/A");
     expect(screen.getByText(/MBIE's 1-bedroom figures/)).toBeInTheDocument();
+
+    // 历史使用同一个分类：ALL / 1 只有一个季度，用文字说明。
+    expect(
+      await screen.findByText("Only 2026 Q2 has a rent for this category: NZ$330/week from 132 bonds."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the rent history of the selected category", async () => {
+    serveRelease();
+    renderAreaDetail("179900");
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Rent history" })).toBeInTheDocument();
+    // ALL / ALL 有 4 个季度的租金，2025-10-01 缺失，折线分成两段。
+    await waitFor(() => expect(document.querySelectorAll(".recharts-line-dot")).toHaveLength(4));
+    expect(document.querySelector(".recharts-line-curve")?.getAttribute("d")?.split("M")).toHaveLength(3);
+  });
+
+  it("keeps the current rent when the rent history fails to load", async () => {
+    serveRelease([rentHistoryUrl]);
+    renderAreaDetail("179900");
+
+    expect(await screen.findByText(`Could not load ${rentHistoryUrl} (HTTP 503)`)).toBeInTheDocument();
+    expect(getValue("Latest observed median weekly rent")).toHaveTextContent("NZ$350/week");
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(document.querySelectorAll(".recharts-line-dot")).toHaveLength(4));
   });
 
   it("finds the area in the Region named in the URL", async () => {

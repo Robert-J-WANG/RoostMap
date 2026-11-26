@@ -4,8 +4,10 @@ import { vi } from "vitest";
 
 export const currentRentsUrl = "/data/releases/2026-04-01.1/areas/current-rents/03.json";
 export const geometryUrl = "/data/releases/2026-04-01.1/geometry/regions/03.geo.json";
+export const rentHistoryUrl = "/data/releases/2026-04-01.1/areas/rent-history/03.json";
 const wellingtonCurrentRentsUrl = "/data/releases/2026-04-01.1/areas/current-rents/09.json";
 const wellingtonGeometryUrl = "/data/releases/2026-04-01.1/geometry/regions/09.geo.json";
+const wellingtonRentHistoryUrl = "/data/releases/2026-04-01.1/areas/rent-history/09.json";
 export const rentalDataNotice = "Recent quarters may be revised.";
 export const mbieSourceUrl = "https://www.tenancy.govt.nz/rental-bond-data/";
 export const mbieSourceSha256 = "a".repeat(64);
@@ -21,7 +23,7 @@ const manifest = {
       areaCount: 3,
       currentRentsUrl,
       geometryUrl,
-      rentHistoryUrl: "/data/releases/2026-04-01.1/areas/rent-history/03.json",
+      rentHistoryUrl,
     },
     {
       id: "09",
@@ -29,7 +31,7 @@ const manifest = {
       areaCount: 1,
       currentRentsUrl: wellingtonCurrentRentsUrl,
       geometryUrl: wellingtonGeometryUrl,
-      rentHistoryUrl: "/data/releases/2026-04-01.1/areas/rent-history/09.json",
+      rentHistoryUrl: wellingtonRentHistoryUrl,
     },
   ],
   rentalDataStatus: "provisional",
@@ -145,6 +147,34 @@ const wellingtonCurrentRents = [
   ),
 ];
 
+// Waikato 的租金历史，只包含页面测试需要的季度。
+// Greensboro ALL / ALL：2025-10-01 没有记录，其余 4 个季度有租金，折线在缺失季度断开；
+// House / 3 只有 2 个季度，只显示点；ALL / 1 只有 1 个季度，用文字说明。
+// 其他区域没有历史记录。
+function historyRecord(
+  dwellingType: string,
+  bedrooms: string,
+  period: string,
+  geometricMeanRent: number,
+  reportedBonds: number,
+) {
+  return { dwellingType, bedrooms, period, reportedBonds, medianRent: geometricMeanRent, geometricMeanRent };
+}
+
+const rentHistory = {
+  "179900": [
+    historyRecord("ALL", "ALL", "2025-04-01", 390, 213),
+    historyRecord("ALL", "ALL", "2025-07-01", 392, 180),
+    historyRecord("ALL", "ALL", "2026-01-01", 398, 150),
+    historyRecord("ALL", "ALL", "2026-04-01", 395, 171),
+    historyRecord("House", "3", "2025-04-01", 534, 27),
+    historyRecord("House", "3", "2026-04-01", 610, 12),
+    historyRecord("ALL", "1", "2026-04-01", 330, 132),
+  ],
+  "167300": [],
+  "100100": [],
+};
+
 // 每个区域一个简单的三角形边界，id 是 SA2 编号。
 function toGeometry(areas: { sa2Id: string }[]) {
   return {
@@ -171,8 +201,10 @@ export function serveRelease(failOnce: string[] = []) {
     if (url === "/data/manifest.json") return Response.json(manifest);
     if (url === currentRentsUrl) return Response.json(currentRents);
     if (url === geometryUrl) return Response.json(toGeometry(currentRents));
+    if (url === rentHistoryUrl) return Response.json(rentHistory);
     if (url === wellingtonCurrentRentsUrl) return Response.json(wellingtonCurrentRents);
     if (url === wellingtonGeometryUrl) return Response.json(toGeometry(wellingtonCurrentRents));
+    if (url === wellingtonRentHistoryUrl) return Response.json({ "250100": [] });
 
     throw new Error(`Unexpected data request: ${url}`);
   }));
