@@ -13670,6 +13670,23 @@ Preview 上 `/data/manifest.json` 的 SHA-256 为 `82e3fdc3…`，与本地生�
 
 这些结果说明：Greensboro 的源值从源记录经过 release 文件，显示在部署后的 Explore 和详情页上；部署环境对缺失的数据文件返回 404，对页面地址返回应用；Pull Request 的质量检查、Preview 部署和部署后测试全部通过。
 
+#### 10.5 合并并完成收尾
+
+在 GitHub 上用 squash merge 合并 Pull Request #10。main 上只增加一个提交 `feat: build the first formal data slice (#10)`，它包含这个分支的全部改动。合并触发 Production Delivery：部署 main，再用正式地址运行同一组 Playwright 测试，部署和测试都通过。
+
+在本地切换到更新后的 main，删除已经合并的分支，并为这个 Step 打上 tag：
+
+```bash
+git switch main
+git pull --ff-only
+git branch -D feat/data-first-slice
+git push origin --delete feat/data-first-slice
+git tag step-08-complete
+git push origin step-08-complete
+```
+
+squash merge 在 main 上生成的是一个新提交，Git 不会把分支上的原有提交视为已合并，所以删除本地分支要用 `-D`。`step-08-complete` 标记了 Step 08 完成时 main 所在的提交。
+
 ### Step 08 完成状态
 
 ```text
@@ -13684,4 +13701,7 @@ Preview 上 `/data/manifest.json` 的 SHA-256 为 `82e3fdc3…`，与本地生�
 ✅ Greensboro 的源值可以从源记录追踪到部署后的页面
 ✅ lint、单元与组件测试、生产构建和 E2E 测试全部通过
 ✅ Pull Request 的 Quality、Deploy 和 Deployed smoke test 全部通过
+✅ 第一个正式数据切片已通过 squash merge 合并到 main
+✅ Production 部署和 Production smoke test 全部通过
+✅ main 上已打 tag step-08-complete，已完成的分支已删除
 ```
